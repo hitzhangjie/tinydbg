@@ -19,7 +19,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/hitzhangjie/dlv/pkg/logflags"
-	"github.com/hitzhangjie/dlv/pkg/version"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/dap"
@@ -72,9 +71,6 @@ type methodType struct {
 // NewServer creates a new RPCServer.
 func NewServer(config *service.Config) *ServerImpl {
 	logger := logflags.RPCLogger()
-	if config.APIVersion < 2 {
-		logger.Info("Using API v1")
-	}
 	if config.Debugger.Foreground {
 		// Print listener address
 		logflags.WriteAPIListeningMessage(config.Listener.Addr())
@@ -107,14 +103,6 @@ func (s *ServerImpl) Stop() error {
 // server stops.
 func (s *ServerImpl) Run() error {
 	var err error
-
-	if s.config.APIVersion < 2 {
-		s.config.APIVersion = 1
-	}
-	if s.config.APIVersion > 2 {
-		return fmt.Errorf("unknown API version")
-	}
-
 	// Create and start the debugger
 	config := s.config.Debugger
 	if s.debugger, err = debugger.New(&config, s.config.ProcessArgs); err != nil {
@@ -294,7 +282,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 			break
 		}
 
-		mtype, ok := s.methodMaps[s.config.APIVersion-1][req.ServiceMethod]
+		mtype, ok := s.methodMaps[1][req.ServiceMethod]
 		if !ok {
 			s.log.Errorf("rpcv2: can't find method %s", req.ServiceMethod)
 			s.sendResponse(sending, &req, &rpc.Response{}, nil, codec, fmt.Sprintf("unknown method: %s", req.ServiceMethod))
@@ -414,26 +402,6 @@ func (cb *RPCCallback) Return(out interface{}, err error) {
 
 func (cb *RPCCallback) SetupDoneChan() chan struct{} {
 	return cb.setupDone
-}
-
-// GetVersion returns the version of delve as well as the API version
-// currently served.
-func (s *RPCServer) GetVersion(args api.GetVersionIn, out *api.GetVersionOut) error {
-	out.DelveVersion = version.DelveVersion.String()
-	out.APIVersion = s.s.config.APIVersion
-	return s.s.debugger.GetVersion(out)
-}
-
-// SetApiVersion changes version of the API being served.
-func (s *RPCServer) SetApiVersion(args api.SetAPIVersionIn, out *api.SetAPIVersionOut) error {
-	if args.APIVersion < 2 {
-		args.APIVersion = 1
-	}
-	if args.APIVersion > 2 {
-		return fmt.Errorf("unknown API version")
-	}
-	s.s.config.APIVersion = args.APIVersion
-	return nil
 }
 
 type internalError struct {

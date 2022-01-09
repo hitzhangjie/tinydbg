@@ -503,21 +503,11 @@ type GetVersionIn struct {
 // GetVersionOut is the result of GetVersion.
 type GetVersionOut struct {
 	DelveVersion    string
-	APIVersion      int
 	Backend         string // backend currently in use
 	TargetGoVersion string
 
 	MinSupportedVersionOfGo string
 	MaxSupportedVersionOfGo string
-}
-
-// SetAPIVersionIn is the input for SetAPIVersion.
-type SetAPIVersionIn struct {
-	APIVersion int
-}
-
-// SetAPIVersionOut is the output for SetAPIVersion.
-type SetAPIVersionOut struct {
 }
 
 // Register holds information on a CPU register.

@@ -23,8 +23,8 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 var testBackend, buildMode string
@@ -141,9 +141,6 @@ func withTestTerminal(name string, t testing.TB, fn func(*FakeTerminal)) {
 }
 
 func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.BuildFlags, fn func(*FakeTerminal)) {
-	if testBackend == "rr" {
-		test.MustHaveRecordingAllowed(t)
-	}
 	os.Setenv("TERM", "dumb")
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -645,38 +642,6 @@ func TestListCmd(t *testing.T) {
 		}
 		listIsAt(t, term, "list testvariables.go:1", -1, 1, 6)
 		listIsAt(t, term, "list testvariables.go:10000", -1, 0, 0)
-	})
-}
-
-func TestReverseContinue(t *testing.T) {
-	test.AllowRecording(t)
-	if testBackend != "rr" {
-		return
-	}
-	withTestTerminal("continuetestprog", t, func(term *FakeTerminal) {
-		term.MustExec("break main.main")
-		term.MustExec("break main.sayhi")
-		listIsAt(t, term, "continue", 16, -1, -1)
-		listIsAt(t, term, "continue", 12, -1, -1)
-		listIsAt(t, term, "rewind", 16, -1, -1)
-	})
-}
-
-func TestCheckpoints(t *testing.T) {
-	test.AllowRecording(t)
-	if testBackend != "rr" {
-		return
-	}
-	withTestTerminal("continuetestprog", t, func(term *FakeTerminal) {
-		term.MustExec("break main.main")
-		listIsAt(t, term, "continue", 16, -1, -1)
-		term.MustExec("checkpoint")
-		term.MustExec("checkpoints")
-		listIsAt(t, term, "next", 17, -1, -1)
-		listIsAt(t, term, "next", 18, -1, -1)
-		term.MustExec("restart c1")
-		term.MustExec("goroutine 1")
-		listIsAt(t, term, "list", 16, -1, -1)
 	})
 }
 

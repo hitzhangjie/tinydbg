@@ -84,14 +84,7 @@ func findFirstNonRuntimeFrame(p *proc.Target) (proc.Stackframe, error) {
 }
 
 func evalScope(p *proc.Target) (*proc.EvalScope, error) {
-	if testBackend != "rr" {
-		return proc.GoroutineScope(p, p.CurrentThread())
-	}
-	frame, err := findFirstNonRuntimeFrame(p)
-	if err != nil {
-		return nil, err
-	}
-	return proc.FrameToScope(p, p.Memory(), nil, frame), nil
+	return proc.GoroutineScope(p, p.CurrentThread())
 }
 
 func evalVariable(p *proc.Target, symbol string, cfg proc.LoadConfig) (*proc.Variable, error) {
@@ -458,16 +451,7 @@ func TestLocalVariables(t *testing.T) {
 			var scope *proc.EvalScope
 			var err error
 
-			if testBackend == "rr" {
-				var frame proc.Stackframe
-				frame, err = findFirstNonRuntimeFrame(p)
-				if err == nil {
-					scope = proc.FrameToScope(p, p.Memory(), nil, frame)
-				}
-			} else {
-				scope, err = proc.GoroutineScope(p, p.CurrentThread())
-			}
-
+			scope, err = proc.GoroutineScope(p, p.CurrentThread())
 			assertNoError(err, t, "scope")
 			vars, err := tc.fn(scope, pnormalLoadConfig)
 			assertNoError(err, t, "LocalVariables() returned an error")

@@ -6140,12 +6140,6 @@ func TestBadLaunchRequests(t *testing.T) {
 		client.LaunchRequestWithArgs(map[string]interface{}{"mode": "replay", "program": fixture.Source, "traceDirPath": ""})
 		checkFailedToLaunchWithMessage(client.ExpectVisibleErrorResponse(t),
 			"Failed to launch: The 'traceDirPath' attribute is missing in debug configuration.")
-		// These errors come from debugger layer
-		if _, err := exec.LookPath("rr"); err != nil {
-			client.LaunchRequestWithArgs(map[string]interface{}{"mode": "replay", "backend": "ignored", "traceDirPath": ".."})
-			checkFailedToLaunchWithMessage(client.ExpectVisibleErrorResponse(t),
-				"Failed to launch: backend unavailable")
-		}
 
 		// Bad "core" parameters
 		// These errors come from dap layer

@@ -27,9 +27,6 @@ type Config struct {
 	// Note that the server API is not reentrant and clients will have to coordinate.
 	AcceptMulti bool
 
-	// APIVersion selects which version of the API to serve (default: 1).
-	APIVersion int
-
 	// CheckLocalConnUser is true if the debugger should check that local
 	// connections come from the same user that started the headless server
 	CheckLocalConnUser bool

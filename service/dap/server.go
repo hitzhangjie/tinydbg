@@ -982,18 +982,6 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		args.Backend = "default"
 	}
 
-	if args.Mode == "replay" {
-		// Validate trace directory
-		if args.TraceDirPath == "" {
-			s.sendShowUserErrorResponse(request.Request, FailedToLaunch, "Failed to launch",
-				"The 'traceDirPath' attribute is missing in debug configuration.")
-			return
-		}
-
-		// Assign the rr trace directory path to debugger configuration
-		s.config.Debugger.CoreFile = args.TraceDirPath
-		args.Backend = "rr"
-	}
 	if args.Mode == "core" {
 		// Validate core dump path
 		if args.CoreFilePath == "" {
@@ -1109,10 +1097,6 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 	if err != nil {
 		s.sendShowUserErrorResponse(request.Request, FailedToLaunch, "Failed to launch", err.Error())
 		return
-	}
-	// Enable StepBack controls on supported backends
-	if s.config.Debugger.Backend == "rr" {
-		s.send(&dap.CapabilitiesEvent{Event: *newEvent("capabilities"), Body: dap.CapabilitiesEventBody{Capabilities: dap.Capabilities{SupportsStepBack: true}}})
 	}
 
 	// Notify the client that the debugger is ready to start accepting
@@ -1812,10 +1796,6 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 		if _, err := s.halt(); err != nil {
 			s.sendShowUserErrorResponse(request.Request, FailedToAttach, "Failed to attach", err.Error())
 			return
-		}
-		// Enable StepBack controls on supported backends
-		if s.config.Debugger.Backend == "rr" {
-			s.send(&dap.CapabilitiesEvent{Event: *newEvent("capabilities"), Body: dap.CapabilitiesEventBody{Capabilities: dap.Capabilities{SupportsStepBack: true}}})
 		}
 	default:
 		s.sendShowUserErrorResponse(request.Request, FailedToAttach, "Failed to attach",

@@ -294,10 +294,6 @@ func testStandard() {
 		fmt.Println("\nTesting LLDB backend")
 		testCmdIntl("basic", "", "lldb", "normal")
 	}
-	if inpath("rr") {
-		fmt.Println("\nTesting RR backend")
-		testCmdIntl("basic", "", "rr", "normal")
-	}
 	if TestIncludePIE {
 		dopie := false
 		switch runtime.GOOS {
@@ -309,10 +305,6 @@ func testStandard() {
 			testCmdIntl("basic", "", "default", "pie")
 			testCmdIntl("core", "", "default", "pie")
 		}
-	}
-	if runtime.GOOS == "linux" && inpath("rr") {
-		fmt.Println("\nTesting PIE buildmode, RR backend")
-		testCmdIntl("basic", "", "rr", "pie")
 	}
 }
 

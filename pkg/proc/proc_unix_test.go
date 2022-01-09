@@ -29,10 +29,6 @@ func (npe errIssue419) Error() string {
 }
 
 func TestIssue419(t *testing.T) {
-	if testBackend == "rr" {
-		return
-	}
-
 	errChan := make(chan error, 2)
 
 	// SIGINT directed at the inferior should be passed along not swallowed by delve

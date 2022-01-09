@@ -1139,16 +1139,7 @@ func evalVariableOrError(p *proc.Target, symbol string) (*proc.Variable, error) 
 	var scope *proc.EvalScope
 	var err error
 
-	if testBackend == "rr" {
-		var frame proc.Stackframe
-		frame, err = findFirstNonRuntimeFrame(p)
-		if err == nil {
-			scope = proc.FrameToScope(p, p.Memory(), nil, frame)
-		}
-	} else {
-		scope, err = proc.GoroutineScope(p, p.CurrentThread())
-	}
-
+	scope, err = proc.GoroutineScope(p, p.CurrentThread())
 	if err != nil {
 		return nil, err
 	}
@@ -2686,13 +2677,7 @@ func TestIssue594(t *testing.T) {
 		assertNoError(p.Continue(), t, "Continue()")
 		var f string
 		var ln int
-		if testBackend == "rr" {
-			frame, err := findFirstNonRuntimeFrame(p)
-			assertNoError(err, t, "findFirstNonRuntimeFrame")
-			f, ln = frame.Current.File, frame.Current.Line
-		} else {
-			f, ln = currentLineNumber(p, t)
-		}
+		f, ln = currentLineNumber(p, t)
 		if ln != 21 {
 			t.Fatalf("Program stopped at %s:%d, expected :21", f, ln)
 		}
@@ -2839,9 +2824,6 @@ func TestAttachDetach(t *testing.T) {
 			t.Logf("can not run TestAttachDetach: %v\n", bs)
 			return
 		}
-	}
-	if testBackend == "rr" {
-		return
 	}
 	var buildFlags protest.BuildFlags
 	if buildMode == "pie" {
@@ -3046,15 +3028,7 @@ func TestIssue871(t *testing.T) {
 
 		var scope *proc.EvalScope
 		var err error
-		if testBackend == "rr" {
-			var frame proc.Stackframe
-			frame, err = findFirstNonRuntimeFrame(p)
-			if err == nil {
-				scope = proc.FrameToScope(p, p.Memory(), nil, frame)
-			}
-		} else {
-			scope, err = proc.GoroutineScope(p, p.CurrentThread())
-		}
+		scope, err = proc.GoroutineScope(p, p.CurrentThread())
 		assertNoError(err, t, "scope")
 
 		locals, err := scope.LocalVariables(normalLoadConfig)
@@ -3132,9 +3106,6 @@ func TestAttachStripped(t *testing.T) {
 			t.Logf("can not run TestAttachStripped: %v\n", bs)
 			return
 		}
-	}
-	if testBackend == "rr" {
-		return
 	}
 	if buildMode != "" {
 		t.Skip("not enabled with buildmode=PIE")
@@ -4682,152 +4653,6 @@ func BenchmarkConditionalBreakpoints(b *testing.B) {
 			b.Fatalf("Unexpected error on Continue(): %v", err)
 		}
 	})
-}
-
-func TestBackwardNextGeneral(t *testing.T) {
-	if testBackend != "rr" {
-		t.Skip("Reverse stepping test needs rr")
-	}
-	testseq2(t, "testnextprog", "main.helloworld", []seqTest{
-		{contContinue, 13},
-		{contNext, 14},
-		{contReverseNext, 13},
-		{contReverseNext, 34},
-		{contReverseNext, 28},
-		{contReverseNext, 27},
-		{contReverseNext, 26},
-		{contReverseNext, 24},
-		{contReverseNext, 23},
-		{contReverseNext, 31},
-		{contReverseNext, 26},
-		{contReverseNext, 24},
-		{contReverseNext, 23},
-		{contReverseNext, 31},
-		{contReverseNext, 26},
-		{contReverseNext, 24},
-		{contReverseNext, 23},
-		{contReverseNext, 20},
-		{contReverseNext, 19},
-		{contReverseNext, 17},
-		{contReverseNext, 39},
-		{contReverseNext, 38},
-		{contReverseNext, 37},
-	})
-}
-
-func TestBackwardStepOutGeneral(t *testing.T) {
-	if testBackend != "rr" {
-		t.Skip("Reverse stepping test needs rr")
-	}
-	testseq2(t, "testnextprog", "main.helloworld", []seqTest{
-		{contContinue, 13},
-		{contNext, 14},
-		{contReverseStepout, 34},
-		{contReverseStepout, 39},
-	})
-}
-
-func TestBackwardStepGeneral(t *testing.T) {
-	if testBackend != "rr" {
-		t.Skip("Reverse stepping test needs rr")
-	}
-	testseq2(t, "testnextprog", "main.helloworld", []seqTest{
-		{contContinue, 13},
-		{contNext, 14},
-		{contReverseStep, 13},
-		{contReverseStep, 34},
-		{contReverseStep, 28},
-		{contReverseNext, 27}, // skip fmt.Printf
-		{contReverseStep, 26},
-		{contReverseStep, 24},
-		{contReverseStep, 23},
-		{contReverseStep, 11},
-		{contReverseNext, 10}, // skip time.Sleep
-		{contReverseStep, 9},
-
-		{contReverseStep, 31},
-		{contReverseStep, 26},
-		{contReverseStep, 24},
-		{contReverseStep, 23},
-		{contReverseStep, 11},
-		{contReverseNext, 10}, // skip time.Sleep
-		{contReverseStep, 9},
-
-		{contReverseStep, 31},
-		{contReverseStep, 26},
-		{contReverseStep, 24},
-		{contReverseStep, 23},
-		{contReverseStep, 20},
-		{contReverseStep, 19},
-		{contReverseStep, 17},
-		{contReverseStep, 39},
-		{contReverseStep, 38},
-		{contReverseStep, 37},
-	})
-}
-
-func TestBackwardNextDeferPanic(t *testing.T) {
-	if testBackend != "rr" {
-		t.Skip("Reverse stepping test needs rr")
-	}
-	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 18) {
-		testseq2(t, "defercall", "", []seqTest{
-			{contContinue, 12},
-			{contReverseNext, 11},
-			{contReverseNext, 10},
-			{contReverseNext, 9},
-			{contReverseNext, 27},
-
-			{contContinueToBreakpoint, 12}, // skip first call to sampleFunction
-			{contContinueToBreakpoint, 6},  // go to call to sampleFunction through deferreturn
-			{contReverseNext, -1},          // runtime.deferreturn, maybe we should try to skip this
-			{contReverseStepout, 13},
-			{contReverseNext, 12},
-			{contReverseNext, 11},
-			{contReverseNext, 10},
-			{contReverseNext, 9},
-			{contReverseNext, 27},
-
-			{contContinueToBreakpoint, 18}, // go to panic call
-			{contNext, 6},                  // panic so the deferred call happens
-			{contReverseNext, 18},
-			{contReverseNext, 17},
-			{contReverseNext, 16},
-			{contReverseNext, 15},
-			{contReverseNext, 23},
-			{contReverseNext, 22},
-			{contReverseNext, 21},
-			{contReverseNext, 28},
-		})
-	} else {
-		testseq2(t, "defercall", "", []seqTest{
-			{contContinue, 12},
-			{contReverseNext, 11},
-			{contReverseNext, 10},
-			{contReverseNext, 9},
-			{contReverseNext, 27},
-
-			{contContinueToBreakpoint, 12}, // skip first call to sampleFunction
-			{contContinueToBreakpoint, 6},  // go to call to sampleFunction through deferreturn
-			{contReverseNext, 13},
-			{contReverseNext, 12},
-			{contReverseNext, 11},
-			{contReverseNext, 10},
-			{contReverseNext, 9},
-			{contReverseNext, 27},
-
-			{contContinueToBreakpoint, 18}, // go to panic call
-			{contNext, 6},                  // panic so the deferred call happens
-			{contReverseNext, 18},
-			{contReverseNext, 17},
-			{contReverseNext, 16},
-			{contReverseNext, 15},
-			{contReverseNext, 23},
-			{contReverseNext, 22},
-			{contReverseNext, 21},
-			{contReverseNext, 28},
-		})
-	}
 }
 
 func TestIssue1925(t *testing.T) {

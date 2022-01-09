@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net"
 	"net/rpc"
-	"net/rpc/jsonrpc"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,9 +60,6 @@ func withTestClient2(name string, t *testing.T, fn func(c service.Client)) {
 }
 
 func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redirects [3]string) (clientConn net.Conn, fixture protest.Fixture) {
-	if testBackend == "rr" {
-		protest.MustHaveRecordingAllowed(t)
-	}
 	listener, clientConn := service.ListenerPipe()
 	defer listener.Close()
 	if buildMode == "pie" {
@@ -104,12 +100,6 @@ func withTestClient2Extended(name string, t *testing.T, buildFlags protest.Build
 }
 
 func TestRunWithInvalidPath(t *testing.T) {
-	if testBackend == "rr" {
-		// This test won't work because rr returns an error, after recording, when
-		// the recording failed but also when the recording succeeded but the
-		// inferior returned an error. Therefore we have to ignore errors from rr.
-		return
-	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("couldn't start listener: %s\n", err)
@@ -118,7 +108,6 @@ func TestRunWithInvalidPath(t *testing.T) {
 	server := rpccommon.NewServer(&service.Config{
 		Listener:    listener,
 		ProcessArgs: []string{"invalid_path"},
-		APIVersion:  2,
 		Debugger: debugger.Config{
 			Backend:     testBackend,
 			ExecuteKind: debugger.ExecutingGeneratedFile,
@@ -1165,71 +1154,6 @@ func assertErrorOrExited(s *api.DebuggerState, err error, t *testing.T, reason s
 	t.Fatalf("%s (no error and no exited status)", reason)
 }
 
-func TestIssue355(t *testing.T) {
-	// After the target process has terminated should return an error but not crash
-	protest.AllowRecording(t)
-	withTestClient2("continuetestprog", t, func(c service.Client) {
-		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: -1})
-		assertNoError(err, t, "CreateBreakpoint()")
-		ch := c.Continue()
-		state := <-ch
-		tid := state.CurrentThread.ID
-		gid := state.SelectedGoroutine.ID
-		assertNoError(state.Err, t, "First Continue()")
-		ch = c.Continue()
-		state = <-ch
-		if !state.Exited {
-			t.Fatalf("Target did not terminate after second continue")
-		}
-
-		ch = c.Continue()
-		state = <-ch
-		assertError(state.Err, t, "Continue()")
-
-		s, err := c.Next()
-		assertErrorOrExited(s, err, t, "Next()")
-		s, err = c.Step()
-		assertErrorOrExited(s, err, t, "Step()")
-		s, err = c.StepInstruction()
-		assertErrorOrExited(s, err, t, "StepInstruction()")
-		s, err = c.SwitchThread(tid)
-		assertErrorOrExited(s, err, t, "SwitchThread()")
-		s, err = c.SwitchGoroutine(gid)
-		assertErrorOrExited(s, err, t, "SwitchGoroutine()")
-		s, err = c.Halt()
-		assertErrorOrExited(s, err, t, "Halt()")
-		_, err = c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: -1})
-		if testBackend != "rr" {
-			assertError(err, t, "CreateBreakpoint()")
-		}
-		_, err = c.ClearBreakpoint(bp.ID)
-		if testBackend != "rr" {
-			assertError(err, t, "ClearBreakpoint()")
-		}
-		_, err = c.ListThreads()
-		assertError(err, t, "ListThreads()")
-		_, err = c.GetThread(tid)
-		assertError(err, t, "GetThread()")
-		assertError(c.SetVariable(api.EvalScope{GoroutineID: gid}, "a", "10"), t, "SetVariable()")
-		_, err = c.ListLocalVariables(api.EvalScope{GoroutineID: gid}, normalLoadConfig)
-		assertError(err, t, "ListLocalVariables()")
-		_, err = c.ListFunctionArgs(api.EvalScope{GoroutineID: gid}, normalLoadConfig)
-		assertError(err, t, "ListFunctionArgs()")
-		_, err = c.ListThreadRegisters(0, false)
-		assertError(err, t, "ListThreadRegisters()")
-		_, err = c.ListScopeRegisters(api.EvalScope{GoroutineID: gid}, false)
-		assertError(err, t, "ListScopeRegisters()")
-		_, _, err = c.ListGoroutines(0, 0)
-		assertError(err, t, "ListGoroutines()")
-		_, err = c.Stacktrace(gid, 10, 0, &normalLoadConfig)
-		assertError(err, t, "Stacktrace()")
-		_, err = c.FindLocation(api.EvalScope{GoroutineID: gid}, "+1", false, nil)
-		assertError(err, t, "FindLocation()")
-		_, err = c.DisassemblePC(api.EvalScope{GoroutineID: -1}, 0x40100, api.IntelFlavour)
-		assertError(err, t, "DisassemblePC()")
-	})
-}
-
 func TestDisasm(t *testing.T) {
 	// Tests that disassembling by PC, range, and current PC all yeld similar results
 	// Tests that disassembly by current PC will return a disassembly containing the instruction at PC
@@ -1718,40 +1642,6 @@ func TestClientServer_SelectedGoroutineLoc(t *testing.T) {
 	})
 }
 
-func TestClientServer_ReverseContinue(t *testing.T) {
-	protest.AllowRecording(t)
-	if testBackend != "rr" {
-		t.Skip("backend is not rr")
-	}
-	withTestClient2("continuetestprog", t, func(c service.Client) {
-		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: -1})
-		assertNoError(err, t, "CreateBreakpoint(main.main)")
-		_, err = c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: -1})
-		assertNoError(err, t, "CreateBreakpoint(main.sayhi)")
-
-		state := <-c.Continue()
-		assertNoError(state.Err, t, "first continue")
-		mainPC := state.CurrentThread.PC
-		t.Logf("after first continue %#x", mainPC)
-
-		state = <-c.Continue()
-		assertNoError(state.Err, t, "second continue")
-		sayhiPC := state.CurrentThread.PC
-		t.Logf("after second continue %#x", sayhiPC)
-
-		if mainPC == sayhiPC {
-			t.Fatalf("expected different PC after second PC (%#x)", mainPC)
-		}
-
-		state = <-c.Rewind()
-		assertNoError(state.Err, t, "rewind")
-
-		if mainPC != state.CurrentThread.PC {
-			t.Fatalf("Expected rewind to go back to the first breakpoint: %#x", state.CurrentThread.PC)
-		}
-	})
-}
-
 func TestClientServer_collectBreakpointInfoOnNext(t *testing.T) {
 	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
@@ -1902,9 +1792,6 @@ func TestClientServer_StepOutReturn(t *testing.T) {
 }
 
 func TestAcceptMulticlient(t *testing.T) {
-	if testBackend == "rr" {
-		t.Skip("recording not allowed for TestAcceptMulticlient")
-	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("couldn't start listener: %s\n", err)
@@ -2130,19 +2017,6 @@ func (c *brokenRPCClient) call(method string, args, reply interface{}) error {
 	return c.client.Call("RPCServer."+method, args, reply)
 }
 
-func TestUnknownMethodCall(t *testing.T) {
-	clientConn, _ := startServer("continuetestprog", 0, t, [3]string{})
-	client := &brokenRPCClient{jsonrpc.NewClient(clientConn)}
-	client.call("SetApiVersion", api.SetAPIVersionIn{APIVersion: 2}, &api.SetAPIVersionOut{})
-	defer client.Detach(true)
-	var out int
-	err := client.call("NonexistentRPCCall", nil, &out)
-	assertError(err, t, "call()")
-	if !strings.HasPrefix(err.Error(), "unknown method: ") {
-		t.Errorf("wrong error message: %v", err)
-	}
-}
-
 func TestIssue1703(t *testing.T) {
 	// Calling Disassemble when there is no current goroutine should work.
 	withTestClient2("testnextprog", t, func(c service.Client) {
@@ -2152,57 +2026,6 @@ func TestIssue1703(t *testing.T) {
 		text, err := c.DisassemblePC(api.EvalScope{GoroutineID: -1}, locs[0].PC, api.IntelFlavour)
 		assertNoError(err, t, "DisassemblePC")
 		t.Logf("text: %#v\n", text)
-	})
-}
-
-func TestRerecord(t *testing.T) {
-	protest.AllowRecording(t)
-	if testBackend != "rr" {
-		t.Skip("only valid for recorded targets")
-	}
-	withTestClient2("testrerecord", t, func(c service.Client) {
-		fp := testProgPath(t, "testrerecord")
-		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 10})
-		assertNoError(err, t, "CreateBreakpoin")
-
-		gett := func() int {
-			state := <-c.Continue()
-			if state.Err != nil {
-				t.Fatalf("Unexpected error: %v, state: %#v", state.Err, state)
-			}
-
-			vart, err := c.EvalVariable(api.EvalScope{GoroutineID: -1}, "t", normalLoadConfig)
-			assertNoError(err, t, "EvalVariable")
-			if vart.Unreadable != "" {
-				t.Fatalf("Could not read variable 't': %s\n", vart.Unreadable)
-			}
-
-			t.Logf("Value of t is %s\n", vart.Value)
-
-			vartval, err := strconv.Atoi(vart.Value)
-			assertNoError(err, t, "Parsing value of variable t")
-			return vartval
-		}
-
-		t0 := gett()
-
-		_, err = c.RestartFrom(false, "", false, nil, [3]string{}, false)
-		assertNoError(err, t, "First restart")
-		t1 := gett()
-
-		if t0 != t1 {
-			t.Fatalf("Expected same value for t after restarting (without rerecording) %d %d", t0, t1)
-		}
-
-		time.Sleep(2 * time.Second) // make sure that we're not running inside the same second
-
-		_, err = c.RestartFrom(true, "", false, nil, [3]string{}, false)
-		assertNoError(err, t, "Second restart")
-		t2 := gett()
-
-		if t0 == t2 {
-			t.Fatalf("Expected new value for t after restarting (with rerecording) %d %d", t0, t2)
-		}
 	})
 }
 
@@ -2248,29 +2071,6 @@ func TestDoubleCreateBreakpoint(t *testing.T) {
 	})
 }
 
-func TestStopRecording(t *testing.T) {
-	protest.AllowRecording(t)
-	if testBackend != "rr" {
-		t.Skip("only for rr backend")
-	}
-	withTestClient2("sleep", t, func(c service.Client) {
-		time.Sleep(time.Second)
-		c.StopRecording()
-		_, err := c.GetState()
-		assertNoError(err, t, "GetState()")
-
-		// try rerecording
-		go func() {
-			c.RestartFrom(true, "", false, nil, [3]string{}, false)
-		}()
-
-		time.Sleep(time.Second) // hopefully the re-recording started...
-		c.StopRecording()
-		_, err = c.GetState()
-		assertNoError(err, t, "GetState()")
-	})
-}
-
 func TestClearLogicalBreakpoint(t *testing.T) {
 	// Clearing a logical breakpoint should clear all associated physical
 	// breakpoints.
@@ -2311,21 +2111,20 @@ func TestRedirects(t *testing.T) {
 			t.Fatalf("Wrong output %q", string(buf))
 		}
 		os.Remove(outpath)
-		if testBackend != "rr" {
-			_, err = c.Restart(false)
-			assertNoError(err, t, "Restart")
-			<-c.Continue()
-			buf2, err := ioutil.ReadFile(outpath)
-			t.Logf("output %q", buf2)
-			assertNoError(err, t, "Reading output file (second time)")
-			if !strings.HasPrefix(string(buf2), "Redirect test") {
-				t.Fatalf("Wrong output %q", string(buf2))
-			}
-			if string(buf2) == string(buf) {
-				t.Fatalf("Expected output change got %q and %q", string(buf), string(buf2))
-			}
-			os.Remove(outpath)
+
+		_, err = c.Restart(false)
+		assertNoError(err, t, "Restart")
+		<-c.Continue()
+		buf2, err := ioutil.ReadFile(outpath)
+		t.Logf("output %q", buf2)
+		assertNoError(err, t, "Reading output file (second time)")
+		if !strings.HasPrefix(string(buf2), "Redirect test") {
+			t.Fatalf("Wrong output %q", string(buf2))
 		}
+		if string(buf2) == string(buf) {
+			t.Fatalf("Expected output change got %q and %q", string(buf), string(buf2))
+		}
+		os.Remove(outpath)
 	})
 }
 
@@ -2352,11 +2151,6 @@ func TestIssue2162(t *testing.T) {
 }
 
 func TestDetachLeaveRunning(t *testing.T) {
-	// See https://github.com/go-delve/delve/issues/2259
-	if testBackend == "rr" {
-		return
-	}
-
 	listener, clientConn := service.ListenerPipe()
 	defer listener.Close()
 	var buildFlags protest.BuildFlags
@@ -2386,8 +2180,7 @@ func TestDetachLeaveRunning(t *testing.T) {
 	}
 
 	server := rpccommon.NewServer(&service.Config{
-		Listener:   listener,
-		APIVersion: 2,
+		Listener: listener,
 		Debugger: debugger.Config{
 			AttachPid:  cmd.Process.Pid,
 			WorkingDir: ".",
@@ -2437,7 +2230,7 @@ func TestToggleBreakpointRestart(t *testing.T) {
 func TestStopServerWithClosedListener(t *testing.T) {
 	// Checks that the error erturned by listener.Accept() is ignored when we
 	// are trying to shutdown. See issue #1633.
-	if testBackend == "rr" || buildMode == "pie" {
+	if buildMode == "pie" {
 		t.Skip("N/A")
 	}
 	listener, err := net.Listen("tcp", "localhost:0")
@@ -2446,7 +2239,6 @@ func TestStopServerWithClosedListener(t *testing.T) {
 	server := rpccommon.NewServer(&service.Config{
 		Listener:           listener,
 		AcceptMulti:        false,
-		APIVersion:         2,
 		CheckLocalConnUser: true,
 		DisconnectChan:     make(chan struct{}),
 		ProcessArgs:        []string{fixture.Path},

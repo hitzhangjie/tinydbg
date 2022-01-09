@@ -1905,11 +1905,7 @@ func (d *Debugger) ExamineMemory(address uint64, length int) ([]byte, error) {
 
 func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
 	if d.config.CoreFile != "" {
-		if d.config.Backend == "rr" {
-			out.Backend = "rr"
-		} else {
-			out.Backend = "core"
-		}
+		out.Backend = "core"
 	} else {
 		if d.config.Backend == "default" {
 			out.Backend = "native"
