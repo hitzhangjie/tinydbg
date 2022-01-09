@@ -1,6 +1,6 @@
 package proc
 
-import "github.com/go-delve/delve/pkg/dwarf/op"
+import "github.com/hitzhangjie/dlv/pkg/dwarf/op"
 
 // PackageVars returns bi.packageVars (for tests)
 func (bi *BinaryInfo) PackageVars() []packageVar {

@@ -16,15 +16,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-delve/delve/pkg/config"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/debugger"
-	"github.com/go-delve/delve/service/rpc2"
-	"github.com/go-delve/delve/service/rpccommon"
+	"github.com/hitzhangjie/dlv/pkg/config"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/service"
+	"github.com/hitzhangjie/dlv/service/api"
+	"github.com/hitzhangjie/dlv/service/debugger"
+	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpccommon"
 )
 
 var testBackend, buildMode string
@@ -332,9 +332,6 @@ func TestScopePrefix(t *testing.T) {
 	test.AllowRecording(t)
 
 	lenient := 0
-	if runtime.GOOS == "windows" {
-		lenient = 1
-	}
 
 	withTestTerminal("goroutinestackprog", t, func(term *FakeTerminal) {
 		term.MustExec("b stacktraceme")
@@ -479,15 +476,10 @@ func TestScopePrefix(t *testing.T) {
 }
 
 func TestOnPrefix(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.Skip("test is not valid on FreeBSD")
-	}
 	const prefix = "\ti: "
 	test.AllowRecording(t)
 	lenient := false
-	if runtime.GOOS == "windows" {
-		lenient = true
-	}
+
 	withTestTerminal("goroutinestackprog", t, func(term *FakeTerminal) {
 		term.MustExec("b agobp main.agoroutine")
 		term.MustExec("on agobp print i")
@@ -543,9 +535,6 @@ func TestNoVars(t *testing.T) {
 }
 
 func TestOnPrefixLocals(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.Skip("test is not valid on FreeBSD")
-	}
 	const prefix = "\ti: "
 	test.AllowRecording(t)
 	withTestTerminal("goroutinestackprog", t, func(term *FakeTerminal) {

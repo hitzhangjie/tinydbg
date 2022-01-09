@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/goversion"
 	"github.com/spf13/cobra"
+
+	"github.com/hitzhangjie/dlv/pkg/goversion"
 )
 
 const DelveMainPackagePath = "github.com/go-delve/delve/cmd/dlv"
@@ -41,15 +41,6 @@ func NewMakeCommands() *cobra.Command {
 		Use:   "build",
 		Short: "Build delve",
 		Run: func(cmd *cobra.Command, args []string) {
-			tagFlag := prepareMacnative()
-			if len(*Tags) > 0 {
-				if len(tagFlag) == 0 {
-					tagFlag = "-tags="
-				} else {
-					tagFlag += ","
-				}
-				tagFlag += strings.Join(*Tags, ",")
-			}
 			envflags := []string{}
 			if len(Architecture) > 0 {
 				envflags = append(envflags, "GOARCH="+Architecture)
@@ -58,12 +49,9 @@ func NewMakeCommands() *cobra.Command {
 				envflags = append(envflags, "GOOS="+OS)
 			}
 			if len(envflags) > 0 {
-				executeEnv(envflags, "go", "build", "-ldflags", "-extldflags -static", tagFlag, buildFlags(), DelveMainPackagePath)
+				executeEnv(envflags, "go", "build", "-ldflags", "-extldflags -static", buildFlags(), DelveMainPackagePath)
 			} else {
-				execute("go", "build", "-ldflags", "-extldflags -static", tagFlag, buildFlags(), DelveMainPackagePath)
-			}
-			if runtime.GOOS == "darwin" && os.Getenv("CERT") != "" && canMacnative() {
-				codesign("./dlv")
+				execute("go", "build", "-ldflags", "-extldflags -static", buildFlags(), DelveMainPackagePath)
 			}
 		},
 	}
@@ -76,11 +64,7 @@ func NewMakeCommands() *cobra.Command {
 		Use:   "install",
 		Short: "Installs delve",
 		Run: func(cmd *cobra.Command, args []string) {
-			tagFlag := prepareMacnative()
-			execute("go", "install", tagFlag, buildFlags(), DelveMainPackagePath)
-			if runtime.GOOS == "darwin" && os.Getenv("CERT") != "" && canMacnative() {
-				codesign(installedExecutablePath())
-			}
+			execute("go", "install", buildFlags(), DelveMainPackagePath)
 		},
 	})
 
@@ -245,65 +229,17 @@ func installedExecutablePath() string {
 	return filepath.Join(strings.TrimSpace(gopath[0]), "bin", "dlv")
 }
 
-// canMacnative returns true if we can build the native backend for macOS,
-// i.e. cgo enabled and the legacy SDK headers:
-// https://forums.developer.apple.com/thread/104296
-func canMacnative() bool {
-	if !(runtime.GOOS == "darwin" && runtime.GOARCH == "amd64") {
-		return false
-	}
-	if strings.TrimSpace(getoutput("go", "env", "CGO_ENABLED")) != "1" {
-		return false
-	}
-
-	macOSVersion := strings.Split(strings.TrimSpace(getoutput("/usr/bin/sw_vers", "-productVersion")), ".")
-
-	major, err := strconv.ParseInt(macOSVersion[0], 10, 64)
-	if err != nil {
-		return false
-	}
-	minor, err := strconv.ParseInt(macOSVersion[1], 10, 64)
-	if err != nil {
-		return false
-	}
-
-	typesHeader := "/usr/include/sys/types.h"
-	if major >= 11 || (major == 10 && minor >= 15) {
-		typesHeader = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/types.h"
-	}
-	_, err = os.Stat(typesHeader)
-	if err != nil {
-		return false
-	}
-	return true
-}
-
-// prepareMacnative checks if we can build the native backend for macOS and
-// if we can checks the certificate and then returns the -tags flag.
-func prepareMacnative() string {
-	if !canMacnative() {
-		return ""
-	}
-	if !checkCert() {
-		return ""
-	}
-	return "-tags=macnative"
-}
-
 func buildFlags() []string {
 	buildSHA, err := exec.Command("git", "rev-parse", "HEAD").CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
 	}
 	ldFlags := "-X main.Build=" + strings.TrimSpace(string(buildSHA))
-	if runtime.GOOS == "darwin" {
-		ldFlags = "-s " + ldFlags
-	}
 	return []string{fmt.Sprintf("-ldflags=%s", ldFlags)}
 }
 
 func testFlags() []string {
-	wd, err := os.Getwd()
+	_, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -320,28 +256,11 @@ func testFlags() []string {
 	if len(os.Getenv("TEAMCITY_VERSION")) > 0 {
 		testFlags = append(testFlags, "-json")
 	}
-	if runtime.GOOS == "darwin" {
-		testFlags = append(testFlags, "-exec="+wd+"/_scripts/testsign")
-	}
 	return testFlags
 }
 
 func testCmd(cmd *cobra.Command, args []string) {
 	checkCertCmd(nil, nil)
-
-	if os.Getenv("TRAVIS") == "true" && runtime.GOOS == "darwin" {
-		fmt.Println("Building with native backend")
-		execute("go", "build", "-tags=macnative", buildFlags(), DelveMainPackagePath)
-
-		fmt.Println("\nBuilding without native backend")
-		execute("go", "build", buildFlags(), DelveMainPackagePath)
-
-		fmt.Println("\nTesting")
-		os.Setenv("PROCTEST", "lldb")
-		env := []string{}
-		executeq(env, "sudo", "-E", "go", "test", testFlags(), allPackages())
-		return
-	}
 
 	if TestSet == "" && TestBackend == "" && TestBuildMode == "" {
 		if TestRegex != "" {
@@ -384,19 +303,6 @@ func testStandard() {
 		switch runtime.GOOS {
 		case "linux":
 			dopie = true
-		case "windows":
-			// only on Go 1.15 or later, with CGO_ENABLED and gcc found in path
-			if goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
-				out, err := exec.Command("go", "env", "CGO_ENABLED").CombinedOutput()
-				if err != nil {
-					panic(err)
-				}
-				if strings.TrimSpace(string(out)) == "1" {
-					if _, err = exec.LookPath("gcc"); err == nil {
-						dopie = true
-					}
-				}
-			}
 		}
 		if dopie {
 			fmt.Println("\nTesting PIE buildmode, default backend")
@@ -469,13 +375,6 @@ func testSetToPackages(testSet string) []string {
 		}
 		return nil
 	}
-}
-
-func defaultBackend() string {
-	if runtime.GOOS == "darwin" {
-		return "lldb"
-	}
-	return "native"
 }
 
 func inpath(exe string) bool {

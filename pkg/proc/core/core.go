@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/elfwriter"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/internal/ebpf"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
+	"github.com/hitzhangjie/dlv/pkg/elfwriter"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/internal/ebpf"
 )
 
 // ErrNoThreads core file did not contain any threads.
@@ -193,7 +193,7 @@ var (
 
 type openFn func(string, string) (*process, proc.Thread, error)
 
-var openFns = []openFn{readLinuxOrPlatformIndependentCore, readAMD64Minidump}
+var openFns = []openFn{readLinuxOrPlatformIndependentCore}
 
 // ErrUnrecognizedFormat is returned when the core file is not recognized as
 // any of the supported formats.

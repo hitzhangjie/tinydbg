@@ -4,21 +4,20 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service/debugger"
+	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/service/debugger"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/rpc1"
-	"github.com/go-delve/delve/service/rpccommon"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/service"
+	"github.com/hitzhangjie/dlv/service/api"
+	"github.com/hitzhangjie/dlv/service/rpc1"
+	"github.com/hitzhangjie/dlv/service/rpccommon"
 )
 
 func withTestClient1(name string, t *testing.T, fn func(c *rpc1.RPCClient)) {
@@ -633,23 +632,9 @@ func Test1ClientServer_FindLocations(t *testing.T) {
 		}
 		c.ClearBreakpoint(bp.ID)
 
-		//  Allow `/` or `\` on Windows
-		if runtime.GOOS == "windows" {
-			findLocationHelper(t, c, filepath.FromSlash(fixture.Source)+":6", false, 1, 0)
-			bp, err = c.CreateBreakpoint(&api.Breakpoint{File: filepath.FromSlash(fixture.Source), Line: 6})
-			if err != nil {
-				t.Fatalf("Could not set breakpoint in %s: %v\n", filepath.FromSlash(fixture.Source), err)
-			}
-			c.ClearBreakpoint(bp.ID)
-		}
-
 		// Case-insensitive on Windows, case-sensitive otherwise
 		shouldWrongCaseBeError := true
 		numExpectedMatches := 0
-		if runtime.GOOS == "windows" {
-			shouldWrongCaseBeError = false
-			numExpectedMatches = 1
-		}
 		findLocationHelper(t, c, strings.ToLower(fixture.Source)+":6", shouldWrongCaseBeError, numExpectedMatches, 0)
 		bp, err = c.CreateBreakpoint(&api.Breakpoint{File: strings.ToLower(fixture.Source), Line: 6})
 		if (err == nil) == shouldWrongCaseBeError {
@@ -716,14 +701,7 @@ func Test1ClientServer_SetVariable(t *testing.T) {
 }
 
 func Test1ClientServer_FullStacktrace(t *testing.T) {
-	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
-		t.Skip("cgo doesn't work on darwin/arm64")
-	}
-
 	lenient := false
-	if runtime.GOOS == "windows" {
-		lenient = true
-	}
 
 	withTestClient1("goroutinestackprog", t, func(c *rpc1.RPCClient) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.stacktraceme", Line: -1})
@@ -985,9 +963,6 @@ func Test1NegativeStackDepthBug(t *testing.T) {
 }
 
 func Test1ClientServer_CondBreakpoint(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.Skip("test is not valid on FreeBSD")
-	}
 	withTestClient1("parallel_next", t, func(c *rpc1.RPCClient) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: 1})
 		assertNoError(err, t, "CreateBreakpoint()")

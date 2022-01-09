@@ -8,7 +8,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
@@ -17,17 +16,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/gobuild"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/locspec"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/core"
-	"github.com/go-delve/delve/pkg/proc/gdbserial"
-	"github.com/go-delve/delve/pkg/proc/native"
-	"github.com/go-delve/delve/service/api"
 	"github.com/sirupsen/logrus"
+
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
+	"github.com/hitzhangjie/dlv/pkg/gobuild"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/locspec"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/core"
+	"github.com/hitzhangjie/dlv/pkg/proc/native"
+	"github.com/hitzhangjie/dlv/service/api"
 )
 
 var (
@@ -168,9 +167,6 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		var p *proc.Target
 		var err error
 		switch d.config.Backend {
-		case "rr":
-			d.log.Infof("opening trace %s", d.config.CoreFile)
-			p, err = gdbserial.Replay(d.config.CoreFile, false, false, d.config.DebugInfoDirectories)
 		default:
 			d.log.Infof("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
 			p, err = core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
@@ -257,52 +253,6 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.Target, error)
 	switch d.config.Backend {
 	case "native":
 		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Redirects)
-	case "lldb":
-		return betterGdbserialLaunchError(gdbserial.LLDBLaunch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Redirects))
-	case "rr":
-		if d.target != nil {
-			// restart should not call us if the backend is 'rr'
-			panic("internal error: call to Launch with rr backend and target already exists")
-		}
-
-		run, stop, err := gdbserial.RecordAsync(processArgs, wd, false, d.config.Redirects)
-		if err != nil {
-			return nil, err
-		}
-
-		// let the initialization proceed but hold the targetMutex lock so that
-		// any other request to debugger will block except State(nowait=true) and
-		// Command(halt).
-		d.targetMutex.Lock()
-		d.recordingStart(stop)
-
-		go func() {
-			defer d.targetMutex.Unlock()
-
-			p, err := d.recordingRun(run)
-			if err != nil {
-				d.log.Errorf("could not record target: %v", err)
-				// this is ugly but we can't respond to any client requests at this
-				// point so it's better if we die.
-				os.Exit(1)
-			}
-			d.recordingDone()
-			d.target = p
-			if err := d.checkGoVersion(); err != nil {
-				d.log.Error(err)
-				err := d.target.Detach(true)
-				if err != nil {
-					d.log.Errorf("Error detaching from target: %v", err)
-				}
-			}
-		}()
-		return nil, nil
-
-	case "default":
-		if runtime.GOOS == "darwin" {
-			return betterGdbserialLaunchError(gdbserial.LLDBLaunch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Redirects))
-		}
-		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Redirects)
 	default:
 		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
 	}
@@ -326,43 +276,16 @@ func (d *Debugger) isRecording() bool {
 	return d.stopRecording != nil
 }
 
-func (d *Debugger) recordingRun(run func() (string, error)) (*proc.Target, error) {
-	tracedir, err := run()
-	if err != nil && tracedir == "" {
-		return nil, err
-	}
-
-	return gdbserial.Replay(tracedir, false, true, d.config.DebugInfoDirectories)
-}
-
 // Attach will attach to the process specified by 'pid'.
 func (d *Debugger) Attach(pid int, path string) (*proc.Target, error) {
 	switch d.config.Backend {
 	case "native":
 		return native.Attach(pid, d.config.DebugInfoDirectories)
-	case "lldb":
-		return betterGdbserialLaunchError(gdbserial.LLDBAttach(pid, path, d.config.DebugInfoDirectories))
 	case "default":
-		if runtime.GOOS == "darwin" {
-			return betterGdbserialLaunchError(gdbserial.LLDBAttach(pid, path, d.config.DebugInfoDirectories))
-		}
 		return native.Attach(pid, d.config.DebugInfoDirectories)
 	default:
 		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
 	}
-}
-
-var errMacOSBackendUnavailable = errors.New("debugserver or lldb-server not found: install Xcode's command line tools or lldb-server")
-
-func betterGdbserialLaunchError(p *proc.Target, err error) (*proc.Target, error) {
-	if runtime.GOOS != "darwin" {
-		return p, err
-	}
-	if _, isUnavailable := err.(*gdbserial.ErrBackendUnavailable); !isUnavailable {
-		return p, err
-	}
-
-	return p, errMacOSBackendUnavailable
 }
 
 // ProcessPid returns the PID of the process
@@ -498,18 +421,7 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 		}
 	}
 
-	if recorded {
-		run, stop, err2 := gdbserial.RecordAsync(d.processArgs, d.config.WorkingDir, false, d.config.Redirects)
-		if err2 != nil {
-			return nil, err2
-		}
-
-		d.recordingStart(stop)
-		p, err = d.recordingRun(run)
-		d.recordingDone()
-	} else {
-		p, err = d.Launch(d.processArgs, d.config.WorkingDir)
-	}
+	p, err = d.Launch(d.processArgs, d.config.WorkingDir)
 	if err != nil {
 		return nil, fmt.Errorf("could not launch process: %s", err)
 	}
@@ -678,16 +590,6 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint) (*api.Breakpoin
 		addrs = []uint64{requestedBp.Addr}
 	case len(requestedBp.File) > 0:
 		fileName := requestedBp.File
-		if runtime.GOOS == "windows" {
-			// Accept fileName which is case-insensitive and slash-insensitive match
-			fileNameNormalized := strings.ToLower(filepath.ToSlash(fileName))
-			for _, symFile := range d.target.BinInfo().Sources {
-				if fileNameNormalized == strings.ToLower(filepath.ToSlash(symFile)) {
-					fileName = symFile
-					break
-				}
-			}
-		}
 		addrs, err = proc.FindFileLocation(d.target, fileName, requestedBp.Line)
 	case len(requestedBp.FunctionName) > 0:
 		addrs, err = proc.FindFunctionLocation(d.target, requestedBp.FunctionName, requestedBp.Line)
@@ -2010,11 +1912,7 @@ func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
 		}
 	} else {
 		if d.config.Backend == "default" {
-			if runtime.GOOS == "darwin" {
-				out.Backend = "lldb"
-			} else {
-				out.Backend = "native"
-			}
+			out.Backend = "native"
 		} else {
 			out.Backend = d.config.Backend
 		}

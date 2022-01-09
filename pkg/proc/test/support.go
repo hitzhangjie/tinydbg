@@ -14,7 +14,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
 )
 
 // EnableRace allows to configure whether the race detector is enabled on target process.
@@ -110,10 +110,6 @@ func BuildFixture(name string, flags BuildFlags) Fixture {
 
 	buildFlags := []string{"build"}
 	var ver goversion.GoVersion
-	if ver, _ = goversion.Parse(runtime.Version()); runtime.GOOS == "windows" && ver.Major > 0 && !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 9, Rev: -1}) {
-		// Work-around for https://github.com/golang/go/issues/13154
-		buildFlags = append(buildFlags, "-ldflags=-linkmode internal")
-	}
 	if flags&LinkStrip != 0 {
 		buildFlags = append(buildFlags, "-ldflags=-s")
 	}
@@ -314,13 +310,6 @@ func MustSupportFunctionCalls(t *testing.T, testBackend string) {
 		t.Skip("this version of Go does not support function calls")
 	}
 
-	if runtime.GOOS == "darwin" && testBackend == "native" {
-		t.Skip("this backend does not support function calls")
-	}
-
-	if runtime.GOOS == "darwin" && os.Getenv("TRAVIS") == "true" {
-		t.Skip("function call injection tests are failing on macOS on Travis-CI (see #1802)")
-	}
 	if runtime.GOARCH == "arm64" || runtime.GOARCH == "386" {
 		t.Skip(fmt.Errorf("%s does not support FunctionCall for now", runtime.GOARCH))
 	}
@@ -336,11 +325,7 @@ func DefaultTestBackend(testBackend *string) {
 	if *testBackend != "" {
 		return
 	}
-	if runtime.GOOS == "darwin" {
-		*testBackend = "lldb"
-	} else {
-		*testBackend = "native"
-	}
+	*testBackend = "native"
 }
 
 // WithPlugins builds the fixtures in plugins as plugins and returns them.

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/go-delve/delve/pkg/config"
+	"github.com/hitzhangjie/dlv/pkg/config"
 )
 
 func listConfig(args *launchAttachArgs) string {

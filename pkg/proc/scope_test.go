@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/proc"
-	protest "github.com/go-delve/delve/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 func TestScopeWithEscapedVariable(t *testing.T) {

@@ -18,15 +18,15 @@ import (
 	"testing"
 	"time"
 
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service/debugger"
+	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/service/debugger"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/rpc2"
-	"github.com/go-delve/delve/service/rpccommon"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/service"
+	"github.com/hitzhangjie/dlv/service/api"
+	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpccommon"
 )
 
 var normalLoadConfig = api.LoadConfig{
@@ -916,23 +916,9 @@ func TestClientServer_FindLocations(t *testing.T) {
 		}
 		c.ClearBreakpoint(bp.ID)
 
-		//  Allow `/` or `\` on Windows
-		if runtime.GOOS == "windows" {
-			findLocationHelper(t, c, filepath.FromSlash(fixture.Source)+":6", false, 1, 0)
-			bp, err = c.CreateBreakpoint(&api.Breakpoint{File: filepath.FromSlash(fixture.Source), Line: 6})
-			if err != nil {
-				t.Fatalf("Could not set breakpoint in %s: %v\n", filepath.FromSlash(fixture.Source), err)
-			}
-			c.ClearBreakpoint(bp.ID)
-		}
-
 		// Case-insensitive on Windows, case-sensitive otherwise
 		shouldWrongCaseBeError := true
 		numExpectedMatches := 0
-		if runtime.GOOS == "windows" {
-			shouldWrongCaseBeError = false
-			numExpectedMatches = 1
-		}
 		findLocationHelper(t, c, strings.ToLower(fixture.Source)+":6", shouldWrongCaseBeError, numExpectedMatches, 0)
 		bp, err = c.CreateBreakpoint(&api.Breakpoint{File: strings.ToLower(fixture.Source), Line: 6})
 		if (err == nil) == shouldWrongCaseBeError {
@@ -1089,15 +1075,8 @@ func TestClientServer_SetVariable(t *testing.T) {
 
 func TestClientServer_FullStacktrace(t *testing.T) {
 	protest.AllowRecording(t)
-	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
-		t.Skip("cgo doesn't work on darwin/arm64")
-	}
 
 	lenient := false
-	if runtime.GOOS == "windows" {
-		lenient = true
-	}
-
 	withTestClient2("goroutinestackprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.stacktraceme", Line: -1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -1381,9 +1360,6 @@ func TestNegativeStackDepthBug(t *testing.T) {
 }
 
 func TestClientServer_CondBreakpoint(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.Skip("test is not valid on FreeBSD")
-	}
 	protest.AllowRecording(t)
 	withTestClient2("parallel_next", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: 1})
@@ -1630,12 +1606,6 @@ func TestClientServer_FpRegisters(t *testing.T) {
 		avx2 := boolvar("avx2")
 		avx512 := boolvar("avx512")
 
-		if runtime.GOOS == "windows" {
-			// not supported
-			avx2 = false
-			avx512 = false
-		}
-
 		state = <-c.Continue()
 		t.Logf("state after continue: %#v", state)
 
@@ -1696,7 +1666,7 @@ func TestClientServer_FpRegisters(t *testing.T) {
 
 func TestClientServer_RestartBreakpointPosition(t *testing.T) {
 	protest.AllowRecording(t)
-	if buildMode == "pie" || (runtime.GOOS == "darwin" && runtime.GOARCH == "arm64") {
+	if buildMode == "pie" {
 		t.Skip("not meaningful in PIE mode")
 	}
 	withTestClient2("locationsprog2", t, func(c service.Client) {
@@ -2360,8 +2330,8 @@ func TestRedirects(t *testing.T) {
 }
 
 func TestIssue2162(t *testing.T) {
-	if buildMode == "pie" || runtime.GOOS == "windows" {
-		t.Skip("skip it for stepping into one place where no source for pc when on pie mode or windows")
+	if buildMode == "pie" {
+		t.Skip("skip it for stepping into one place where no source for pc when on pie mode")
 	}
 	withTestClient2("issue2162", t, func(c service.Client) {
 		state, err := c.GetState()

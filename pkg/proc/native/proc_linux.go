@@ -19,9 +19,9 @@ import (
 
 	sys "golang.org/x/sys/unix"
 
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/internal/ebpf"
-	"github.com/go-delve/delve/pkg/proc/linutil"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/internal/ebpf"
+	"github.com/hitzhangjie/dlv/pkg/proc/linutil"
 
 	isatty "github.com/mattn/go-isatty"
 )

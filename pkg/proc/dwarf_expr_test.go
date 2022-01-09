@@ -13,11 +13,11 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/go-delve/delve/pkg/dwarf/dwarfbuilder"
-	"github.com/go-delve/delve/pkg/dwarf/godwarf"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/linutil"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/dwarfbuilder"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/godwarf"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/linutil"
 )
 
 func ptrSizeByRuntimeArch() int {

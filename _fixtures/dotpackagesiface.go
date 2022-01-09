@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-delve/delve/_fixtures/internal/dir.io"
-	"github.com/go-delve/delve/_fixtures/internal/dir.io/io.io"
+	"github.com/hitzhangjie/dlv/_fixtures/internal/dir.io"
+	"github.com/hitzhangjie/dlv/_fixtures/internal/dir.io/io.io"
 	"runtime"
 )
 

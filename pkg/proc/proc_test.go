@@ -23,17 +23,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-delve/delve/pkg/dwarf/frame"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/regnum"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/core"
-	"github.com/go-delve/delve/pkg/proc/gdbserial"
-	"github.com/go-delve/delve/pkg/proc/native"
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/frame"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/regnum"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/core"
+	"github.com/hitzhangjie/dlv/pkg/proc/native"
+	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/service/api"
 )
 
 var normalLoadConfig = proc.LoadConfig{true, 1, 64, 64, -1, 0}
@@ -98,18 +97,10 @@ func withTestProcessArgs(name string, t testing.TB, wd string, args []string, bu
 	fixture := protest.BuildFixture(name, buildFlags)
 	var p *proc.Target
 	var err error
-	var tracedir string
 
 	switch testBackend {
 	case "native":
 		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", [3]string{})
-	case "lldb":
-		p, err = gdbserial.LLDBLaunch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", [3]string{})
-	case "rr":
-		protest.MustHaveRecordingAllowed(t)
-		t.Log("recording")
-		p, tracedir, err = gdbserial.RecordAndReplay(append([]string{fixture.Path}, args...), wd, true, []string{}, [3]string{})
-		t.Logf("replaying %q", tracedir)
 	default:
 		t.Fatal("unknown backend")
 	}
@@ -959,9 +950,6 @@ func TestStacktraceGoroutine(t *testing.T) {
 	}
 
 	lenient := 0
-	if runtime.GOOS == "windows" {
-		lenient = 1
-	}
 
 	protest.AllowRecording(t)
 	withTestProcess("goroutinestackprog", t, func(p *proc.Target, fixture protest.Fixture) {
@@ -1273,9 +1261,6 @@ func TestVariableEvaluation(t *testing.T) {
 func TestFrameEvaluation(t *testing.T) {
 	protest.AllowRecording(t)
 	lenient := false
-	if runtime.GOOS == "windows" {
-		lenient = true
-	}
 	withTestProcess("goroutinestackprog", t, func(p *proc.Target, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.stacktraceme")
 		assertNoError(p.Continue(), t, "Continue()")
@@ -2734,9 +2719,6 @@ func TestStepOutPanicAndDirectCall(t *testing.T) {
 func TestWorkDir(t *testing.T) {
 	wd := os.TempDir()
 	// For Darwin `os.TempDir()` returns `/tmp` which is symlink to `/private/tmp`.
-	if runtime.GOOS == "darwin" {
-		wd = "/private/tmp"
-	}
 	protest.AllowRecording(t)
 	withTestProcessArgs("workdir", t, wd, []string{}, 0, func(p *proc.Target, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 14)
@@ -2893,12 +2875,6 @@ func TestAttachDetach(t *testing.T) {
 	switch testBackend {
 	case "native":
 		p, err = native.Attach(cmd.Process.Pid, []string{})
-	case "lldb":
-		path := ""
-		if runtime.GOOS == "darwin" {
-			path = fixture.Path
-		}
-		p, err = gdbserial.LLDBAttach(cmd.Process.Pid, path, []string{})
 	default:
 		err = fmt.Errorf("unknown backend %q", testBackend)
 	}
@@ -3162,10 +3138,6 @@ func TestAttachStripped(t *testing.T) {
 	if testBackend == "rr" {
 		return
 	}
-	if runtime.GOOS == "darwin" {
-		t.Log("-s does not produce stripped executables on macOS")
-		return
-	}
 	if buildMode != "" {
 		t.Skip("not enabled with buildmode=PIE")
 	}
@@ -3195,12 +3167,6 @@ func TestAttachStripped(t *testing.T) {
 	switch testBackend {
 	case "native":
 		p, err = native.Attach(cmd.Process.Pid, []string{})
-	case "lldb":
-		path := ""
-		if runtime.GOOS == "darwin" {
-			path = fixture.Path
-		}
-		p, err = gdbserial.LLDBAttach(cmd.Process.Pid, path, []string{})
 	default:
 		t.Fatalf("unknown backend %q", testBackend)
 	}
@@ -3321,19 +3287,6 @@ func frameInFile(frame proc.Stackframe, file string) bool {
 }
 
 func TestCgoStacktrace(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		ver, _ := goversion.Parse(runtime.Version())
-		if ver.Major > 0 && !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 9, Rev: -1}) {
-			t.Skip("disabled on windows with go before version 1.9")
-		}
-	}
-	if runtime.GOOS == "darwin" {
-		ver, _ := goversion.Parse(runtime.Version())
-		if ver.Major > 0 && !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 8, Rev: -1}) {
-			t.Skip("disabled on macOS with go before version 1.8")
-		}
-	}
-
 	skipOn(t, "broken - cgo stacktraces", "386")
 	skipOn(t, "broken - cgo stacktraces", "linux", "arm64")
 	protest.MustHaveCgo(t)
@@ -3430,17 +3383,6 @@ func TestCgoStacktrace(t *testing.T) {
 }
 
 func TestCgoSources(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		ver, _ := goversion.Parse(runtime.Version())
-		if ver.Major > 0 && !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 9, Rev: -1}) {
-			t.Skip("disabled on windows with go before version 1.9")
-		}
-	}
-
-	if runtime.GOARCH == "386" {
-		t.Skip("cgo stacktraces not supported on i386 for now")
-	}
-
 	protest.MustHaveCgo(t)
 
 	withTestProcess("cgostacktest/", t, func(p *proc.Target, fixture protest.Fixture) {
@@ -5127,10 +5069,6 @@ func TestIssue2319(t *testing.T) {
 }
 
 func TestDump(t *testing.T) {
-	if runtime.GOOS == "freebsd" || (runtime.GOOS == "darwin" && testBackend == "native") {
-		t.Skip("not supported")
-	}
-
 	convertRegisters := func(arch *proc.Arch, dregs op.DwarfRegisters) string {
 		dregs.Reg(^uint64(0))
 		buf := new(bytes.Buffer)
@@ -5761,10 +5699,7 @@ func TestNilPtrDerefInBreakInstr(t *testing.T) {
 		assertNoError(p.Continue(), t, "Continue()")
 		t.Logf("second continue")
 		err := p.Continue()
-		if runtime.GOOS == "darwin" && err != nil && err.Error() == "bad access" {
-			// this is also ok
-			return
-		}
+
 		assertNoError(err, t, "Continue()")
 		bp := p.CurrentThread().Breakpoint()
 		if bp != nil {

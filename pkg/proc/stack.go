@@ -7,9 +7,9 @@ import (
 	"go/constant"
 	"reflect"
 
-	"github.com/go-delve/delve/pkg/dwarf/frame"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/reader"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/frame"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/reader"
 )
 
 // This code is partly adapted from runtime.gentraceback in

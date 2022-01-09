@@ -10,10 +10,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/dwarf/util"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
 )
 
 func slurpGzip(path string) ([]byte, error) {
@@ -34,10 +33,6 @@ func TestGrafana(t *testing.T) {
 	// Compares a full execution of our state machine on the debug_line section
 	// of grafana to the output generated using debug/dwarf.LineReader on the
 	// same section.
-
-	if runtime.GOOS == "windows" {
-		t.Skip("filepath.Join ruins this test on windows")
-	}
 	debugBytes, err := slurpGzip("_testdata/debug.grafana.debug.gz")
 	if err != nil {
 		t.Fatal(err)

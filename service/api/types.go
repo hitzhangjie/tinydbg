@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"unicode"
 
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc"
 )
 
 // ErrNotExecutable is an error returned when trying

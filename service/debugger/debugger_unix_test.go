@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	"github.com/creack/pty"
-	"github.com/go-delve/delve/pkg/gobuild"
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/dlv/pkg/gobuild"
+	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/service/api"
 )
 
 func TestDebugger_LaunchNoExecutablePerm(t *testing.T) {

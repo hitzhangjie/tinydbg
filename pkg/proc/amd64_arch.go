@@ -8,9 +8,9 @@ import (
 	"math"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/dwarf/frame"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/regnum"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/frame"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/regnum"
 )
 
 var amd64BreakInstruction = []byte{0xCC}
@@ -24,7 +24,7 @@ func AMD64Arch(goos string) *Arch {
 		maxInstructionLength:             15,
 		breakpointInstruction:            amd64BreakInstruction,
 		breakInstrMovesPC:                true,
-		derefTLS:                         goos == "windows",
+		derefTLS:                         false,
 		prologues:                        prologuesAMD64,
 		fixFrameUnwindContext:            amd64FixFrameUnwindContext,
 		switchStack:                      amd64SwitchStack,
@@ -99,12 +99,7 @@ func amd64FixFrameUnwindContext(fctxt *frame.FrameContext, pc uint64, bi *Binary
 	if a.crosscall2fn != nil && pc >= a.crosscall2fn.Entry && pc < a.crosscall2fn.End {
 		rule := fctxt.CFA
 		if rule.Offset == crosscall2SPOffsetBad {
-			switch bi.GOOS {
-			case "windows":
-				rule.Offset += crosscall2SPOffsetWindows
-			default:
-				rule.Offset += crosscall2SPOffsetNonWindows
-			}
+			rule.Offset += crosscall2SPOffsetNonWindows
 		}
 		fctxt.CFA = rule
 	}

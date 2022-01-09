@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/go-delve/delve/pkg/dwarf/util"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
 )
 
 // DWRule wrapper of rule defined for register values.

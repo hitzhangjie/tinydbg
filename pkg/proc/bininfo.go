@@ -5,7 +5,6 @@ import (
 	"debug/dwarf"
 	"debug/elf"
 	"debug/macho"
-	"debug/pe"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -22,17 +21,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-delve/delve/pkg/dwarf/frame"
-	"github.com/go-delve/delve/pkg/dwarf/godwarf"
-	"github.com/go-delve/delve/pkg/dwarf/line"
-	"github.com/go-delve/delve/pkg/dwarf/loclist"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/reader"
-	"github.com/go-delve/delve/pkg/dwarf/util"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
 	"github.com/hashicorp/golang-lru/simplelru"
 	"github.com/sirupsen/logrus"
+
+	"github.com/hitzhangjie/dlv/pkg/dwarf/frame"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/godwarf"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/line"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/loclist"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/reader"
+	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
 )
 
 const (
@@ -409,14 +409,6 @@ func (e *ErrUnsupportedArch) Error() string {
 		for linuxArch := range supportedLinuxArch {
 			supportArchs = append(supportArchs, linuxArch)
 		}
-	case "windows":
-		for windowArch := range supportedWindowsArch {
-			supportArchs = append(supportArchs, windowArch)
-		}
-	case "darwin":
-		for darwinArch := range supportedDarwinArch {
-			supportArchs = append(supportArchs, darwinArch)
-		}
 	}
 
 	errStr := "unsupported architecture of " + e.os + "/" + e.cpuArch.String()
@@ -637,12 +629,10 @@ func NewBinaryInfo(goos, goarch string) *BinaryInfo {
 
 	// TODO: find better way to determine proc arch (perhaps use executable file info).
 	switch goarch {
-	case "386":
-		r.Arch = I386Arch(goos)
 	case "amd64":
 		r.Arch = AMD64Arch(goos)
-	case "arm64":
-		r.Arch = ARM64Arch(goos)
+	default:
+		panic(fmt.Sprintf("unsupported arch: %s", goarch))
 	}
 	return r
 }
@@ -662,16 +652,7 @@ func (bi *BinaryInfo) LoadBinaryInfo(path string, entryPoint uint64, debugInfoDi
 func loadBinaryInfo(bi *BinaryInfo, image *Image, path string, entryPoint uint64) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
-
-	switch bi.GOOS {
-	case "linux", "freebsd":
-		return loadBinaryInfoElf(bi, image, path, entryPoint, &wg)
-	case "windows":
-		return loadBinaryInfoPE(bi, image, path, entryPoint, &wg)
-	case "darwin":
-		return loadBinaryInfoMacho(bi, image, path, entryPoint, &wg)
-	}
-	return errors.New("unsupported operating system")
+	return loadBinaryInfoElf(bi, image, path, entryPoint, &wg)
 }
 
 // GStructOffset returns the offset of the G
@@ -829,7 +810,6 @@ func (bi *BinaryInfo) AddImage(path string, addr uint64) error {
 	if err != nil {
 		bi.Images[len(bi.Images)-1].loadErr = err
 	}
-	bi.macOSDebugFrameBugWorkaround()
 	return err
 }
 
@@ -1481,244 +1461,6 @@ func getSymbol(image *Image, logger *logrus.Entry, exe *elf.File, name string) *
 	return nil
 }
 
-// PE ////////////////////////////////////////////////////////////////
-
-const _IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE = 0x0040
-
-// loadBinaryInfoPE specifically loads information from a PE binary.
-func loadBinaryInfoPE(bi *BinaryInfo, image *Image, path string, entryPoint uint64, wg *sync.WaitGroup) error {
-	peFile, closer, err := openExecutablePathPE(path)
-	if err != nil {
-		return err
-	}
-	image.closer = closer
-	cpuArch := _PEMachine(peFile.Machine)
-	if !supportedWindowsArch[cpuArch] {
-		return &ErrUnsupportedArch{os: "windows", cpuArch: cpuArch}
-	}
-	image.dwarf, err = peFile.DWARF()
-	if err != nil {
-		return err
-	}
-	debugInfoBytes, err := godwarf.GetDebugSectionPE(peFile, "info")
-	if err != nil {
-		return err
-	}
-
-	//TODO(aarzilli): actually test this when Go supports PIE buildmode on Windows.
-	opth := peFile.OptionalHeader.(*pe.OptionalHeader64)
-	if entryPoint != 0 {
-		image.StaticBase = entryPoint - opth.ImageBase
-	} else {
-		if opth.DllCharacteristics&_IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE != 0 {
-			return ErrCouldNotDetermineRelocation
-		}
-	}
-
-	image.dwarfReader = image.dwarf.Reader()
-
-	debugLineBytes, err := godwarf.GetDebugSectionPE(peFile, "line")
-	if err != nil {
-		return err
-	}
-	debugLocBytes, _ := godwarf.GetDebugSectionPE(peFile, "loc")
-	image.loclist2 = loclist.NewDwarf2Reader(debugLocBytes, bi.Arch.PtrSize())
-	debugLoclistBytes, _ := godwarf.GetDebugSectionPE(peFile, "loclists")
-	image.loclist5 = loclist.NewDwarf5Reader(debugLoclistBytes)
-	debugAddrBytes, _ := godwarf.GetDebugSectionPE(peFile, "addr")
-	image.debugAddr = godwarf.ParseAddr(debugAddrBytes)
-	debugLineStrBytes, _ := godwarf.GetDebugSectionPE(peFile, "line_str")
-	image.debugLineStr = debugLineStrBytes
-
-	wg.Add(2)
-	go bi.parseDebugFramePE(image, peFile, debugInfoBytes, wg)
-	go bi.loadDebugInfoMaps(image, debugInfoBytes, debugLineBytes, wg, nil)
-
-	// Use ArbitraryUserPointer (0x28) as pointer to pointer
-	// to G struct per:
-	// https://golang.org/src/runtime/cgo/gcc_windows_amd64.c
-
-	bi.gStructOffset = 0x28
-	return nil
-}
-
-func openExecutablePathPE(path string) (*pe.File, io.Closer, error) {
-	f, err := os.OpenFile(path, 0, os.ModePerm)
-	if err != nil {
-		return nil, nil, err
-	}
-	peFile, err := pe.NewFile(f)
-	if err != nil {
-		f.Close()
-		return nil, nil, err
-	}
-	return peFile, f, nil
-}
-
-func (bi *BinaryInfo) parseDebugFramePE(image *Image, exe *pe.File, debugInfoBytes []byte, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	debugFrameBytes, err := godwarf.GetDebugSectionPE(exe, "frame")
-	bi.parseDebugFrameGeneral(image, debugFrameBytes, ".debug_frame", err, nil, 0, "", frame.DwarfEndian(debugInfoBytes))
-}
-
-// MACH-O ////////////////////////////////////////////////////////////
-
-// loadBinaryInfoMacho specifically loads information from a Mach-O binary.
-func loadBinaryInfoMacho(bi *BinaryInfo, image *Image, path string, entryPoint uint64, wg *sync.WaitGroup) error {
-	exe, err := macho.Open(path)
-
-	if err != nil {
-		return err
-	}
-
-	if entryPoint != 0 {
-		// This is a little bit hacky. We use the entryPoint variable, but it
-		// actually holds the address of the mach-o header. We can use this
-		// to calculate the offset to the non-aslr location of the mach-o header
-		// (which is 0x100000000)
-		image.StaticBase = entryPoint - 0x100000000
-	}
-
-	image.closer = exe
-	if !supportedDarwinArch[exe.Cpu] {
-		return &ErrUnsupportedArch{os: "darwin", cpuArch: exe.Cpu}
-	}
-	image.dwarf, err = exe.DWARF()
-	if err != nil {
-		return err
-	}
-	debugInfoBytes, err := godwarf.GetDebugSectionMacho(exe, "info")
-	if err != nil {
-		return err
-	}
-
-	image.dwarfReader = image.dwarf.Reader()
-
-	debugLineBytes, err := godwarf.GetDebugSectionMacho(exe, "line")
-	if err != nil {
-		return err
-	}
-	debugLocBytes, _ := godwarf.GetDebugSectionMacho(exe, "loc")
-	image.loclist2 = loclist.NewDwarf2Reader(debugLocBytes, bi.Arch.PtrSize())
-	debugLoclistBytes, _ := godwarf.GetDebugSectionMacho(exe, "loclists")
-	image.loclist5 = loclist.NewDwarf5Reader(debugLoclistBytes)
-	debugAddrBytes, _ := godwarf.GetDebugSectionMacho(exe, "addr")
-	image.debugAddr = godwarf.ParseAddr(debugAddrBytes)
-	debugLineStrBytes, _ := godwarf.GetDebugSectionMacho(exe, "line_str")
-	image.debugLineStr = debugLineStrBytes
-
-	wg.Add(2)
-	go bi.parseDebugFrameMacho(image, exe, debugInfoBytes, wg)
-	go bi.loadDebugInfoMaps(image, debugInfoBytes, debugLineBytes, wg, bi.setGStructOffsetMacho)
-	return nil
-}
-
-func (bi *BinaryInfo) setGStructOffsetMacho() {
-	// In go1.11 it's 0x30, before 0x8a0, see:
-	// https://github.com/golang/go/issues/23617
-	// and go commit b3a854c733257c5249c3435ffcee194f8439676a
-	producer := bi.Producer()
-	if producer != "" && goversion.ProducerAfterOrEqual(producer, 1, 11) {
-		bi.gStructOffset = 0x30
-		return
-	}
-	bi.gStructOffset = 0x8a0
-}
-
-func (bi *BinaryInfo) parseDebugFrameMacho(image *Image, exe *macho.File, debugInfoBytes []byte, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	debugFrameBytes, debugFrameErr := godwarf.GetDebugSectionMacho(exe, "frame")
-	ehFrameSection := exe.Section("__eh_frame")
-	var ehFrameBytes []byte
-	var ehFrameAddr uint64
-	if ehFrameSection != nil {
-		ehFrameAddr = ehFrameSection.Addr
-		ehFrameBytes, _ = ehFrameSection.Data()
-	}
-
-	bi.parseDebugFrameGeneral(image, debugFrameBytes, "__debug_frame", debugFrameErr, ehFrameBytes, ehFrameAddr, "__eh_frame", frame.DwarfEndian(debugInfoBytes))
-}
-
-// macOSDebugFrameBugWorkaround applies a workaround for:
-//  https://github.com/golang/go/issues/25841
-// It finds the Go function with the lowest entry point and the first
-// debug_frame FDE, calculates the difference between the start of the
-// function and the start of the FDE and sums it to all debug_frame FDEs.
-// A number of additional checks are performed to make sure we don't ruin
-// executables unaffected by this bug.
-func (bi *BinaryInfo) macOSDebugFrameBugWorkaround() {
-	//TODO: log extensively because of bugs in the field
-	if bi.GOOS != "darwin" || bi.Arch.Name != "arm64" {
-		return
-	}
-	if len(bi.Images) > 1 {
-		// Only do this for the first executable, but it might work for plugins as
-		// well if we had a way to distinguish where entries in bi.frameEntries
-		// come from
-		return
-	}
-	exe, ok := bi.Images[0].closer.(*macho.File)
-	if !ok {
-		return
-	}
-	if exe.Flags&macho.FlagPIE == 0 {
-		bi.logger.Infof("debug_frame workaround not needed: not a PIE (%#x)", exe.Flags)
-		return
-	}
-
-	// Find first Go function (first = lowest entry point)
-	var fn *Function
-	for i := range bi.Functions {
-		if bi.Functions[i].cu.isgo && bi.Functions[i].Entry > 0 {
-			fn = &bi.Functions[i]
-			break
-		}
-	}
-	if fn == nil {
-		bi.logger.Warn("debug_frame workaround not applied: could not find a Go function")
-		return
-	}
-
-	if fde, _ := bi.frameEntries.FDEForPC(fn.Entry); fde != nil {
-		// Function is covered, no need to apply workaround
-		bi.logger.Warnf("debug_frame workaround not applied: function %s (at %#x) covered by %#x-%#x", fn.Name, fn.Entry, fde.Begin(), fde.End())
-		return
-	}
-
-	// Find lowest FDE in debug_frame
-	var fde *frame.FrameDescriptionEntry
-	for i := range bi.frameEntries {
-		if bi.frameEntries[i].CIE.CIE_id == ^uint32(0) {
-			fde = bi.frameEntries[i]
-			break
-		}
-	}
-
-	if fde == nil {
-		bi.logger.Warnf("debug_frame workaround not applied because there are no debug_frame entries (%d)", len(bi.frameEntries))
-		return
-	}
-
-	fnsize := fn.End - fn.Entry
-
-	if fde.End()-fde.Begin() != fnsize || fde.Begin() > fn.Entry {
-		bi.logger.Warnf("debug_frame workaround not applied: function %s (at %#x-%#x) has a different size than the first FDE (%#x-%#x) (or the FDE starts after the function)", fn.Name, fn.Entry, fn.End, fde.Begin(), fde.End())
-		return
-	}
-
-	delta := fn.Entry - fde.Begin()
-
-	bi.logger.Infof("applying debug_frame workaround +%#x: function %s (at %#x-%#x) and FDE %#x-%#x", delta, fn.Name, fn.Entry, fn.End, fde.Begin(), fde.End())
-
-	for i := range bi.frameEntries {
-		if bi.frameEntries[i].CIE.CIE_id == ^uint32(0) {
-			bi.frameEntries[i].Translate(delta)
-		}
-	}
-}
-
 // Do not call this function directly it isn't able to deal correctly with package paths
 func (bi *BinaryInfo) findType(name string) (godwarf.Type, error) {
 	ref, found := bi.types[name]
@@ -1895,7 +1637,7 @@ func (bi *BinaryInfo) loadDebugInfoMaps(image *Image, debugInfoBytes, debugLineB
 						logger.Printf(fmt, args)
 					}
 				}
-				cu.lineInfo = line.Parse(compdir, bytes.NewBuffer(debugLineBytes[lineInfoOffset:]), image.debugLineStr, logfn, image.StaticBase, bi.GOOS == "windows", bi.Arch.PtrSize())
+				cu.lineInfo = line.Parse(compdir, bytes.NewBuffer(debugLineBytes[lineInfoOffset:]), image.debugLineStr, logfn, image.StaticBase, false, bi.Arch.PtrSize())
 			}
 			cu.producer, _ = entry.Val(dwarf.AttrProducer).(string)
 			if cu.isgo && cu.producer != "" {

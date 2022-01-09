@@ -3,8 +3,8 @@
 package native
 
 import (
-	"github.com/go-delve/delve/pkg/elfwriter"
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/elfwriter"
+	"github.com/hitzhangjie/dlv/pkg/proc"
 )
 
 func (p *nativeProcess) MemoryMap() ([]proc.MemoryMapEntry, error) {

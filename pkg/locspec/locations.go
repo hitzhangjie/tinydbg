@@ -4,15 +4,13 @@ import (
 	"fmt"
 	"go/constant"
 	"path"
-	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/service/api"
 )
 
 const maxFindLocationCandidates = 5
@@ -328,11 +326,6 @@ func tryMatchRelativePathByProc(expr, debugname, file string) bool {
 }
 
 func partialPathMatch(expr, path string) bool {
-	if runtime.GOOS == "windows" {
-		// Accept `expr` which is case-insensitive and slash-insensitive match to `path`
-		expr = strings.ToLower(filepath.ToSlash(expr))
-		path = strings.ToLower(filepath.ToSlash(path))
-	}
 	return partialPackageMatch(expr, path)
 }
 
@@ -472,15 +465,11 @@ func (loc *NormalLocationSpec) findFuncCandidates(scope *proc.EvalScope, limit i
 }
 
 func crossPlatformPath(path string) string {
-	if runtime.GOOS == "windows" {
-		return strings.ToLower(path)
-	}
 	return path
 }
 
 // SubstitutePath applies the specified path substitution rules to path.
 func SubstitutePath(path string, rules [][2]string) string {
-	path = crossPlatformPath(path)
 	// On windows paths returned from headless server are as c:/dir/dir
 	// though os.PathSeparator is '\\'
 
@@ -489,7 +478,7 @@ func SubstitutePath(path string, rules [][2]string) string {
 		separator = "\\"
 	}
 	for _, r := range rules {
-		from := crossPlatformPath(r[0])
+		from := r[0]
 		to := r[1]
 
 		if !strings.HasSuffix(from, separator) {

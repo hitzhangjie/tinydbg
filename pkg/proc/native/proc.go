@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc"
 )
 
 // Process represents all of the information the debugger
@@ -265,19 +265,12 @@ func (dbp *nativeProcess) initialize(path string, debugInfoDirs []string) (*proc
 	if !dbp.childProcess {
 		stopReason = proc.StopAttached
 	}
-	tgt, err := proc.NewTarget(dbp, dbp.pid, dbp.memthread, proc.NewTargetConfig{
+	return proc.NewTarget(dbp, dbp.pid, dbp.memthread, proc.NewTargetConfig{
 		Path:                path,
 		DebugInfoDirs:       debugInfoDirs,
-		DisableAsyncPreempt: runtime.GOOS == "windows" || runtime.GOOS == "freebsd",
+		DisableAsyncPreempt: false,
 		StopReason:          stopReason,
-		CanDump:             runtime.GOOS == "linux"})
-	if err != nil {
-		return nil, err
-	}
-	if dbp.bi.Arch.Name == "arm64" {
-		dbp.iscgo = tgt.IsCgo()
-	}
-	return tgt, nil
+		CanDump:             true})
 }
 
 func (dbp *nativeProcess) handlePtraceFuncs() {

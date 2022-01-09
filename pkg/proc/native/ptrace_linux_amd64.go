@@ -6,7 +6,7 @@ import (
 
 	sys "golang.org/x/sys/unix"
 
-	"github.com/go-delve/delve/pkg/proc/amd64util"
+	"github.com/hitzhangjie/dlv/pkg/proc/amd64util"
 )
 
 // ptraceGetRegset returns floating point registers of the specified thread

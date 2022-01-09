@@ -19,15 +19,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/dap/daptest"
-	"github.com/go-delve/delve/service/debugger"
 	"github.com/google/go-dap"
+
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/service"
+	"github.com/hitzhangjie/dlv/service/api"
+	"github.com/hitzhangjie/dlv/service/dap/daptest"
+	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
 const stopOnEntry bool = true
@@ -472,9 +473,6 @@ func TestLaunchStopOnEntry(t *testing.T) {
 
 // TestAttachStopOnEntry is like TestLaunchStopOnEntry, but with attach request.
 func TestAttachStopOnEntry(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.SkipNow()
-	}
 	runTest(t, "loopprog", func(client *daptest.Client, fixture protest.Fixture) {
 		// Start the program to attach to
 		cmd := exec.Command(fixture.Path)
@@ -1375,13 +1373,6 @@ func TestScopesAndVariablesRequests(t *testing.T) {
 					stack := client.ExpectStackTraceResponse(t)
 
 					startLineno := 66
-					if runtime.GOOS == "windows" && goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
-						// Go1.15 on windows inserts a NOP after the call to
-						// runtime.Breakpoint and marks it same line as the
-						// runtime.Breakpoint call, making this flaky, so skip the line check.
-						startLineno = -1
-					}
-
 					checkStackFramesExact(t, stack, "main.foobar", startLineno, 1000, 4, 4)
 
 					client.ScopesRequest(1000)
@@ -1906,13 +1897,6 @@ func TestScopesRequestsOptimized(t *testing.T) {
 					stack := client.ExpectStackTraceResponse(t)
 
 					startLineno := 66
-					if runtime.GOOS == "windows" && goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
-						// Go1.15 on windows inserts a NOP after the call to
-						// runtime.Breakpoint and marks it same line as the
-						// runtime.Breakpoint call, making this flaky, so skip the line check.
-						startLineno = -1
-					}
-
 					checkStackFramesExact(t, stack, "main.foobar", startLineno, 1000, 4, 4)
 
 					client.ScopesRequest(1000)
@@ -3369,9 +3353,6 @@ func TestHaltPreventsAutoResume(t *testing.T) {
 // goroutine is hit the correct number of times and log points set in the
 // children goroutines produce the correct number of output events.
 func TestConcurrentBreakpointsLogPoints(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.SkipNow()
-	}
 	tests := []struct {
 		name        string
 		fixture     string
@@ -3619,12 +3600,6 @@ func TestLaunchSubstitutePath(t *testing.T) {
 // that does not exist and expects the substitutePath attribute
 // in the launch configuration to take care of the mapping.
 func TestAttachSubstitutePath(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.SkipNow()
-	}
-	if runtime.GOOS == "windows" {
-		t.Skip("test skipped on windows, see https://delve.beta.teamcity.com/project/Delve_windows for details")
-	}
 	runTest(t, "loopprog", func(client *daptest.Client, fixture protest.Fixture) {
 		cmd := execFixture(t, fixture)
 
@@ -3635,9 +3610,6 @@ func TestAttachSubstitutePath(t *testing.T) {
 func substitutePathTestHelper(t *testing.T, fixture protest.Fixture, client *daptest.Client, request string, launchAttachConfig map[string]interface{}) {
 	t.Helper()
 	nonexistentDir := filepath.Join(string(filepath.Separator), "path", "that", "does", "not", "exist")
-	if runtime.GOOS == "windows" {
-		nonexistentDir = "C:" + nonexistentDir
-	}
 
 	launchAttachConfig["stopOnEntry"] = false
 	// The rules in 'substitutePath' will be applied as follows:
@@ -3701,9 +3673,6 @@ func TestWorkingDir(t *testing.T) {
 	runTest(t, "workdir", func(client *daptest.Client, fixture protest.Fixture) {
 		wd := os.TempDir()
 		// For Darwin `os.TempDir()` returns `/tmp` which is symlink to `/private/tmp`.
-		if runtime.GOOS == "darwin" {
-			wd = "/private/tmp"
-		}
 		runDebugSessionWithBPs(t, client, "launch",
 			// Launch
 			func() {
@@ -4538,9 +4507,6 @@ func getPC(t *testing.T, client *daptest.Client, threadId int) (uint64, error) {
 // TestNextParked tests that we can switched selected goroutine to a parked one
 // and perform next operation on it.
 func TestNextParked(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.SkipNow()
-	}
 	runTest(t, "parallel_next", func(client *daptest.Client, fixture protest.Fixture) {
 		runDebugSessionWithBPs(t, client, "launch",
 			// Launch
@@ -4631,9 +4597,6 @@ func testNextParkedHelper(t *testing.T, client *daptest.Client, fixture protest.
 // and checks that StepOut preserves the currently selected goroutine.
 func TestStepOutPreservesGoroutine(t *testing.T) {
 	// Checks that StepOut preserves the currently selected goroutine.
-	if runtime.GOOS == "freebsd" {
-		t.SkipNow()
-	}
 	rand.Seed(time.Now().Unix())
 	runTest(t, "issue2113", func(client *daptest.Client, fixture protest.Fixture) {
 		runDebugSessionWithBPs(t, client, "launch",
@@ -4784,9 +4747,6 @@ func TestBadAccess(t *testing.T) {
 // again will produce an error with a helpful message, and 'continue'
 // will resume the program.
 func TestNextWhileNexting(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.Skip("test is not valid on FreeBSD")
-	}
 	// a breakpoint triggering during a 'next' operation will interrupt 'next''
 	// Unlike the test for the terminal package, we cannot be certain
 	// of the number of breakpoints we expect to hit, since multiple
@@ -5499,12 +5459,6 @@ func TestLaunchRequestWithBuildFlags(t *testing.T) {
 }
 
 func TestAttachRequest(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		t.SkipNow()
-	}
-	if runtime.GOOS == "windows" {
-		t.Skip("test skipped on windows, see https://delve.beta.teamcity.com/project/Delve_windows for details")
-	}
 	runTest(t, "loopprog", func(client *daptest.Client, fixture protest.Fixture) {
 		// Start the program to attach to
 		cmd := execFixture(t, fixture)
@@ -5713,13 +5667,6 @@ func TestSetVariable(t *testing.T) {
 					tester := &helperForSetVariable{t, client}
 
 					startLineno := 66 // after runtime.Breakpoint
-					if runtime.GOOS == "windows" && goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
-						// Go1.15 on windows inserts a NOP after the call to
-						// runtime.Breakpoint and marks it same line as the
-						// runtime.Breakpoint call, making this flaky, so skip the line check.
-						startLineno = -1
-					}
-
 					checkStop(t, client, 1, "main.foobar", startLineno)
 
 					// Local variables
@@ -5815,10 +5762,6 @@ func TestSetVariable(t *testing.T) {
 					tester := &helperForSetVariable{t, client}
 
 					startLineno := 364 // after runtime.Breakpoint
-					if runtime.GOOS == "windows" && goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
-						startLineno = -1
-					}
-
 					checkStop(t, client, 1, "main.main", startLineno)
 					locals := tester.variables(localsScope)
 
@@ -5900,13 +5843,6 @@ func TestSetVariableWithCall(t *testing.T) {
 					tester := &helperForSetVariable{t, client}
 
 					startLineno := 66
-					if runtime.GOOS == "windows" && goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
-						// Go1.15 on windows inserts a NOP after the call to
-						// runtime.Breakpoint and marks it same line as the
-						// runtime.Breakpoint call, making this flaky, so skip the line check.
-						startLineno = -1
-					}
-
 					checkStop(t, client, 1, "main.foobar", startLineno)
 
 					// Local variables

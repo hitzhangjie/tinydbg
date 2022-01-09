@@ -1,8 +1,8 @@
 package proc
 
 import (
-	"github.com/go-delve/delve/pkg/elfwriter"
-	"github.com/go-delve/delve/pkg/proc/internal/ebpf"
+	"github.com/hitzhangjie/dlv/pkg/elfwriter"
+	"github.com/hitzhangjie/dlv/pkg/proc/internal/ebpf"
 )
 
 // Process represents the target of the debugger. This

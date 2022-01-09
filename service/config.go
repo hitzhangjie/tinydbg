@@ -3,7 +3,7 @@ package service
 import (
 	"net"
 
-	"github.com/go-delve/delve/service/debugger"
+	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
 // Config provides the configuration to start a Debugger and expose it with a

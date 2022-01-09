@@ -8,8 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-delve/delve/cmd/dlv/cmds"
 	"github.com/spf13/cobra/doc"
+
+	"github.com/hitzhangjie/dlv/pkg/cmds"
 )
 
 const defaultUsageDir = "./Documentation/usage"

@@ -3,7 +3,7 @@ package goversion
 import (
 	"fmt"
 
-	"github.com/go-delve/delve/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
 )
 
 var (

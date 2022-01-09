@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/go-delve/delve/pkg/elfwriter"
-	"github.com/go-delve/delve/pkg/version"
+	"github.com/hitzhangjie/dlv/pkg/elfwriter"
+	"github.com/hitzhangjie/dlv/pkg/version"
 )
 
 var (
@@ -120,11 +120,8 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 	switch bi.GOOS {
 	case "linux":
 		fhdr.OSABI = elf.ELFOSABI_LINUX
-	case "freebsd":
-		fhdr.OSABI = elf.ELFOSABI_FREEBSD
 	default:
-		// There is no OSABI value for windows or macOS because nobody generates ELF core dumps on those systems.
-		fhdr.OSABI = 0xff
+		panic(fmt.Sprintf("unsupported OSABI: %s", bi.GOOS))
 	}
 
 	fhdr.Type = elf.ET_CORE

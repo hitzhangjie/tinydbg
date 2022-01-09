@@ -10,25 +10,24 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"github.com/go-delve/delve/pkg/config"
-	"github.com/go-delve/delve/pkg/gobuild"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/terminal"
-	"github.com/go-delve/delve/pkg/version"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/dap"
-	"github.com/go-delve/delve/service/debugger"
-	"github.com/go-delve/delve/service/rpc2"
-	"github.com/go-delve/delve/service/rpccommon"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+
+	"github.com/hitzhangjie/dlv/pkg/config"
+	"github.com/hitzhangjie/dlv/pkg/gobuild"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/terminal"
+	"github.com/hitzhangjie/dlv/pkg/version"
+	"github.com/hitzhangjie/dlv/service"
+	"github.com/hitzhangjie/dlv/service/api"
+	"github.com/hitzhangjie/dlv/service/dap"
+	"github.com/hitzhangjie/dlv/service/debugger"
+	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpccommon"
 )
 
 var (
@@ -112,15 +111,7 @@ func New(docCall bool) *cobra.Command {
 	// server is started so that the "server listening at" message is always
 	// the first thing emitted. Also logflags hasn't been setup yet at this point.
 	buildFlagsDefault := ""
-	if runtime.GOOS == "windows" {
-		ver, _ := goversion.Installed()
-		if ver.Major > 0 && !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 9, Rev: -1}) {
-			// Work-around for https://github.com/golang/go/issues/13154
-			buildFlagsDefault = "-ldflags='-linkmode internal'"
-		}
-	}
 
-	// Main dlv root command.
 	rootCommand = &cobra.Command{
 		Use:   "dlv",
 		Short: "Delve is a debugger for the Go programming language.",
@@ -799,20 +790,9 @@ func connectCmd(cmd *cobra.Command, args []string) {
 func waitForDisconnectSignal(disconnectChan chan struct{}) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	if runtime.GOOS == "windows" {
-		// On windows Ctrl-C sent to inferior process is delivered
-		// as SIGINT to delve. Ignore it instead of stopping the server
-		// in order to be able to debug signal handlers.
-		go func() {
-			for range ch {
-			}
-		}()
-		<-disconnectChan
-	} else {
-		select {
-		case <-ch:
-		case <-disconnectChan:
-		}
+	select {
+	case <-ch:
+	case <-disconnectChan:
 	}
 }
 

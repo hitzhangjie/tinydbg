@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"runtime/debug"
 	"sort"
 	"strconv"
@@ -32,17 +31,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-delve/delve/pkg/gobuild"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/locspec"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/gobuild"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/locspec"
+	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/proc"
 
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/debugger"
-	"github.com/go-delve/delve/service/internal/sameuser"
 	"github.com/google/go-dap"
+
+	"github.com/hitzhangjie/dlv/service"
+	"github.com/hitzhangjie/dlv/service/api"
+	"github.com/hitzhangjie/dlv/service/debugger"
+	"github.com/hitzhangjie/dlv/service/internal/sameuser"
 
 	"github.com/sirupsen/logrus"
 )
@@ -922,9 +922,6 @@ const defaultDebugBinary string = "./__debug_bin"
 
 func (s *Session) tempDebugBinary() string {
 	binaryPattern := "__debug_bin"
-	if runtime.GOOS == "windows" {
-		binaryPattern = "__debug_bin*.exe"
-	}
 	f, err := ioutil.TempFile("", binaryPattern)
 	if err != nil {
 		s.config.log.Errorf("failed to create a temporary binary (%v), falling back to %q", err, defaultDebugBinary)
@@ -939,9 +936,6 @@ func (s *Session) tempDebugBinary() string {
 }
 
 func cleanExeName(name string) string {
-	if runtime.GOOS == "windows" && filepath.Ext(name) != ".exe" {
-		return name + ".exe"
-	}
 	return name
 }
 

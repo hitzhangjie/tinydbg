@@ -1,6 +1,6 @@
 package dap
 
-import "github.com/go-delve/delve/pkg/proc"
+import "github.com/hitzhangjie/dlv/pkg/proc"
 
 const startHandle = 1000
 

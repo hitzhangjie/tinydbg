@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/config"
+	"github.com/hitzhangjie/dlv/pkg/config"
 )
 
 type tRule struct {
@@ -39,38 +39,9 @@ func platformCases() []tCase {
 		// Should be case-sensitive
 		{[]tRule{{"/tmp/path", "/new/path2"}}, "/TmP/path/file.go", "/TmP/path/file.go"},
 	}
-	casesFreebsd := []tCase{
-		// Should be case-sensitive
-		{[]tRule{{"/tmp/path", "/new/path2"}}, "/TmP/path/file.go", "/TmP/path/file.go"},
-	}
-	casesDarwin := []tCase{
-		// Can be either case-sensitive or case-insensitive depending on
-		// filesystem settings, we always treat it as case-sensitive.
-		{[]tRule{{"/tmp/path", "/new/path2"}}, "/TmP/PaTh/file.go", "/TmP/PaTh/file.go"},
-	}
-	casesWindows := []tCase{
-		// Should not depend on separator at the end of rule path
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		{[]tRule{{`c:\tmp\path\`, `d:\new\path2\`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2\`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		{[]tRule{{`c:\tmp\path\`, `d:\new\path2`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		// Should apply only for directory names
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2`}}, `c:\tmp\path-2\file.go`, `c:\tmp\path-2\file.go`},
-		// Should be case-insensitive
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2`}}, `C:\TmP\PaTh\file.go`, `d:\new\path2\file.go`},
-	}
 
-	if runtime.GOOS == "windows" {
-		return casesWindows
-	}
-	if runtime.GOOS == "darwin" {
-		return append(casesUnix, casesDarwin...)
-	}
 	if runtime.GOOS == "linux" {
 		return append(casesUnix, casesLinux...)
-	}
-	if runtime.GOOS == "freebsd" {
-		return append(casesUnix, casesFreebsd...)
 	}
 	return casesUnix
 }

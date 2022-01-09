@@ -11,13 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/gdbserial"
-	"github.com/go-delve/delve/pkg/proc/native"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/dlv/pkg/proc/gdbserial"
 
-	protest "github.com/go-delve/delve/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/native"
+	"github.com/hitzhangjie/dlv/service/api"
+
+	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 var pnormalLoadConfig = proc.LoadConfig{
@@ -1574,10 +1575,6 @@ func TestCgoEval(t *testing.T) {
 		{"v_align_check", true, "*align_check {a: 0, b: 0}", "(*struct align_check)(…", "*struct align_check", nil},
 		{"v_align_check[1]", false, "align_check {a: 1, b: 1}", "align_check {a: 1, b: 1}", "align_check", nil},
 		{"v_align_check[90]", false, "align_check {a: 90, b: 90}", "align_check {a: 90, b: 90}", "align_check", nil},
-	}
-
-	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
-		t.Skip("cgo doesn't work on darwin/arm64")
 	}
 
 	protest.AllowRecording(t)

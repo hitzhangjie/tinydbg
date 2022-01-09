@@ -3,7 +3,7 @@ package service
 import (
 	"time"
 
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/dlv/service/api"
 )
 
 // Client represents a debugger service client. All client methods are
