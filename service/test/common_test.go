@@ -10,7 +10,7 @@ import (
 
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/rpc1"
-	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 func assertNoError(err error, t *testing.T, s string) {
@@ -69,7 +69,7 @@ func countBreakpoints(t *testing.T, c interface{}) int {
 	var bps []*api.Breakpoint
 	var err error
 	switch c := c.(type) {
-	case *rpc2.RPCClient:
+	case *rpcv2.RPCClient:
 		bps, err = c.ListBreakpoints(false)
 	case *rpc1.RPCClient:
 		bps, err = c.ListBreakpoints()

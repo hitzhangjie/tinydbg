@@ -993,7 +993,7 @@ func Test1ClientServer_CondBreakpoint(t *testing.T) {
 }
 
 func Test1Issue419(t *testing.T) {
-	// Calling service/rpc.(*Client).Halt could cause a crash because both Halt and Continue simultaneously
+	// Calling service/rpcv2.(*Client).Halt could cause a crash because both Halt and Continue simultaneously
 	// try to read 'runtime.g' and debug/dwarf.Data.Type is not thread safe
 	withTestClient1("issue419", t, func(c *rpc1.RPCClient) {
 		go func() {

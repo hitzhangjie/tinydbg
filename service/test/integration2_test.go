@@ -25,7 +25,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/logflags"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
 )
 
@@ -95,7 +95,7 @@ func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redir
 
 func withTestClient2Extended(name string, t *testing.T, buildFlags protest.BuildFlags, redirects [3]string, fn func(c service.Client, fixture protest.Fixture)) {
 	clientConn, fixture := startServer(name, buildFlags, t, redirects)
-	client := rpc2.NewClientFromConn(clientConn)
+	client := rpc.NewClientFromConn(clientConn)
 	defer func() {
 		client.Detach(true)
 	}()
@@ -1448,7 +1448,7 @@ func TestSkipPrologue2(t *testing.T) {
 }
 
 func TestIssue419(t *testing.T) {
-	// Calling service/rpc.(*Client).Halt could cause a crash because both Halt and Continue simultaneously
+	// Calling service/rpcv2.(*Client).Halt could cause a crash because both Halt and Continue simultaneously
 	// try to read 'runtime.g' and debug/dwarf.Data.Type is not thread safe
 	finish := make(chan struct{})
 	withTestClient2("issue419", t, func(c service.Client) {
@@ -1930,10 +1930,10 @@ func TestAcceptMulticlient(t *testing.T) {
 		<-disconnectChan
 		server.Stop()
 	}()
-	client1 := rpc2.NewClient(listener.Addr().String())
+	client1 := rpc.NewClient(listener.Addr().String())
 	client1.Disconnect(false)
 
-	client2 := rpc2.NewClient(listener.Addr().String())
+	client2 := rpc.NewClient(listener.Addr().String())
 	state := <-client2.Continue()
 	if state.CurrentThread.Function.Name() != "main.main" {
 		t.Fatalf("bad state after continue: %v\n", state)
@@ -1968,7 +1968,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 		server.Stop()
 	}()
 
-	client := rpc2.NewClient(listener.Addr().String())
+	client := rpc.NewClient(listener.Addr().String())
 	client.Disconnect(true /*continue*/)
 	time.Sleep(10 * time.Millisecond) // give server time to start running
 	close(disconnectChan)             // stop the server
@@ -2122,8 +2122,8 @@ type brokenRPCClient struct {
 
 func (c *brokenRPCClient) Detach(kill bool) error {
 	defer c.client.Close()
-	out := new(rpc2.DetachOut)
-	return c.call("Detach", rpc2.DetachIn{Kill: kill}, out)
+	out := new(rpc.DetachOut)
+	return c.call("Detach", rpc.DetachIn{Kill: kill}, out)
 }
 
 func (c *brokenRPCClient) call(method string, args, reply interface{}) error {
@@ -2210,7 +2210,7 @@ func TestIssue1787(t *testing.T) {
 	// Calling FunctionReturnLocations without a selected goroutine should
 	// work.
 	withTestClient2("testnextprog", t, func(c service.Client) {
-		if c, _ := c.(*rpc2.RPCClient); c != nil {
+		if c, _ := c.(*rpc.RPCClient); c != nil {
 			c.FunctionReturnLocations("main.main")
 		}
 	})
@@ -2398,7 +2398,7 @@ func TestDetachLeaveRunning(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := rpc2.NewClientFromConn(clientConn)
+	client := rpc.NewClientFromConn(clientConn)
 	defer server.Stop()
 	assertNoError(client.Detach(false), t, "Detach")
 }

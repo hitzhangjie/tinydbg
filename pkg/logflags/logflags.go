@@ -87,7 +87,7 @@ func RPC() bool {
 
 // RPCLogger returns a logger for RPC messages.
 func RPCLogger() *logrus.Entry {
-	return makeLogger(rpc, logrus.Fields{"layer": "rpc"})
+	return makeLogger(rpc, logrus.Fields{"layer": "rpcv2"})
 }
 
 // DAP returns true if dap package should log.
@@ -195,7 +195,7 @@ func Setup(logFlag bool, logstr, logDest string) error {
 			lldbServerOutput = true
 		case "debuglineerr":
 			debugLineErrors = true
-		case "rpc":
+		case "rpcv2":
 			rpc = true
 		case "dap":
 			dap = true

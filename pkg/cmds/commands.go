@@ -26,7 +26,7 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/dap"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
 )
 
@@ -126,7 +126,7 @@ func New(docCall bool) *cobra.Command {
 
 	rootCommand.PersistentFlags().BoolVarP(&headless, "headless", "", false, "Run debug server only, in headless mode.")
 	rootCommand.PersistentFlags().BoolVarP(&acceptMulti, "accept-multiclient", "", false, "Allows a headless server to accept multiple client connections.")
-	rootCommand.PersistentFlags().IntVar(&apiVersion, "api-version", 1, "Selects API version when headless. New clients should use v2. Can be reset via RPCServer.SetApiVersion. See Documentation/api/json-rpc/README.md.")
+	rootCommand.PersistentFlags().IntVar(&apiVersion, "api-version", 1, "Selects API version when headless. New clients should use v2. Can be reset via RPCServer.SetApiVersion. See Documentation/api/json-rpcv2/README.md.")
 	rootCommand.PersistentFlags().StringVar(&initFile, "init", "", "Init file, executed by the terminal client.")
 	rootCommand.PersistentFlags().StringVar(&buildFlags, "build-flags", buildFlagsDefault, "Build flags, to be passed to the compiler. For example: --build-flags=\"-tags=integration -mod=vendor -cover -v\"")
 	rootCommand.PersistentFlags().StringVar(&workingDir, "wd", "", "Working directory for running the program.")
@@ -383,7 +383,7 @@ names selected from this list:
 	gdbwire		Log connection to gdbserial backend
 	lldbout		Copy output from debugserver/lldb to standard output
 	debuglineerr	Log recoverable errors reading .debug_line
-	rpc		Log all RPC messages
+	rpcv2		Log all RPC messages
 	dap		Log all DAP messages
 	fncall		Log function call protocol
 	minidump	Log minidump loading
@@ -611,7 +611,7 @@ func traceCmd(cmd *cobra.Command, args []string) {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		client := rpc2.NewClientFromConn(clientConn)
+		client := rpcv2.NewClientFromConn(clientConn)
 		funcs, err := client.ListFunctions(regexp)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -805,11 +805,11 @@ func splitArgs(cmd *cobra.Command, args []string) ([]string, []string) {
 
 func connect(addr string, clientConn net.Conn, conf *config.Config, kind debugger.ExecuteKind) int {
 	// Create and start a terminal - attach to running instance
-	var client *rpc2.RPCClient
+	var client *rpcv2.RPCClient
 	if clientConn != nil {
-		client = rpc2.NewClientFromConn(clientConn)
+		client = rpcv2.NewClientFromConn(clientConn)
 	} else {
-		client = rpc2.NewClient(addr)
+		client = rpcv2.NewClient(addr)
 	}
 	if client.IsMulticlient() {
 		state, _ := client.GetStateNonBlocking()
@@ -965,7 +965,7 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 	var status int
 	if headless {
 		if continueOnStart {
-			client := rpc2.NewClient(listener.Addr().String())
+			client := rpcv2.NewClient(listener.Addr().String())
 			client.Disconnect(true) // true = continue after disconnect
 		}
 		waitForDisconnectSignal(disconnectChan)

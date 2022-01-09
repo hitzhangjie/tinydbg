@@ -29,7 +29,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/terminal"
 	"github.com/hitzhangjie/dlv/service/dap"
 	"github.com/hitzhangjie/dlv/service/dap/daptest"
-	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 var testBackend string
@@ -98,7 +98,7 @@ func TestBuild(t *testing.T) {
 
 	buildtestdir := filepath.Join(fixtures, "buildtest")
 
-	cmd = exec.Command(dlvbin, "debug", "--headless=true", "--listen="+listenAddr, "--api-version=2", "--backend="+testBackend, "--log", "--log-output=debugger,rpc")
+	cmd = exec.Command(dlvbin, "debug", "--headless=true", "--listen="+listenAddr, "--api-version=2", "--backend="+testBackend, "--log", "--log-output=debugger,rpcv2")
 	cmd.Dir = buildtestdir
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -117,7 +117,7 @@ func TestBuild(t *testing.T) {
 		}
 	}()
 
-	client := rpc2.NewClient(listenAddr)
+	client := rpcv2.NewClient(listenAddr)
 	state := <-client.Continue()
 
 	if !state.Exited {
@@ -266,7 +266,7 @@ func TestContinue(t *testing.T) {
 	}
 
 	// and detach from and kill the headless instance
-	client := rpc2.NewClient(listenAddr)
+	client := rpcv2.NewClient(listenAddr)
 	if err := client.Detach(true); err != nil {
 		t.Fatalf("error detaching from headless instance: %v", err)
 	}
@@ -338,7 +338,7 @@ func TestRedirect(t *testing.T) {
 	}
 
 	// and detach from and kill the headless instance
-	client := rpc2.NewClient(listenAddr)
+	client := rpcv2.NewClient(listenAddr)
 	_ = client.Detach(true)
 	cmd.Wait()
 }
@@ -530,7 +530,7 @@ func TestTypecheckRPC(t *testing.T) {
 		Mode: packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedName | packages.NeedCompiledGoFiles | packages.NeedTypes,
 		Fset: fset,
 	}
-	pkgs, err := packages.Load(cfg, "github.com/go-delve/delve/service/rpc2")
+	pkgs, err := packages.Load(cfg, "github.com/go-delve/delve/service/rpcv2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -538,7 +538,7 @@ func TestTypecheckRPC(t *testing.T) {
 	var serverMethods map[string]*types.Func
 	var info *types.Info
 	packages.Visit(pkgs, func(pkg *packages.Package) bool {
-		if pkg.PkgPath != "github.com/go-delve/delve/service/rpc2" {
+		if pkg.PkgPath != "github.com/go-delve/delve/service/rpcv2" {
 			return true
 		}
 		t.Logf("package found: %v", pkg.PkgPath)
@@ -802,10 +802,10 @@ func TestRemoteDAPClientMulti(t *testing.T) {
 	dapclient3.ExpectErrorResponseWith(t, dap.FailedToAttach, `Process \d+ has exited with status 0`, true)
 	closeDAPRemoteMultiClient(t, dapclient3, "exited")
 
-	// But rpc clients can still connect and restart
-	rpcclient := rpc2.NewClient(listenAddr)
+	// But rpcv2 clients can still connect and restart
+	rpcclient := rpcv2.NewClient(listenAddr)
 	if _, err := rpcclient.Restart(false); err != nil {
-		t.Errorf("error restarting with rpc client: %v", err)
+		t.Errorf("error restarting with rpcv2 client: %v", err)
 	}
 	if err := rpcclient.Detach(true); err != nil {
 		t.Fatalf("error detaching from headless instance: %v", err)

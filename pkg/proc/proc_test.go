@@ -2155,8 +2155,6 @@ func TestUnsupportedArch(t *testing.T) {
 	switch testBackend {
 	case "native":
 		p, err = native.Launch([]string{outfile}, ".", 0, []string{}, "", [3]string{})
-	case "lldb":
-		p, err = gdbserial.LLDBLaunch([]string{outfile}, ".", 0, []string{}, "", [3]string{})
 	default:
 		t.Skip("test not valid for this backend")
 	}

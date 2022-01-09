@@ -11,8 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hitzhangjie/dlv/pkg/proc/gdbserial"
-
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/pkg/proc"
 	"github.com/hitzhangjie/dlv/pkg/proc/native"
@@ -130,17 +128,9 @@ func withTestProcessArgs(name string, t *testing.T, wd string, args []string, bu
 	fixture := protest.BuildFixture(name, buildFlags)
 	var p *proc.Target
 	var err error
-	var tracedir string
 	switch testBackend {
 	case "native":
 		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", [3]string{})
-	case "lldb":
-		p, err = gdbserial.LLDBLaunch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", [3]string{})
-	case "rr":
-		protest.MustHaveRecordingAllowed(t)
-		t.Log("recording")
-		p, tracedir, err = gdbserial.RecordAndReplay(append([]string{fixture.Path}, args...), wd, true, []string{}, [3]string{})
-		t.Logf("replaying %q", tracedir)
 	default:
 		t.Fatalf("unknown backend %q", testBackend)
 	}

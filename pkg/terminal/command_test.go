@@ -23,7 +23,7 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpc2"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
 )
 
@@ -163,7 +163,7 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 	if err := server.Run(); err != nil {
 		t.Fatal(err)
 	}
-	client := rpc2.NewClient(listener.Addr().String())
+	client := rpcv2.NewClient(listener.Addr().String())
 	defer func() {
 		client.Detach(true)
 	}()

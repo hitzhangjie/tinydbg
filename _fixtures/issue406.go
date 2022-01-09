@@ -5,8 +5,6 @@ import (
 	"log"
 	"regexp"
 	"strings"
-
-	//	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Blacklist type is a map of Nodes with string keys

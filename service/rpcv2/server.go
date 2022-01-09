@@ -1,4 +1,4 @@
-package rpc2
+package rpcv2
 
 import (
 	"errors"
