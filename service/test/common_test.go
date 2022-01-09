@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/rpc1"
 	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
@@ -71,8 +70,6 @@ func countBreakpoints(t *testing.T, c interface{}) int {
 	switch c := c.(type) {
 	case *rpcv2.RPCClient:
 		bps, err = c.ListBreakpoints(false)
-	case *rpc1.RPCClient:
-		bps, err = c.ListBreakpoints()
 	}
 	assertNoError(err, t, "ListBreakpoints()")
 	bpcount := 0
