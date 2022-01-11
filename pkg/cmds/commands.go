@@ -71,13 +71,10 @@ var (
 	redirects []string
 
 	allowNonTerminalInteractive bool
-
-	loadConfErr error
 )
 
 // New returns an initialized command tree.
 func New() *cobra.Command {
-	rootCommand.DisableAutoGenTag = true
 	return rootCommand
 }
 
@@ -88,9 +85,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 		return 1
 	}
 	defer logflags.Close()
-	if loadConfErr != nil {
-		logflags.DebuggerLogger().Errorf("%v", loadConfErr)
-	}
 
 	if headless && (initFile != "") {
 		fmt.Fprint(os.Stderr, "Warning: init file ignored with --headless\n")

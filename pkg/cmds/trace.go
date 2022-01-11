@@ -52,9 +52,6 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
-		if loadConfErr != nil {
-			logflags.DebuggerLogger().Errorf("%v", loadConfErr)
-		}
 
 		if headless {
 			fmt.Fprintf(os.Stderr, "Warning: headless mode not supported with trace\n")

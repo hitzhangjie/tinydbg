@@ -60,10 +60,6 @@ func dapCmdRun(cmd *cobra.Command, args []string) {
 		}
 		defer logflags.Close()
 
-		if loadConfErr != nil {
-			logflags.DebuggerLogger().Errorf("%v", loadConfErr)
-		}
-
 		if cmd.Flag("headless").Changed {
 			fmt.Fprintf(os.Stderr, "Warning: dap mode is always headless\n")
 		}

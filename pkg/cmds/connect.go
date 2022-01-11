@@ -45,9 +45,6 @@ func connectCmdRun(cmd *cobra.Command, args []string) {
 		return
 	}
 	defer logflags.Close()
-	if loadConfErr != nil {
-		logflags.DebuggerLogger().Errorf("%v", loadConfErr)
-	}
 	addr := args[0]
 	if addr == "" {
 		fmt.Fprint(os.Stderr, "An empty address was provided. You must provide an address as the first argument.\n")

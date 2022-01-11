@@ -14,6 +14,7 @@ The goal of this tool is to provide a simple yet powerful interface for debuggin
 
 Pass flags to the program you are debugging using "--",  for example:
 "dlv exec ./hello -- server --config conf/config.toml"`,
+	DisableAutoGenTag: true,
 }
 
 func init() {
