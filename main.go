@@ -18,5 +18,5 @@ func main() {
 		log := logrus.WithFields(logrus.Fields{"layer": "dlv"})
 		log.Warnln("CGO_CFLAGS set, cgo code may be optimized")
 	}
-	cmds.New(false).Execute()
+	cmds.New().Execute()
 }

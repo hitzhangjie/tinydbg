@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path"
 	"runtime"
+	"sync"
 
 	"gopkg.in/yaml.v2"
 )
@@ -90,10 +91,20 @@ func (c *Config) GetSourceListLineCount() int {
 	return n
 }
 
+var loadConfigOnce sync.Once
+
 // LoadConfig attempts to populate a Config object from the config.yml file.
 func LoadConfig() (*Config, error) {
-	err := createConfigPath()
-	if err != nil {
+	var cfg *Config
+	var err error
+	loadConfigOnce.Do(func() {
+		cfg, err = loadConfig()
+	})
+	return cfg, err
+}
+
+func loadConfig() (*Config, error) {
+	if err := createConfigPath(); err != nil {
 		return &Config{}, fmt.Errorf("could not create config directory: %v", err)
 	}
 	fullConfigFile, err := GetConfigFilePath(configFile)
@@ -102,7 +113,6 @@ func LoadConfig() (*Config, error) {
 	}
 
 	hasOldConfig, _ := hasOldConfig()
-
 	if hasOldConfig {
 		userHomeDir := getUserHomeDir()
 		oldLocation := path.Join(userHomeDir, configDirHidden)
@@ -131,15 +141,12 @@ func LoadConfig() (*Config, error) {
 	}
 
 	var c Config
-	err = yaml.Unmarshal(data, &c)
-	if err != nil {
+	if err = yaml.Unmarshal(data, &c); err != nil {
 		return &Config{}, fmt.Errorf("unable to decode config file: %v", err)
 	}
-
 	if len(c.DebugInfoDirectories) == 0 {
 		c.DebugInfoDirectories = []string{"/usr/lib/debug/.build-id"}
 	}
-
 	return &c, nil
 }
 
