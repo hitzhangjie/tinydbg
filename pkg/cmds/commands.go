@@ -21,7 +21,6 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
 	"github.com/hitzhangjie/dlv/pkg/logflags"
 	"github.com/hitzhangjie/dlv/pkg/terminal"
-	"github.com/hitzhangjie/dlv/pkg/version"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/dap"
@@ -314,21 +313,6 @@ Currently supports linux/amd64 and linux/arm64 core files, windows/amd64 minidum
 		Run: coreCmd,
 	}
 	rootCommand.AddCommand(coreCommand)
-
-	// 'version' subcommand.
-	var versionVerbose = false
-	versionCommand := &cobra.Command{
-		Use:   "version",
-		Short: "Prints version.",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Delve Debugger\n%s\n", version.DelveVersion)
-			if versionVerbose {
-				fmt.Printf("Build Details: %s\n", version.BuildInfo())
-			}
-		},
-	}
-	versionCommand.Flags().BoolVarP(&versionVerbose, "verbose", "v", false, "print verbose version info")
-	rootCommand.AddCommand(versionCommand)
 
 	rootCommand.AddCommand(&cobra.Command{
 		Use:   "backend",
