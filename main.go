@@ -9,12 +9,14 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/cmds"
 )
 
+const cgoCflagsEnv = "CGO_CFLAGS"
+
 func main() {
-	const cgoCflagsEnv = "CGO_CFLAGS"
-	if os.Getenv(cgoCflagsEnv) == "" {
+	if v := os.Getenv(cgoCflagsEnv); v == "" {
 		os.Setenv(cgoCflagsEnv, "-O0 -g")
 	} else {
-		logrus.WithFields(logrus.Fields{"layer": "dlv"}).Warnln("CGO_CFLAGS already set, Cgo code could be optimized.")
+		log := logrus.WithFields(logrus.Fields{"layer": "dlv"})
+		log.Warnln("CGO_CFLAGS set, cgo code may be optimized")
 	}
 	cmds.New(false).Execute()
 }
