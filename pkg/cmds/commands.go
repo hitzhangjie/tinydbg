@@ -20,57 +20,49 @@ import (
 )
 
 var (
-	// log is whether to log debug statements.
-	log bool
-	// logOutput is a comma separated list of components that should produce debug output.
-	logOutput string
-	// logDest is the file path or file descriptor where logs should go.
-	logDest string
-	// headless is whether to run without terminal.
-	headless bool
-	// continueOnStart is whether to continue the process on startup
-	continueOnStart bool
-	// acceptMulti allows multiple clients to connect to the same server
-	acceptMulti bool
-	// addr is the debugging server listen address.
-	addr string
-	// initFile is the path to initialization file.
-	initFile string
-	// buildFlags is the flags passed during compiler invocation.
-	buildFlags string
-	// workingDir is the working directory for running the program.
-	workingDir string
-	// checkLocalConnUser is true if the debugger should check that local
-	// connections come from the same user that started the headless server
-	checkLocalConnUser bool
-	// tty is used to provide an alternate TTY for the program you wish to debug.
-	tty string
-	// disableASLR is used to disable ASLR
-	disableASLR bool
+	// logging options
 
-	// dapClientAddr is dap subcommand's flag that specifies the address of a DAP client.
-	// If it is specified, the dap server starts a debug session by dialing to the client.
-	// The dap server will serve only for the debug session.
-	dapClientAddr string
+	log       bool   // whether to log debug statements
+	logOutput string // a comma separated list of components that should produce debug output
+	logDest   string // the file path or file descriptor where logs should go
 
-	// backend selection
-	backend string
+	// debugger mode
+	headless        bool // whether to run without terminal
+	continueOnStart bool // whether to continue the process on startup
+	acceptMulti     bool // whether allows multiple clients to connect to the same server
+
+	// debugger settins
+
+	addr                        string   // the debugging server listen address
+	initFile                    string   // the path to initialization file
+	buildFlags                  string   // the flags passed during compiler invocation
+	workingDir                  string   // the working directory for running the program
+	tty                         string   // provide an alternate TTY for the program you wish to debug
+	disableASLR                 bool     // whether disables ASLR
+	backend                     string   // backend selection
+	redirects                   []string // redirect specifications for target process
+	allowNonTerminalInteractive bool
 
 	// checkGoVersion is true if the debugger should check the version of Go
 	// used to compile the executable and refuse to work on incompatible
 	// versions.
 	checkGoVersion bool
 
+	// dapClientAddr is dap subcommand's flag that specifies the address of a DAP client.
+	// If it is specified, the dap server starts a debug session by dialing to the client.
+	// The dap server will serve only for the debug session.
+	dapClientAddr string
+
+	// checkLocalConnUser is true if the debugger should check that local
+	// connections come from the same user that started the headless server
+	checkLocalConnUser bool
+
+	// trace settings
 	traceAttachPid  int
 	traceExecFile   string
 	traceTestBinary bool
 	traceStackDepth int
 	traceUseEBPF    bool
-
-	// redirect specifications for target process
-	redirects []string
-
-	allowNonTerminalInteractive bool
 )
 
 // New returns an initialized command tree.
