@@ -185,7 +185,7 @@ func Setup(logFlag bool, logstr, logDest string) error {
 	v := strings.Split(logstr, ",")
 	for _, logcmd := range v {
 		// If adding another value, do make sure to
-		// update "Help about logging flags" in commands.go.
+		// update "Help about logging flags" in cmds.go.
 		switch logcmd {
 		case "debugger":
 			debugger = true

@@ -18,9 +18,9 @@ var attachCommand = &cobra.Command{
 	Short: "Attach to running process and begin debugging.",
 	Long: `Attach to an already running process and begin debugging it.
 
-This command will cause Delve to take control of an already running process, and
-begin a new debug session.  When exiting the debug session you will have the
-option to let the process continue or kill it.
+This command will cause Delve to take control of an already running process, 
+and begin a new debug session. When exiting the debug session you will have 
+the option to let the process continue or kill it.
 `,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {

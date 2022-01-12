@@ -21,7 +21,6 @@ import (
 
 var (
 	// logging options
-
 	log       bool   // whether to log debug statements
 	logOutput string // a comma separated list of components that should produce debug output
 	logDest   string // the file path or file descriptor where logs should go
@@ -32,7 +31,6 @@ var (
 	acceptMulti     bool // whether allows multiple clients to connect to the same server
 
 	// debugger settins
-
 	addr                        string   // the debugging server listen address
 	initFile                    string   // the path to initialization file
 	buildFlags                  string   // the flags passed during compiler invocation

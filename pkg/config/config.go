@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"path/filepath"
 	"runtime"
 	"sync"
 
@@ -112,20 +113,6 @@ func loadConfig() (*Config, error) {
 		return &Config{}, fmt.Errorf("unable to get config file path: %v", err)
 	}
 
-	hasOldConfig, _ := hasOldConfig()
-	if hasOldConfig {
-		userHomeDir := getUserHomeDir()
-		oldLocation := path.Join(userHomeDir, configDirHidden)
-		if err := moveOldConfig(); err != nil {
-			return &Config{}, fmt.Errorf("unable to move old config: %v", err)
-		}
-
-		if err := os.RemoveAll(oldLocation); err != nil {
-			return &Config{}, fmt.Errorf("unable to remove old config location: %v", err)
-		}
-		fmt.Fprintf(os.Stderr, "Successfully moved config from: %s to: %s\n", oldLocation, fullConfigFile)
-	}
-
 	f, err := os.Open(fullConfigFile)
 	if err != nil {
 		f, err = createDefaultConfig(fullConfigFile)
@@ -204,10 +191,11 @@ func createDefaultConfig(path string) (*os.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to create config file: %v", err)
 	}
-	err = writeDefaultConfig(f)
-	if err != nil {
+
+	if err = writeDefaultConfig(f); err != nil {
 		return nil, fmt.Errorf("unable to write default configuration: %v", err)
 	}
+
 	f.Seek(0, io.SeekStart)
 	return f, nil
 }
@@ -280,35 +268,15 @@ func createConfigPath() error {
 // GetConfigFilePath gets the full path to the given config file name.
 func GetConfigFilePath(file string) (string, error) {
 	if configPath := os.Getenv("XDG_CONFIG_HOME"); configPath != "" {
-		return path.Join(configPath, configDir, file), nil
+		return filepath.Join(configPath, configDir, file), nil
 	}
 
 	userHomeDir := getUserHomeDir()
 
 	if runtime.GOOS == "linux" {
-		return path.Join(userHomeDir, ".config", configDir, file), nil
+		return filepath.Join(userHomeDir, ".config", configDir, file), nil
 	}
-	return path.Join(userHomeDir, configDirHidden, file), nil
-}
-
-// Checks if the user has a config at the old location: $HOME/.dlv
-func hasOldConfig() (bool, error) {
-	// If you don't have XDG_CONFIG_HOME set and aren't on Linux you have nothing to move
-	if os.Getenv("XDG_CONFIG_HOME") == "" && runtime.GOOS != "linux" {
-		return false, nil
-	}
-
-	userHomeDir := getUserHomeDir()
-
-	o := path.Join(userHomeDir, configDirHidden, configFile)
-	_, err := os.Stat(o)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
+	return filepath.Join(userHomeDir, configDirHidden, file), nil
 }
 
 func getUserHomeDir() string {
