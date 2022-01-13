@@ -9,7 +9,7 @@ require (
 	github.com/derekparker/trie v0.0.0-20200317170641-1fdf38b7b0e9
 	github.com/google/go-dap v0.6.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/mattn/go-colorable v0.0.9
+	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.3
 	github.com/peterh/liner v1.2.1
 	github.com/sirupsen/logrus v1.6.0
