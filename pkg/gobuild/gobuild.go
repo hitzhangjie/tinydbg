@@ -3,20 +3,20 @@
 package gobuild
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // Remove the file at path and issue a warning to stderr if this fails.
 // This can be used to remove the temporary binary generated for the session.
 func Remove(path string) {
 	if err := os.Remove(path); err != nil {
-		fmt.Fprintf(os.Stderr, "could not remove %v: %v\n", path, err)
+		log.Error("could not remove %v: %v", path, err)
 	}
 }
 

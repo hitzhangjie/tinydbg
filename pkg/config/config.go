@@ -80,6 +80,8 @@ type Config struct {
 
 	// DebugFileDirectories is the list of directories Delve will use
 	// in order to resolve external debug info files.
+	//
+	// TODO 这个可能对我们的mo没什么作用，macOS下dwarf与二进制信息分离还是有用的，linux下应该没有什么作用
 	DebugInfoDirectories []string `yaml:"debug-info-directories"`
 }
 

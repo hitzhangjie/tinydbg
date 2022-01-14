@@ -27,7 +27,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
 	"github.com/hitzhangjie/dlv/pkg/dwarf/regnum"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/proc"
 	"github.com/hitzhangjie/dlv/pkg/proc/core"
 	"github.com/hitzhangjie/dlv/pkg/proc/native"
@@ -54,7 +54,6 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "unknown build mode %q", buildMode)
 		os.Exit(1)
 	}
-	logflags.Setup(logConf != "", logConf, "")
 	os.Exit(protest.RunTestsWithFixtures(m))
 }
 
@@ -505,7 +504,7 @@ func testseq2Args(wd string, args []string, buildFlags protest.BuildFlags, t *te
 
 			if traceTestseq2 {
 				t.Logf("at %#x %s:%d", pc, f, ln)
-				fmt.Printf("at %#x %s:%d\n", pc, f, ln)
+				log.Info("at %#x %s:%d\n", pc, f, ln)
 			}
 			switch pos := tc.pos.(type) {
 			case int:

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/terminal"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
@@ -46,18 +46,11 @@ func init() {
 
 func traceCmdRun(cmd *cobra.Command, args []string) {
 	status := func() int {
-		err := logflags.Setup(log, logOutput, logDest)
-		defer logflags.Close()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
-		}
-
 		if headless {
-			fmt.Fprintf(os.Stderr, "Warning: headless mode not supported with trace\n")
+			log.Error("Warning: headless mode not supported with trace")
 		}
 		if acceptMulti {
-			fmt.Fprintf(os.Stderr, "Warning: accept multiclient mode not supported with trace")
+			log.Error("Warning: accept multiclient mode not supported with trace")
 		}
 
 		var regexp string
@@ -76,7 +69,7 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 		var debugname string
 		if traceAttachPid == 0 {
 			if dlvArgsLen >= 2 && traceExecFile != "" {
-				fmt.Fprintln(os.Stderr, "Cannot specify package when using exec.")
+				log.Error("Cannot specify package when using exec.")
 				return 1
 			}
 
@@ -194,12 +187,12 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 							_, seen := gFnEntrySeen[t.GoroutineID]
 							if seen {
 								for _, p := range t.ReturnParams {
-									fmt.Fprintf(os.Stderr, "=> %#v\n", p.Value)
+									log.Error("=> %#v", p.Value)
 								}
 								delete(gFnEntrySeen, t.GoroutineID)
 							} else {
 								gFnEntrySeen[t.GoroutineID] = struct{}{}
-								fmt.Fprintf(os.Stderr, "> (%d) %s(%s)\n", t.GoroutineID, t.FunctionName, params.String())
+								log.Error("> (%d) %s(%s)", t.GoroutineID, t.FunctionName, params.String())
 							}
 						}
 					}

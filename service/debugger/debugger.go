@@ -16,13 +16,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/pkg/locspec"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/proc"
 	"github.com/hitzhangjie/dlv/pkg/proc/core"
 	"github.com/hitzhangjie/dlv/pkg/proc/native"
@@ -61,8 +59,6 @@ type Debugger struct {
 
 	targetMutex sync.Mutex
 	target      *proc.Target
-
-	log *logrus.Entry
 
 	running      bool
 	runningMutex sync.Mutex
@@ -141,17 +137,15 @@ type Config struct {
 // New creates a new Debugger. ProcessArgs specify the commandline arguments for the
 // new process.
 func New(config *Config, processArgs []string) (*Debugger, error) {
-	logger := logflags.DebuggerLogger()
 	d := &Debugger{
 		config:      config,
 		processArgs: processArgs,
-		log:         logger,
 	}
 
 	// Create the process by either attaching or launching.
 	switch {
 	case d.config.AttachPid > 0:
-		d.log.Infof("attaching to pid %d", d.config.AttachPid)
+		log.Info("attaching to pid %d", d.config.AttachPid)
 		path := ""
 		if len(d.processArgs) > 0 {
 			path = d.processArgs[0]
@@ -168,7 +162,7 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		var err error
 		switch d.config.Backend {
 		default:
-			d.log.Infof("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
+			log.Info("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
 			p, err = core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
 		}
 		if err != nil {
@@ -182,7 +176,7 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		}
 
 	default:
-		d.log.Infof("launching process with args: %v", d.processArgs)
+		log.Info("launching process with args: %v", d.processArgs)
 		p, err := d.Launch(d.processArgs, d.config.WorkingDir)
 		if err != nil {
 			if _, ok := err.(*proc.ErrUnsupportedArch); !ok {
@@ -349,7 +343,7 @@ func (d *Debugger) FunctionReturnLocations(fnName string) ([]uint64, error) {
 // If `kill` is true we will kill the process after
 // detaching.
 func (d *Debugger) Detach(kill bool) error {
-	d.log.Debug("detaching")
+	log.Debug("detaching")
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
 	if ok, _ := d.target.Valid(); !ok {
@@ -607,7 +601,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint) (*api.Breakpoin
 	if err != nil {
 		return nil, err
 	}
-	d.log.Infof("created breakpoint: %#v", createdBp)
+	log.Info("created breakpoint: %#v", createdBp)
 	return createdBp, nil
 }
 
@@ -848,7 +842,7 @@ func (d *Debugger) clearBreakpoint(requestedBp *api.Breakpoint) (*api.Breakpoint
 		return nil, fmt.Errorf("unable to clear breakpoint %d (partial): %s", requestedBp.ID, buf.String())
 	}
 
-	d.log.Infof("cleared breakpoint: %#v", clearedBp)
+	log.Info("cleared breakpoint: %#v", clearedBp)
 	return clearedBp, nil
 }
 
@@ -1027,7 +1021,7 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 	if command.Name == api.Halt {
 		// RequestManualStop does not invoke any ptrace syscalls, so it's safe to
 		// access the process directly.
-		d.log.Debug("halting")
+		log.Debug("halting")
 
 		d.recordMutex.Lock()
 		if d.stopRecording == nil {
@@ -1057,16 +1051,16 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 
 	switch command.Name {
 	case api.Continue:
-		d.log.Debug("continuing")
+		log.Debug("continuing")
 		if err := d.target.ChangeDirection(proc.Forward); err != nil {
 			return nil, err
 		}
 		err = d.target.Continue()
 	case api.DirectionCongruentContinue:
-		d.log.Debug("continuing (direction congruent)")
+		log.Debug("continuing (direction congruent)")
 		err = d.target.Continue()
 	case api.Call:
-		d.log.Debugf("function call %s", command.Expr)
+		log.Debug("function call %s", command.Expr)
 		if err := d.target.ChangeDirection(proc.Forward); err != nil {
 			return nil, err
 		}
@@ -1082,65 +1076,65 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 		}
 		err = proc.EvalExpressionWithCalls(d.target, g, command.Expr, *api.LoadConfigToProc(command.ReturnInfoLoadConfig), !command.UnsafeCall)
 	case api.Rewind:
-		d.log.Debug("rewinding")
+		log.Debug("rewinding")
 		if err := d.target.ChangeDirection(proc.Backward); err != nil {
 			return nil, err
 		}
 		err = d.target.Continue()
 	case api.Next:
-		d.log.Debug("nexting")
+		log.Debug("nexting")
 		if err := d.target.ChangeDirection(proc.Forward); err != nil {
 			return nil, err
 		}
 		err = d.target.Next()
 	case api.ReverseNext:
-		d.log.Debug("reverse nexting")
+		log.Debug("reverse nexting")
 		if err := d.target.ChangeDirection(proc.Backward); err != nil {
 			return nil, err
 		}
 		err = d.target.Next()
 	case api.Step:
-		d.log.Debug("stepping")
+		log.Debug("stepping")
 		if err := d.target.ChangeDirection(proc.Forward); err != nil {
 			return nil, err
 		}
 		err = d.target.Step()
 	case api.ReverseStep:
-		d.log.Debug("reverse stepping")
+		log.Debug("reverse stepping")
 		if err := d.target.ChangeDirection(proc.Backward); err != nil {
 			return nil, err
 		}
 		err = d.target.Step()
 	case api.StepInstruction:
-		d.log.Debug("single stepping")
+		log.Debug("single stepping")
 		if err := d.target.ChangeDirection(proc.Forward); err != nil {
 			return nil, err
 		}
 		err = d.target.StepInstruction()
 	case api.ReverseStepInstruction:
-		d.log.Debug("reverse single stepping")
+		log.Debug("reverse single stepping")
 		if err := d.target.ChangeDirection(proc.Backward); err != nil {
 			return nil, err
 		}
 		err = d.target.StepInstruction()
 	case api.StepOut:
-		d.log.Debug("step out")
+		log.Debug("step out")
 		if err := d.target.ChangeDirection(proc.Forward); err != nil {
 			return nil, err
 		}
 		err = d.target.StepOut()
 	case api.ReverseStepOut:
-		d.log.Debug("reverse step out")
+		log.Debug("reverse step out")
 		if err := d.target.ChangeDirection(proc.Backward); err != nil {
 			return nil, err
 		}
 		err = d.target.StepOut()
 	case api.SwitchThread:
-		d.log.Debugf("switching to thread %d", command.ThreadID)
+		log.Debug("switching to thread %d", command.ThreadID)
 		err = d.target.SwitchThread(command.ThreadID)
 		withBreakpointInfo = false
 	case api.SwitchGoroutine:
-		d.log.Debugf("switching to goroutine %d", command.GoroutineID)
+		log.Debug("switching to goroutine %d", command.GoroutineID)
 		var g *proc.G
 		g, err = proc.FindGoroutine(d.target, command.GoroutineID)
 		if err == nil {

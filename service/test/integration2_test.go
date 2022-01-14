@@ -21,7 +21,6 @@ import (
 	"github.com/hitzhangjie/dlv/service/debugger"
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
@@ -49,7 +48,6 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "unknown build mode %q", buildMode)
 		os.Exit(1)
 	}
-	logflags.Setup(logOutput != "", logOutput, "")
 	os.Exit(protest.RunTestsWithFixtures(m))
 }
 

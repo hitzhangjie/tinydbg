@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-dap"
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
 	"github.com/hitzhangjie/dlv/pkg/proc"
 	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
 	"github.com/hitzhangjie/dlv/service"
@@ -48,7 +47,6 @@ func TestMain(m *testing.M) {
 	var logOutput string
 	flag.StringVar(&logOutput, "log-output", logOutputVal, "configures log output")
 	flag.Parse()
-	logflags.Setup(logOutput != "", logOutput, "")
 	protest.DefaultTestBackend(&testBackend)
 	os.Exit(protest.RunTestsWithFixtures(m))
 }

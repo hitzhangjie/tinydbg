@@ -17,6 +17,7 @@ import (
 
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/locspec"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/terminal/colorize"
 	"github.com/hitzhangjie/dlv/pkg/terminal/starbind"
 	"github.com/hitzhangjie/dlv/service"
@@ -150,25 +151,25 @@ func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 		t.starlarkEnv.Cancel()
 		state, err := t.client.GetStateNonBlocking()
 		if err == nil && state.Recording {
-			fmt.Printf("received SIGINT, stopping recording (will not forward signal)\n")
+			log.Info("received SIGINT, stopping recording (will not forward signal)")
 			err := t.client.StopRecording()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
+				log.Error("%v", err)
 			}
 			continue
 		}
 		if err == nil && state.CoreDumping {
-			fmt.Printf("received SIGINT, stopping dump\n")
+			log.Info("received SIGINT, stopping dump")
 			err := t.client.CoreDumpCancel()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
+				log.Error("%v", err)
 			}
 			continue
 		}
 		if multiClient {
 			answer, err := t.line.Prompt("Would you like to [p]ause the target (returning to Delve's prompt) or [q]uit this client (leaving the target running) [p/q]? ")
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v", err)
+				log.Error("%v", err)
 				continue
 			}
 			answer = strings.TrimSpace(answer)
@@ -176,7 +177,7 @@ func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 			case "p":
 				_, err := t.client.Halt()
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "%v", err)
+					log.Error("%v", err)
 				}
 			case "q":
 				t.quittingMutex.Lock()
@@ -184,19 +185,19 @@ func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 				t.quittingMutex.Unlock()
 				err := t.client.Disconnect(false)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "%v", err)
+					log.Error("%v", err)
 				} else {
 					t.Close()
 				}
 			default:
-				fmt.Println("only p or q allowed")
+				log.Info("only p or q allowed")
 			}
 
 		} else {
-			fmt.Printf("received SIGINT, stopping process (will not forward signal)\n")
+			log.Info("received SIGINT, stopping process (will not forward signal)")
 			_, err := t.client.Halt()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v", err)
+				log.Error("%v", err)
 			}
 		}
 	}
@@ -245,18 +246,18 @@ func (t *Term) Run() (int, error) {
 
 	fullHistoryFile, err := config.GetConfigFilePath(historyFile)
 	if err != nil {
-		fmt.Printf("Unable to load history file: %v.", err)
+		log.Error("Unable to load history file: %v.", err)
 	}
 
 	t.historyFile, err = os.OpenFile(fullHistoryFile, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
-		fmt.Printf("Unable to open history file: %v. History will not be saved for this session.", err)
+		log.Error("Unable to open history file: %v. History will not be saved for this session.", err)
 	}
 	if _, err := t.line.ReadHistory(t.historyFile); err != nil {
-		fmt.Printf("Unable to read history file: %v", err)
+		log.Error("Unable to read history file: %v", err)
 	}
 
-	fmt.Println("Type 'help' for list of commands.")
+	log.Info("Type 'help' for list of commands.")
 
 	if t.InitFile != "" {
 		err := t.cmds.executeFile(t, t.InitFile)
@@ -264,7 +265,7 @@ func (t *Term) Run() (int, error) {
 			if _, ok := err.(ExitRequestError); ok {
 				return t.handleExit()
 			}
-			fmt.Fprintf(os.Stderr, "Error executing init file: %s\n", err)
+			log.Error("Error executing init file: %s", err)
 		}
 	}
 
@@ -278,10 +279,10 @@ func (t *Term) Run() (int, error) {
 		cmdstr, err := t.promptForInput()
 		if err != nil {
 			if err == io.EOF {
-				fmt.Println("exit")
+				log.Error("exit")
 				return t.handleExit()
 			}
-			return 1, fmt.Errorf("Prompt for input failed.\n")
+			return 1, fmt.Errorf("Prompt for input failed.")
 		}
 
 		if strings.TrimSpace(cmdstr) == "" {
@@ -306,7 +307,7 @@ func (t *Term) Run() (int, error) {
 				if quitting {
 					return t.handleExit()
 				}
-				fmt.Fprintf(os.Stderr, "Command failed: %s\n", err)
+				log.Error("Command failed: %s", err)
 			}
 		}
 	}
@@ -385,10 +386,10 @@ func yesno(line *liner.State, question string) (bool, error) {
 func (t *Term) handleExit() (int, error) {
 	if t.historyFile != nil {
 		if _, err := t.line.WriteHistory(t.historyFile); err != nil {
-			fmt.Println("readline history error:", err)
+			log.Error("readline history error:", err)
 		}
 		if err := t.historyFile.Close(); err != nil {
-			fmt.Printf("error closing history file: %s\n", err)
+			log.Error("error closing history file: %s", err)
 		}
 	}
 
@@ -497,10 +498,10 @@ func (t *Term) printDisplay(i int) {
 		if isErrProcessExited(err) {
 			return
 		}
-		fmt.Printf("%d: %s = error %v\n", i, expr, err)
+		log.Error("%d: %s = error %v", i, expr, err)
 		return
 	}
-	fmt.Printf("%d: %s = %s\n", i, val.Name, val.SinglelineStringFormatted(fmtstr))
+	log.Info("%d: %s = %s", i, val.Name, val.SinglelineStringFormatted(fmtstr))
 }
 
 func (t *Term) printDisplays() {

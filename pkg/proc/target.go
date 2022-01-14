@@ -10,6 +10,7 @@ import (
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/proc/internal/ebpf"
 )
 
@@ -359,22 +360,21 @@ func setAsyncPreemptOff(p *Target, v int64) {
 	if producer := p.BinInfo().Producer(); producer == "" || !goversion.ProducerAfterOrEqual(producer, 1, 14) {
 		return
 	}
-	logger := p.BinInfo().logger
 	scope := globalScope(p, p.BinInfo(), p.BinInfo().Images[0], p.Memory())
 	// +rtype -var debug anytype
 	debugv, err := scope.findGlobal("runtime", "debug")
 	if err != nil || debugv.Unreadable != nil {
-		logger.Warnf("could not find runtime/debug variable (or unreadable): %v %v", err, debugv.Unreadable)
+		log.Warn("could not find runtime/debug variable (or unreadable): %v %v", err, debugv.Unreadable)
 		return
 	}
 	asyncpreemptoffv, err := debugv.structMember("asyncpreemptoff") // +rtype int32
 	if err != nil {
-		logger.Warnf("could not find asyncpreemptoff field: %v", err)
+		log.Warn("could not find asyncpreemptoff field: %v", err)
 		return
 	}
 	asyncpreemptoffv.loadValue(loadFullValue)
 	if asyncpreemptoffv.Unreadable != nil {
-		logger.Warnf("asyncpreemptoff field unreadable: %v", asyncpreemptoffv.Unreadable)
+		log.Warn("asyncpreemptoff field unreadable: %v", asyncpreemptoffv.Unreadable)
 		return
 	}
 	p.asyncPreemptChanged = true
@@ -382,7 +382,7 @@ func setAsyncPreemptOff(p *Target, v int64) {
 
 	err = scope.setValue(asyncpreemptoffv, newConstant(constant.MakeInt64(v), scope.Mem), "")
 	if err != nil {
-		logger.Warnf("could not set asyncpreemptoff %v", err)
+		log.Warn("could not set asyncpreemptoff %v", err)
 	}
 }
 

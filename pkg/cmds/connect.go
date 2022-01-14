@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hitzhangjie/dlv/pkg/config"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/terminal"
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/rpcv2"
@@ -39,12 +39,6 @@ func connectCmdRun(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	if err := logflags.Setup(log, logOutput, logDest); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-		return
-	}
-	defer logflags.Close()
 	addr := args[0]
 	if addr == "" {
 		fmt.Fprint(os.Stderr, "An empty address was provided. You must provide an address as the first argument.\n")
@@ -70,7 +64,7 @@ func connect(addr string, clientConn net.Conn, conf *config.Config, kind debugge
 		if state != nil && state.Running {
 			_, err := client.Halt()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "could not halt: %v", err)
+				log.Error("could not halt: %v", err)
 				return 1
 			}
 		}
@@ -79,7 +73,7 @@ func connect(addr string, clientConn net.Conn, conf *config.Config, kind debugge
 	term.InitFile = initFile
 	status, err := term.Run()
 	if err != nil {
-		fmt.Println(err)
+		log.Error("%v", err)
 	}
 	return status
 }

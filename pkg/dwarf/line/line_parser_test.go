@@ -6,7 +6,6 @@ import (
 	"debug/macho"
 	"debug/pe"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -18,6 +17,7 @@ import (
 	"unsafe"
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/godwarf"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 )
 
@@ -258,7 +258,7 @@ func setupTestPCToLine(t testing.TB, lineInfos DebugLines) ([]pctolineEntry, []u
 	return entries, basePCs
 }
 
-func runTestPCToLine(t testing.TB, lineInfos DebugLines, entries []pctolineEntry, basePCs []uint64, log bool, testSize uint64) {
+func runTestPCToLine(t testing.TB, lineInfos DebugLines, entries []pctolineEntry, basePCs []uint64, logged bool, testSize uint64) {
 	const samples = 1000
 	t0 := time.Now()
 
@@ -271,8 +271,8 @@ func runTestPCToLine(t testing.TB, lineInfos DebugLines, entries []pctolineEntry
 		basePC := basePCs[basePCIdx]
 		file, line := lineInfos[0].PCToLine(basePC, pc)
 		if pc == entries[i].pc {
-			if i%samples == 0 && log {
-				fmt.Printf("match %x / %x (%v)\n", pc, entries[len(entries)-1].pc, time.Since(t0)/samples)
+			if i%samples == 0 && logged {
+				log.Info("match %x / %x (%v)", pc, entries[len(entries)-1].pc, time.Since(t0)/samples)
 				t0 = time.Now()
 			}
 

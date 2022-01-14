@@ -42,6 +42,8 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/peterh/liner"
+
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // REPL executes a read, eval, print loop.
@@ -65,7 +67,7 @@ func (env *Env) REPL() error {
 			return err
 		}
 	}
-	fmt.Println()
+	log.Info("")
 	return env.exportGlobals(globals)
 }
 
@@ -122,7 +124,7 @@ func rep(rl *liner.State, thread *starlark.Thread, globals starlark.StringDict) 
 
 		// print
 		if v != starlark.None {
-			fmt.Println(v)
+			log.Info("%v", v)
 		}
 	} else {
 		// compile

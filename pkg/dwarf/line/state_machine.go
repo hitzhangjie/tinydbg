@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 type Location struct {
@@ -135,9 +136,7 @@ func (lineInfo *DebugLineInfo) AllPCsForFileLines(f string, m map[int][]uint64) 
 
 	for {
 		if err := sm.next(); err != nil {
-			if lineInfo.Logf != nil {
-				lineInfo.Logf("AllPCsForFileLine error: %v", err)
-			}
+			log.Error("AllPCsForFileLine error: %v", err)
 			break
 		}
 		if sm.address != lastAddr && sm.isStmt && sm.valid && sm.file == f {
@@ -167,9 +166,7 @@ func (lineInfo *DebugLineInfo) AllPCsBetween(begin, end uint64, excludeFile stri
 
 	for {
 		if err := sm.next(); err != nil {
-			if lineInfo.Logf != nil {
-				lineInfo.Logf("AllPCsBetween error: %v", err)
-			}
+			log.Error("AllPCsBetween error: %v", err)
 			break
 		}
 		if !sm.valid {
@@ -246,9 +243,7 @@ func (lineInfo *DebugLineInfo) stateMachineFor(basePC, pc uint64) *StateMachine 
 func (sm *StateMachine) PCToLine(pc uint64) (string, int, bool) {
 	if !sm.started {
 		if err := sm.next(); err != nil {
-			if sm.dbl.Logf != nil {
-				sm.dbl.Logf("PCToLine error: %v", err)
-			}
+			log.Error("PCToLine error: %v", err)
 			return "", 0, false
 		}
 	}
@@ -265,9 +260,7 @@ func (sm *StateMachine) PCToLine(pc uint64) (string, int, bool) {
 			}
 		}
 		if err := sm.next(); err != nil {
-			if sm.dbl.Logf != nil {
-				sm.dbl.Logf("PCToLine error: %v", err)
-			}
+			log.Error("PCToLine error: %v", err)
 			break
 		}
 	}
@@ -295,8 +288,8 @@ func (lineInfo *DebugLineInfo) LineToPCs(filename string, lineno int) []PCStmt {
 
 	for {
 		if err := sm.next(); err != nil {
-			if lineInfo.Logf != nil && err != io.EOF {
-				lineInfo.Logf("LineToPCs error: %v", err)
+			if err != io.EOF {
+				log.Error("LineToPCs error: %v", err)
 			}
 			break
 		}
@@ -325,9 +318,7 @@ func (lineInfo *DebugLineInfo) PrologueEndPC(start, end uint64) (pc uint64, file
 			}
 		}
 		if err := sm.next(); err != nil {
-			if lineInfo.Logf != nil {
-				lineInfo.Logf("PrologueEnd error: %v", err)
-			}
+			log.Error("PrologueEnd error: %v", err)
 			return 0, "", 0, false
 		}
 	}
@@ -352,9 +343,7 @@ func (lineInfo *DebugLineInfo) FirstStmtForLine(start, end uint64) (pc uint64, f
 			}
 		}
 		if err := sm.next(); err != nil {
-			if lineInfo.Logf != nil {
-				lineInfo.Logf("FirstStmtForLine error: %v", err)
-			}
+			log.Error("FirstStmtForLine error: %v", err)
 			return 0, "", 0, false
 		}
 	}
@@ -367,9 +356,7 @@ func (lineInfo *DebugLineInfo) FirstFile() string {
 			return sm.file
 		}
 		if err := sm.next(); err != nil {
-			if lineInfo.Logf != nil {
-				lineInfo.Logf("FirstFile error: %v", err)
-			}
+			log.Error("FirstFile error: %v", err)
 			return ""
 		}
 	}
@@ -411,7 +398,7 @@ func (sm *StateMachine) next() error {
 			for i := 0; i < int(opnum); i++ {
 				util.DecodeSLEB128(sm.buf)
 			}
-			fmt.Printf("unknown opcode %d(0x%x), %d arguments, file %s, line %d, address 0x%x\n", b, b, opnum, sm.file, sm.line, sm.address)
+			log.Warn("unknown opcode %d(0x%x), %d arguments, file %s, line %d, address 0x%x", b, b, opnum, sm.file, sm.line, sm.address)
 		}
 	} else {
 		execSpecialOpcode(sm, b)

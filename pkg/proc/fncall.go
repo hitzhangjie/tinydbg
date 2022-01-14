@@ -18,7 +18,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/dwarf/reader"
 	"github.com/hitzhangjie/dlv/pkg/dwarf/regnum"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // This file implements the function call injection introduced in go1.11.
@@ -411,7 +411,7 @@ func (err fncallPanicErr) Error() string {
 }
 
 func fncallLog(fmtstr string, args ...interface{}) {
-	logflags.FnCallLogger().Infof(fmtstr, args...)
+	log.Info(fmtstr, args...)
 }
 
 // writePointer writes val as an architecture pointer at addr in mem.
@@ -790,18 +790,16 @@ func funcCallStep(callScope *EvalScope, fncall *functionCallState, thread Thread
 
 	regval := bi.Arch.RegistersToDwarfRegisters(0, regs).Uint64Val(protocolReg)
 
-	if logflags.FnCall() {
-		loc, _ := thread.Location()
-		var pc uint64
-		var fnname string
-		if loc != nil {
-			pc = loc.PC
-			if loc.Fn != nil {
-				fnname = loc.Fn.Name
-			}
+	loc, _ := thread.Location()
+	var pc uint64
+	var fnname string
+	if loc != nil {
+		pc = loc.PC
+		if loc.Fn != nil {
+			fnname = loc.Fn.Name
 		}
-		fncallLog("function call interrupt gid=%d (original) thread=%d regval=%#x (PC=%#x in %s)", callScope.g.ID, thread.ThreadID(), regval, pc, fnname)
 	}
+	fncallLog("function call interrupt gid=%d (original) thread=%d regval=%#x (PC=%#x in %s)", callScope.g.ID, thread.ThreadID(), regval, pc, fnname)
 
 	switch regval {
 	case debugCallRegPrecheckFailed:

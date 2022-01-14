@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // EnableRace allows to configure whether the race detector is enabled on target process.
@@ -155,8 +156,8 @@ func BuildFixture(name string, flags BuildFlags) Fixture {
 
 	// Build the test binary
 	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Printf("Error compiling %s: %s\n", path, err)
-		fmt.Printf("%s\n", string(out))
+		log.Error("Error compiling %s: %s", path, err)
+		log.Error("%s", string(out))
 		os.Exit(1)
 	}
 
@@ -164,8 +165,8 @@ func BuildFixture(name string, flags BuildFlags) Fixture {
 		cmd := exec.Command("dwz", tmpfile)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			if regexp.MustCompile(`dwz: Section offsets in (.*?) not monotonically increasing`).FindString(string(out)) == "" {
-				fmt.Printf("Error running dwz on %s: %s\n", tmpfile, err)
-				fmt.Printf("%s\n", string(out))
+				log.Error("Error running dwz on %s: %s", tmpfile, err)
+				log.Error("%s\n", string(out))
 				os.Exit(1)
 			}
 		}

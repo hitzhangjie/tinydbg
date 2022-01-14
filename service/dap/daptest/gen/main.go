@@ -4,7 +4,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"go/format"
 	"go/types"
 	"io/ioutil"
@@ -14,6 +13,8 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	_ "github.com/google/go-dap"
+
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 var oFlag = flag.String("o", "", "output file name")
@@ -65,18 +66,18 @@ func main() {
 	flag.Parse()
 
 	if *oFlag == "" {
-		fmt.Fprintf(os.Stderr, "-o must be provided\n")
+		log.Error("-o must be provided")
 	}
 
 	pkgs, err := packages.Load(&packages.Config{
 		Mode: packages.NeedTypes,
 	}, "github.com/google/go-dap")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "load: %v\n", err)
+		log.Error("load: %v", err)
 		os.Exit(1)
 	}
 	if len(pkgs) != 1 || pkgs[0].Types == nil {
-		fmt.Fprintf(os.Stderr, "invalid package was loaded: %#v\n", pkgs)
+		log.Error("invalid package was loaded: %#v", pkgs)
 		os.Exit(1)
 	}
 
@@ -103,16 +104,16 @@ func main() {
 
 	buf := &bytes.Buffer{}
 	if err := tmpl.Execute(buf, messages); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to generate: %v\n", err)
+		log.Error("Failed to generate: %v", err)
 		os.Exit(1)
 	}
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Generated invalid go code: %v\n", err)
+		log.Error("Generated invalid go code: %v", err)
 		os.Exit(1)
 	}
 	if err := ioutil.WriteFile(*oFlag, formatted, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to write: %v\n", err)
+		log.Error("Failed to write: %v", err)
 		os.Exit(1)
 	}
 }

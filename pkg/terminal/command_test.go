@@ -18,7 +18,7 @@ import (
 
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/proc/test"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
@@ -37,10 +37,9 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	test.DefaultTestBackend(&testBackend)
 	if buildMode != "" && buildMode != "pie" {
-		fmt.Fprintf(os.Stderr, "unknown build mode %q", buildMode)
+		log.Error("unknown build mode %q", buildMode)
 		os.Exit(1)
 	}
-	logflags.Setup(logConf != "", logConf, "")
 	os.Exit(test.RunTestsWithFixtures(m))
 }
 

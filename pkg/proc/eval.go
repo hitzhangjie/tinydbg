@@ -20,7 +20,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
 	"github.com/hitzhangjie/dlv/pkg/dwarf/reader"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 var errOperationOnSpecialFloat = errors.New("operations on non-finite floats not implemented")
@@ -243,13 +243,13 @@ func (scope *EvalScope) Locals(flags localsFlags) ([]*Variable, error) {
 			if name == goDictionaryName {
 				dictVar, err := extractVarInfoFromEntry(scope.target, scope.BinInfo, scope.image(), scope.Regs, scope.Mem, entry.Tree, 0)
 				if err != nil {
-					logflags.DebuggerLogger().Errorf("could not load %s variable: %v", name, err)
+					log.Error("could not load %s variable: %v", name, err)
 				} else if dictVar.Unreadable != nil {
-					logflags.DebuggerLogger().Errorf("could not load %s variable: %v", name, dictVar.Unreadable)
+					log.Error("could not load %s variable: %v", name, dictVar.Unreadable)
 				} else {
 					scope.dictAddr, err = readUintRaw(dictVar.mem, dictVar.Addr, int64(scope.BinInfo.Arch.PtrSize()))
 					if err != nil {
-						logflags.DebuggerLogger().Errorf("could not load %s variable: %v", name, err)
+						log.Error("could not load %s variable: %v", name, err)
 					}
 				}
 				break

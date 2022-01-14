@@ -3,7 +3,7 @@ package goversion
 import (
 	"fmt"
 
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 var (
@@ -27,14 +27,14 @@ func Compatible(producer string, warnonly bool) error {
 	verstr := fmt.Sprintf("%d.%d.%d", ver.Major, ver.Minor, ver.Rev)
 	if !ver.AfterOrEqual(GoVersion{MinSupportedVersionOfGoMajor, MinSupportedVersionOfGoMinor, -1, 0, 0, ""}) {
 		if warnonly {
-			logflags.WriteError(fmt.Sprintf(goTooOldWarn, verstr))
+			log.Error(goTooOldWarn, verstr)
 			return nil
 		}
 		return fmt.Errorf(goTooOldErr, verstr)
 	}
 	if ver.AfterOrEqual(GoVersion{MaxSupportedVersionOfGoMajor, MaxSupportedVersionOfGoMinor + 1, -1, 0, 0, ""}) {
 		if warnonly {
-			logflags.WriteError(fmt.Sprintf(dlvTooOldWarn, verstr))
+			log.Error(fmt.Sprintf(dlvTooOldWarn, verstr))
 			return nil
 		}
 		return fmt.Errorf(dlvTooOldErr, verstr)

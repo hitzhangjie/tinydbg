@@ -1,14 +1,13 @@
 package cmds
 
 import (
-	"fmt"
 	"net"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/hitzhangjie/dlv/pkg/config"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/dap"
 	"github.com/hitzhangjie/dlv/service/debugger"
@@ -54,39 +53,33 @@ func dapCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	status := func() int {
-		if err := logflags.Setup(log, logOutput, logDest); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
-		}
-		defer logflags.Close()
-
 		if cmd.Flag("headless").Changed {
-			fmt.Fprintf(os.Stderr, "Warning: dap mode is always headless\n")
+			log.Error("Warning: dap mode is always headless")
 		}
 		if acceptMulti {
-			fmt.Fprintf(os.Stderr, "Warning: accept-multiclient mode not supported with dap\n")
+			log.Error("Warning: accept-multiclient mode not supported with dap")
 		}
 		if initFile != "" {
-			fmt.Fprint(os.Stderr, "Warning: init file ignored with dap\n")
+			log.Error("Warning: init file ignored with dap")
 		}
 		if continueOnStart {
-			fmt.Fprintf(os.Stderr, "Warning: continue ignored with dap; specify via launch/attach request instead\n")
+			log.Error("Warning: continue ignored with dap; specify via launch/attach request instead")
 		}
 		if backend != "default" {
-			fmt.Fprintf(os.Stderr, "Warning: backend ignored with dap; specify via launch/attach request instead\n")
+			log.Error("Warning: backend ignored with dap; specify via launch/attach request instead")
 		}
 		if buildFlags != "" {
-			fmt.Fprintf(os.Stderr, "Warning: build flags ignored with dap; specify via launch/attach request instead\n")
+			log.Error("Warning: build flags ignored with dap; specify via launch/attach request instead")
 		}
 		if workingDir != "" {
-			fmt.Fprintf(os.Stderr, "Warning: working directory ignored with dap: specify via launch request instead\n")
+			log.Error("Warning: working directory ignored with dap: specify via launch request instead")
 		}
 		dlvArgs, targetArgs := splitArgs(cmd, args)
 		if len(dlvArgs) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: debug arguments ignored with dap; specify via launch/attach request instead\n")
+			log.Error("Warning: debug arguments ignored with dap; specify via launch/attach request instead")
 		}
 		if len(targetArgs) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: program flags ignored with dap; specify via launch/attach request instead\n")
+			log.Error("Warning: program flags ignored with dap; specify via launch/attach request instead")
 		}
 
 		disconnectChan := make(chan struct{})
@@ -104,7 +97,7 @@ func dapCmdRun(cmd *cobra.Command, args []string) {
 		if dapClientAddr == "" {
 			listener, err := net.Listen("tcp", addr)
 			if err != nil {
-				fmt.Printf("couldn't start listener: %s\n", err)
+				log.Error("couldn't start listener: %s", err)
 				return 1
 			}
 			config.Listener = listener
@@ -112,7 +105,7 @@ func dapCmdRun(cmd *cobra.Command, args []string) {
 			var err error
 			conn, err = net.Dial("tcp", dapClientAddr)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to connect to the DAP client: %v\n", err)
+				log.Error("Failed to connect to the DAP client: %v", err)
 				return 1
 			}
 		}

@@ -1,7 +1,6 @@
 package cmds
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -9,6 +8,7 @@ import (
 
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
@@ -54,7 +54,7 @@ func debugCmdRun(cmd *cobra.Command, args []string) {
 func buildBinary(cmd *cobra.Command, args []string, isTest bool) (string, bool) {
 	debugname, err := filepath.Abs(cmd.Flag("output").Value.String())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		log.Error("%v", err)
 		return "", false
 	}
 
@@ -64,7 +64,7 @@ func buildBinary(cmd *cobra.Command, args []string, isTest bool) (string, bool) 
 		err = gobuild.GoBuild(debugname, args, buildFlags)
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		log.Error("%v", err)
 		return "", false
 	}
 	return debugname, true

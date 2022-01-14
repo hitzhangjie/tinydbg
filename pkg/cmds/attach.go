@@ -2,13 +2,13 @@ package cmds
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/hitzhangjie/dlv/pkg/config"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
@@ -44,7 +44,7 @@ func attachCmdRun(cmd *cobra.Command, args []string) {
 
 	pid, err := strconv.Atoi(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid pid: %s\n", args[0])
+		log.Error("Invalid pid: %s", args[0])
 		os.Exit(1)
 	}
 	os.Exit(execute(pid, args[1:], conf, "", debugger.ExecutingOther, args, buildFlags))

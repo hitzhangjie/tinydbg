@@ -3,10 +3,13 @@ package line
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"os"
 	"path"
 	"strings"
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // DebugLinePrologue prologue of .debug_line data.
@@ -30,8 +33,6 @@ type DebugLineInfo struct {
 	FileNames    []*FileEntry
 	Instructions []byte
 	Lookup       map[string]*FileEntry
-
-	Logf func(string, ...interface{})
 
 	// stateMachineCache[pc] is a state machine stopped at pc
 	stateMachineCache map[uint64]*StateMachine
@@ -70,7 +71,7 @@ func ParseAll(data []byte, debugLineStr []byte, logfn func(string, ...interface{
 
 	// We have to parse multiple file name tables here.
 	for buf.Len() > 0 {
-		lines = append(lines, Parse("", buf, debugLineStr, logfn, staticBase, normalizeBackslash, ptrSize))
+		lines = append(lines, Parse("", buf, debugLineStr, staticBase, normalizeBackslash, ptrSize))
 	}
 
 	return lines
@@ -78,12 +79,8 @@ func ParseAll(data []byte, debugLineStr []byte, logfn func(string, ...interface{
 
 // Parse parses a single debug_line segment from buf. Compdir is the
 // DW_AT_comp_dir attribute of the associated compile unit.
-func Parse(compdir string, buf *bytes.Buffer, debugLineStr []byte, logfn func(string, ...interface{}), staticBase uint64, normalizeBackslash bool, ptrSize int) *DebugLineInfo {
+func Parse(compdir string, buf *bytes.Buffer, debugLineStr []byte, staticBase uint64, normalizeBackslash bool, ptrSize int) *DebugLineInfo {
 	dbl := new(DebugLineInfo)
-	dbl.Logf = logfn
-	if logfn == nil {
-		dbl.Logf = func(string, ...interface{}) {}
-	}
 	dbl.staticBase = staticBase
 	dbl.ptrSize = ptrSize
 	dbl.Lookup = make(map[string]*FileEntry)
@@ -153,9 +150,7 @@ func parseIncludeDirs2(info *DebugLineInfo, buf *bytes.Buffer) bool {
 	for {
 		str, err := util.ParseString(buf)
 		if err != nil {
-			if info.Logf != nil {
-				info.Logf("error reading string: %v", err)
-			}
+			log.Error("error reading string: %v", err)
 			return false
 		}
 		if str == "" {
@@ -169,7 +164,7 @@ func parseIncludeDirs2(info *DebugLineInfo, buf *bytes.Buffer) bool {
 
 // parseIncludeDirs5 parses the directory table for DWARF version 5.
 func parseIncludeDirs5(info *DebugLineInfo, buf *bytes.Buffer) bool {
-	dirEntryFormReader := readEntryFormat(buf, info.Logf)
+	dirEntryFormReader := readEntryFormat(buf)
 	if dirEntryFormReader == nil {
 		return false
 	}
@@ -188,7 +183,7 @@ func parseIncludeDirs5(info *DebugLineInfo, buf *bytes.Buffer) bool {
 					dir, _ := util.ParseString(buf)
 					info.IncludeDirs = append(info.IncludeDirs, dir)
 				default:
-					info.Logf("unsupported string form %#x", dirEntryFormReader.formCode)
+					log.Error("unsupported string form %#x", dirEntryFormReader.formCode)
 				}
 			case _DW_LNCT_directory_index:
 			case _DW_LNCT_timestamp:
@@ -197,9 +192,7 @@ func parseIncludeDirs5(info *DebugLineInfo, buf *bytes.Buffer) bool {
 			}
 		}
 		if dirEntryFormReader.err != nil {
-			if info.Logf != nil {
-				info.Logf("error reading directory entries table: %v", dirEntryFormReader.err)
-			}
+			log.Error("error reading directory entries table: %v", dirEntryFormReader.err)
 			return false
 		}
 	}
@@ -229,9 +222,7 @@ func readFileEntry(info *DebugLineInfo, buf *bytes.Buffer, exitOnEmptyPath bool)
 	var err error
 	entry.Path, err = util.ParseString(buf)
 	if err != nil {
-		if info.Logf != nil {
-			info.Logf("error reading file entry: %v", err)
-		}
+		log.Error("error reading file entry: %v", err)
 		return nil
 	}
 	if entry.Path == "" && exitOnEmptyPath {
@@ -272,7 +263,7 @@ func pathIsAbs(s string) bool {
 
 // parseFileEntries5 parses the file table for DWARF 5
 func parseFileEntries5(info *DebugLineInfo, buf *bytes.Buffer) bool {
-	fileEntryFormReader := readEntryFormat(buf, info.Logf)
+	fileEntryFormReader := readEntryFormat(buf)
 	if fileEntryFormReader == nil {
 		return false
 	}
@@ -295,7 +286,7 @@ func parseFileEntries5(info *DebugLineInfo, buf *bytes.Buffer) bool {
 					buf := bytes.NewBuffer(info.debugLineStr[fileEntryFormReader.u64:])
 					p, _ = util.ParseString(buf)
 				default:
-					info.Logf("unsupported string form %#x", fileEntryFormReader.formCode)
+					log.Error("unsupported string form %#x", fileEntryFormReader.formCode)
 				}
 			case _DW_LNCT_directory_index:
 				diridx = int(fileEntryFormReader.u64)
@@ -319,9 +310,7 @@ func parseFileEntries5(info *DebugLineInfo, buf *bytes.Buffer) bool {
 			info.Lookup[entry.Path] = entry
 		}
 		if fileEntryFormReader.err != nil {
-			if info.Logf != nil {
-				info.Logf("error reading file entries table: %v", fileEntryFormReader.err)
-			}
+			fmt.Fprint(os.Stderr, "error reading file entries table: %v\n", fileEntryFormReader.err)
 			return false
 		}
 	}

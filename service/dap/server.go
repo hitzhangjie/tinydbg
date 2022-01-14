@@ -34,7 +34,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/pkg/locspec"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/proc"
 
 	"github.com/google/go-dap"
@@ -43,8 +43,6 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/internal/sameuser"
-
-	"github.com/sirupsen/logrus"
 )
 
 // Server implements a DAP server that can accept a single client for
@@ -166,8 +164,6 @@ type Session struct {
 type Config struct {
 	*service.Config
 
-	// log is used for structured logging.
-	log *logrus.Entry
 	// StopTriggered is closed when the server is Stop()-ed.
 	// Can be used to safeguard against duplicate shutdown sequences.
 	StopTriggered chan struct{}
@@ -291,21 +287,20 @@ var (
 // only with a predetermined client. In that case, config.Listener is
 // nil and its RunWithClient must be used instead of Run.
 func NewServer(config *service.Config) *Server {
-	logger := logflags.DAPLogger()
 	if config.Listener != nil {
-		logflags.WriteDAPListeningMessage(config.Listener.Addr())
+		log.Info("listener address: %s", config.Listener.Addr())
 	} else {
-		logger.Debug("DAP server for a predetermined client")
+		log.Info("DAP server for a predetermined client")
 	}
-	logger.Debug("DAP server pid = ", os.Getpid())
+	log.Info("DAP server pid = %d", os.Getpid())
+
 	if config.AcceptMulti {
-		logger.Warn("DAP server does not support accept-multiclient mode")
+		log.Error("DAP server does not support accept-multiclient mode")
 		config.AcceptMulti = false
 	}
 	return &Server{
 		config: &Config{
 			Config:        config,
-			log:           logger,
 			StopTriggered: make(chan struct{}),
 		},
 		listener: config.Listener,
@@ -319,12 +314,9 @@ var sessionCount = 0
 // down when the DAP session disconnects or a connection error occurs.
 func NewSession(conn io.ReadWriteCloser, config *Config, debugger *debugger.Debugger) *Session {
 	sessionCount++
-	if config.log == nil {
-		config.log = logflags.DAPLogger()
-	}
-	config.log.Debugf("DAP connection %d started", sessionCount)
+	log.Info("DAP connection %d started", sessionCount)
 	if config.StopTriggered == nil {
-		config.log.Fatal("Session must be configured with StopTriggered")
+		log.Error("Session must be configured with StopTriggered")
 	}
 	return &Session{
 		config:            config,
@@ -368,8 +360,8 @@ func (s *Session) setLaunchAttachArgs(args LaunchAttachCommonConfig) error {
 // This method mustn't be called more than once.
 // StopTriggered notifies other goroutines that stop is in progreess.
 func (s *Server) Stop() {
-	s.config.log.Debug("DAP server stopping...")
-	defer s.config.log.Debug("DAP server stopped")
+	fmt.Printf("DAP server stopping...\n")
+	defer fmt.Printf("DAP server stopped\n")
 	close(s.config.StopTriggered)
 
 	if s.listener != nil {
@@ -449,7 +441,7 @@ func (c *Config) triggerServerStop() {
 // we need to take that into consideration.
 func (s *Server) Run() {
 	if s.listener == nil {
-		s.config.log.Fatal("Misconfigured server: no Listener is configured.")
+		log.Error("Misconfigured server: no Listener is configured.")
 		return
 	}
 
@@ -459,14 +451,14 @@ func (s *Server) Run() {
 			select {
 			case <-s.config.StopTriggered:
 			default:
-				s.config.log.Errorf("Error accepting client connection: %s\n", err)
+				log.Error("Error accepting client connection: %s", err)
 				s.config.triggerServerStop()
 			}
 			return
 		}
 		if s.config.CheckLocalConnUser {
 			if !sameuser.CanAccept(s.listener.Addr(), conn.LocalAddr(), conn.RemoteAddr()) {
-				s.config.log.Error("Error accepting client connection: Only connections from the same user that started this instance of Delve are allowed to connect. See --only-same-user.")
+				log.Error("Error accepting client connection: Only connections from the same user that started this instance of Delve are allowed to connect. See --only-same-user.")
 				s.config.triggerServerStop()
 				return
 			}
@@ -488,10 +480,10 @@ func (s *Server) runSession(conn io.ReadWriteCloser) {
 // until a launch/attach request is received over the connection.
 func (s *Server) RunWithClient(conn net.Conn) {
 	if s.listener != nil {
-		s.config.log.Fatal("RunWithClient must not be used when the Server is configured with a Listener")
+		log.Error("RunWithClient must not be used when the Server is configured with a Listener")
 		return
 	}
-	s.config.log.Debugf("Connected to the client at %s", conn.RemoteAddr())
+	log.Debug("Connected to the client at %s", conn.RemoteAddr())
 	go s.runSession(conn)
 }
 
@@ -524,7 +516,7 @@ func (s *Session) ServeDAPCodec() {
 		// Other errors, such as unmarshalling errors, will log the error and cause the server to trigger
 		// a stop.
 		if err != nil {
-			s.config.log.Debug("DAP error: ", err)
+			fmt.Printf("DAP error: ", err)
 			select {
 			case <-s.config.StopTriggered:
 			default:
@@ -537,7 +529,7 @@ func (s *Session) ServeDAPCodec() {
 						s.sendInternalErrorResponse(decodeErr.Seq, err.Error())
 						continue
 					}
-					s.config.log.Error("DAP error: ", err)
+					log.Error("DAP error: ", err)
 				}
 			}
 			return
@@ -556,7 +548,7 @@ func (s *Session) ServeDAPCodec() {
 // in case its a dup and ignored by the client, we also log the error.
 func (s *Session) recoverPanic(request dap.Message) {
 	if ierr := recover(); ierr != nil {
-		s.config.log.Errorf("recovered panic: %s\n%s\n", ierr, debug.Stack())
+		log.Error("recovered panic: %s\n%s\n", ierr, debug.Stack())
 		s.sendInternalErrorResponse(request.GetSeq(), fmt.Sprintf("%v", ierr))
 	}
 }
@@ -564,7 +556,7 @@ func (s *Session) recoverPanic(request dap.Message) {
 func (s *Session) handleRequest(request dap.Message) {
 	defer s.recoverPanic(request)
 	jsonmsg, _ := json.Marshal(request)
-	s.config.log.Debug("[<- from client]", string(jsonmsg))
+	fmt.Printf("[<- from client]", string(jsonmsg))
 
 	if _, ok := request.(dap.RequestMessage); !ok {
 		s.sendInternalErrorResponse(request.GetSeq(), fmt.Sprintf("Unable to process non-request %#v\n", request))
@@ -652,7 +644,7 @@ func (s *Session) handleRequest(request dap.Message) {
 		case *dap.SetBreakpointsRequest:
 			s.changeStateMu.Lock()
 			defer s.changeStateMu.Unlock()
-			s.config.log.Debug("halting execution to set breakpoints")
+			fmt.Printf("halting execution to set breakpoints")
 			_, err := s.halt()
 			if err != nil {
 				s.sendErrorResponse(request.Request, UnableToSetBreakpoints, "Unable to set or clear breakpoints", err.Error())
@@ -662,7 +654,7 @@ func (s *Session) handleRequest(request dap.Message) {
 		case *dap.SetFunctionBreakpointsRequest:
 			s.changeStateMu.Lock()
 			defer s.changeStateMu.Unlock()
-			s.config.log.Debug("halting execution to set breakpoints")
+			fmt.Printf("halting execution to set breakpoints")
 			_, err := s.halt()
 			if err != nil {
 				s.sendErrorResponse(request.Request, UnableToSetBreakpoints, "Unable to set or clear breakpoints", err.Error())
@@ -841,7 +833,7 @@ func (s *Session) handleRequest(request dap.Message) {
 
 func (s *Session) send(message dap.Message) {
 	jsonmsg, _ := json.Marshal(message)
-	s.config.log.Debug("[-> to client]", string(jsonmsg))
+	fmt.Printf("[-> to client]", string(jsonmsg))
 	// TODO(polina): consider using a channel for all the sends and to have a dedicated
 	// goroutine that reads from that channel and sends over the connection.
 	// This will avoid blocking on slow network sends.
@@ -849,7 +841,7 @@ func (s *Session) send(message dap.Message) {
 	defer s.sendingMu.Unlock()
 	err := dap.WriteProtocolMessage(s.conn, message)
 	if err != nil {
-		s.config.log.Debug(err)
+		fmt.Println(err)
 	}
 }
 
@@ -924,12 +916,12 @@ func (s *Session) tempDebugBinary() string {
 	binaryPattern := "__debug_bin"
 	f, err := ioutil.TempFile("", binaryPattern)
 	if err != nil {
-		s.config.log.Errorf("failed to create a temporary binary (%v), falling back to %q", err, defaultDebugBinary)
+		log.Error("failed to create a temporary binary (%v), falling back to %q", err, defaultDebugBinary)
 		return cleanExeName(defaultDebugBinary)
 	}
 	name := f.Name()
 	if err := f.Close(); err != nil {
-		s.config.log.Errorf("failed to create a temporary binary (%v), falling back to %q", err, defaultDebugBinary)
+		log.Error("failed to create a temporary binary (%v), falling back to %q", err, defaultDebugBinary)
 		return cleanExeName(defaultDebugBinary)
 	}
 	return name
@@ -953,7 +945,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 			FailedToLaunch, "Failed to launch", fmt.Sprintf("invalid debug configuration - %v", err))
 		return
 	}
-	s.config.log.Debug("parsed launch config: ", prettyPrint(args))
+	fmt.Printf("parsed launch config: ", prettyPrint(args))
 
 	if args.DlvCwd != "" {
 		if err := os.Chdir(args.DlvCwd); err != nil {
@@ -1022,7 +1014,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 			cmd, out, err = gobuild.GoTestBuildCombinedOutput(args.Output, []string{args.Program}, args.BuildFlags)
 		}
 		args.DlvCwd, _ = filepath.Abs(args.DlvCwd)
-		s.config.log.Debugf("building from %q: [%s]", args.DlvCwd, cmd)
+		log.Debug("building from %q: [%s]", args.DlvCwd, cmd)
 		if err != nil {
 			s.send(&dap.OutputEvent{
 				Event: *newEvent("output"),
@@ -1063,7 +1055,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 	argsToLog := args
 	argsToLog.Program, _ = filepath.Abs(args.Program)
 	argsToLog.Cwd, _ = filepath.Abs(args.Cwd)
-	s.config.log.Debugf("launching binary '%s' with config: %s", debugbinary, prettyPrint(argsToLog))
+	log.Debug("launching binary '%s' with config: %s", debugbinary, prettyPrint(argsToLog))
 
 	if args.NoDebug {
 		s.mu.Lock()
@@ -1080,7 +1072,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		// Start the program on a different goroutine, so we can listen for disconnect request.
 		go func() {
 			if err := cmd.Wait(); err != nil {
-				s.config.log.Debugf("program exited with error: %v", err)
+				log.Debug("program exited with error: %v", err)
 			}
 			s.logToConsole(proc.ErrProcessExited{Pid: cmd.ProcessState.Pid(), Status: cmd.ProcessState.ExitCode()}.Error())
 			s.send(&dap.TerminatedEvent{Event: *newEvent("terminated")})
@@ -1110,7 +1102,7 @@ func (s *Session) getPackageDir(pkg string) string {
 	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", pkg)
 	out, err := cmd.Output()
 	if err != nil {
-		s.config.log.Debugf("failed to determin package directory for %v: %v\n%s", pkg, err, out)
+		log.Debug("failed to determin package directory for %v: %v\n%s", pkg, err, out)
 		return "."
 	}
 	return string(bytes.TrimSpace(out))
@@ -1152,9 +1144,9 @@ func (s *Session) stopNoDebugProcess() {
 	// Wait for kill to complete or time out
 	select {
 	case <-time.After(5 * time.Second):
-		s.config.log.Debug("noDebug process kill timed out")
+		fmt.Printf("noDebug process kill timed out")
 	case <-s.noDebugProcess.exited:
-		s.config.log.Debug("noDebug process killed")
+		fmt.Printf("noDebug process killed")
 		s.noDebugProcess = nil
 	}
 }
@@ -1235,7 +1227,7 @@ func (s *Session) stopDebugSession(killProcess bool) error {
 	s.setHaltRequested(true)
 	state, err := s.halt()
 	if err == proc.ErrProcessDetached {
-		s.config.log.Debug("halt returned error: ", err)
+		fmt.Printf("halt returned error: ", err)
 		return nil
 	}
 	if err != nil {
@@ -1243,14 +1235,14 @@ func (s *Session) stopDebugSession(killProcess bool) error {
 		case proc.ErrProcessExited:
 			exited = err
 		default:
-			s.config.log.Error("halt returned error: ", err)
+			log.Error("halt returned error: ", err)
 			if err.Error() == "no such process" {
 				exited = err
 			}
 		}
 	} else if state.Exited {
 		exited = proc.ErrProcessExited{Pid: s.debugger.ProcessPid(), Status: state.ExitStatus}
-		s.config.log.Debug("halt returned state: ", exited)
+		fmt.Printf("halt returned state: ", exited)
 	}
 	if exited != nil {
 		// TODO(suzmue): log exited error when the process exits, which may have been before
@@ -1266,11 +1258,11 @@ func (s *Session) stopDebugSession(killProcess bool) error {
 	if err != nil {
 		switch err.(type) {
 		case proc.ErrProcessExited:
-			s.config.log.Debug(err)
+			log.Error("%v", err)
 			s.logToConsole(exited.Error())
 			err = nil
 		default:
-			s.config.log.Error("detach returned error: ", err)
+			log.Error("detach returned error: ", err)
 		}
 	}
 	return err
@@ -1279,12 +1271,12 @@ func (s *Session) stopDebugSession(killProcess bool) error {
 // halt sends a halt request if the debuggee is running.
 // changeStateMu should be held when calling (*Server).halt.
 func (s *Session) halt() (*api.DebuggerState, error) {
-	s.config.log.Debug("halting")
+	fmt.Printf("halting")
 	// Only send a halt request if the debuggee is running.
 	if s.debugger.IsRunning() {
 		return s.debugger.Command(&api.DebuggerCommand{Name: api.Halt}, nil)
 	}
-	s.config.log.Debug("process not running")
+	fmt.Printf("process not running")
 	return s.debugger.State(false)
 }
 
@@ -1492,7 +1484,7 @@ func (s *Session) onSetFunctionBreakpointsRequest(request *dap.SetFunctionBreakp
 			return nil, err
 		}
 		if len(locs) > 0 {
-			s.config.log.Debugf("multiple locations found for %s", want.Name)
+			log.Debug("multiple locations found for %s", want.Name)
 		}
 
 		// Set breakpoint using the PCs that were found.
@@ -1663,7 +1655,7 @@ func (s *Session) onThreadsRequest(request *dap.ThreadsRequest) {
 		case proc.ErrProcessExited:
 			// If the program exits very quickly, the initial threads request will complete after it has exited.
 			// A TerminatedEvent has already been sent. Ignore the err returned in this case.
-			s.config.log.Debug(err)
+			fmt.Println(err)
 		default:
 			s.send(&dap.OutputEvent{
 				Event: *newEvent("output"),
@@ -1678,7 +1670,7 @@ func (s *Session) onThreadsRequest(request *dap.ThreadsRequest) {
 	} else {
 		state, err := s.debugger.State( /*nowait*/ true)
 		if err != nil {
-			s.config.log.Debug("Unable to get debugger state: ", err)
+			fmt.Printf("Unable to get debugger state: ", err)
 		}
 
 		if next >= 0 {
@@ -1697,7 +1689,7 @@ func (s *Session) onThreadsRequest(request *dap.ThreadsRequest) {
 				if !selectedFound {
 					g, err := s.debugger.FindGoroutine(state.SelectedGoroutine.ID)
 					if err != nil {
-						s.config.log.Debug("Error getting selected goroutine: ", err)
+						fmt.Printf("Error getting selected goroutine: ", err)
 					} else {
 						// TODO(suzmue): Consider putting the selected goroutine at the top.
 						// To be consistent we may want to do this for all threads requests.
@@ -1748,7 +1740,7 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 		s.sendShowUserErrorResponse(request.Request, FailedToAttach, "Failed to attach", fmt.Sprintf("invalid debug configuration - %v", err))
 		return
 	}
-	s.config.log.Debug("parsed launch config: ", prettyPrint(args))
+	fmt.Printf("parsed launch config: ", prettyPrint(args))
 
 	switch args.Mode {
 	case "":
@@ -1772,7 +1764,7 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 			args.Backend = "default"
 		}
 		s.config.Debugger.Backend = args.Backend
-		s.config.log.Debugf("attaching to pid %d", args.ProcessID)
+		log.Debug("attaching to pid %d", args.ProcessID)
 		var err error
 		func() {
 			s.mu.Lock()
@@ -1788,7 +1780,7 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 			s.sendShowUserErrorResponse(request.Request, FailedToAttach, "Failed to attach", "no debugger found")
 			return
 		}
-		s.config.log.Debug("debugger already started")
+		fmt.Printf("debugger already started")
 		// Halt for configuration sequence. onConfigurationDone will restart
 		// execution if user requested !stopOnEntry.
 		s.changeStateMu.Lock()
@@ -1890,13 +1882,13 @@ func (s *Session) stepUntilStopAndNotify(command string, threadId int, granulari
 	defer closeIfOpen(allowNextStateChange)
 	_, err := s.debugger.Command(&api.DebuggerCommand{Name: api.SwitchGoroutine, GoroutineID: threadId}, nil)
 	if err != nil {
-		s.config.log.Errorf("Error switching goroutines while stepping: %v", err)
+		log.Error("Error switching goroutines while stepping: %v", err)
 		// If we encounter an error, we will have to send a stopped event
 		// since we already sent the step response.
 		stopped := &dap.StoppedEvent{Event: *newEvent("stopped")}
 		stopped.Body.AllThreadsStopped = true
 		if state, err := s.debugger.State(false); err != nil {
-			s.config.log.Errorf("Error retrieving state: %e", err)
+			log.Error("Error retrieving state: %e", err)
 		} else {
 			stopped.Body.ThreadId = stoppedGoroutineID(state)
 		}
@@ -2380,7 +2372,7 @@ func (s *Session) metadataToDAPVariables(v *fullyQualifiedVariable) ([]dap.Varia
 		typeName := api.PrettyTypeName(v.DwarfType)
 		loadExpr := fmt.Sprintf("string(*(*%q)(%#x))", typeName, v.Addr)
 
-		s.config.log.Debugf("loading %s (type %s) with %s", v.fullyQualifiedNameOrExpr, typeName, loadExpr)
+		log.Debug("loading %s (type %s) with %s", v.fullyQualifiedNameOrExpr, typeName, loadExpr)
 		// We know that this is an array/slice of Uint8 or Int32, so we will load up to MaxStringLen.
 		config := DefaultLoadConfig
 		config.MaxArrayValues = config.MaxStringLen
@@ -2395,7 +2387,7 @@ func (s *Session) metadataToDAPVariables(v *fullyQualifiedVariable) ([]dap.Varia
 				Type:  "string",
 			})
 		} else {
-			s.config.log.Debugf("failed to load %q: %v", v.fullyQualifiedNameOrExpr, err)
+			log.Debug("failed to load %q: %v", v.fullyQualifiedNameOrExpr, err)
 		}
 	}
 	return children, nil
@@ -2479,7 +2471,7 @@ func (s *Session) convertVariableWithOpts(v *proc.Variable, qualifiedNameOrExpr 
 		value = api.ConvertVar(v).SinglelineString()
 		typeName := api.PrettyTypeName(v.DwarfType)
 		loadExpr := fmt.Sprintf("*(*%q)(%#x)", typeName, v.Addr)
-		s.config.log.Debugf("loading %s (type %s) with %s", qualifiedNameOrExpr, typeName, loadExpr)
+		log.Debug("loading %s (type %s) with %s", qualifiedNameOrExpr, typeName, loadExpr)
 		// Make sure we can load the pointers directly, not by updating just the child
 		// This is not really necessary now because users have no way of setting FollowPointers to false.
 		config := DefaultLoadConfig
@@ -2514,7 +2506,7 @@ func (s *Session) convertVariableWithOpts(v *proc.Variable, qualifiedNameOrExpr 
 					// TODO(polina): see if reloadVariable can be reused here
 					cTypeName := api.PrettyTypeName(v.Children[0].DwarfType)
 					cLoadExpr := fmt.Sprintf("*(*%q)(%#x)", cTypeName, v.Children[0].Addr)
-					s.config.log.Debugf("loading *(%s) (type %s) with %s", qualifiedNameOrExpr, cTypeName, cLoadExpr)
+					log.Debug("loading *(%s) (type %s) with %s", qualifiedNameOrExpr, cTypeName, cLoadExpr)
 					cLoaded, err := s.debugger.EvalVariableInScope(-1, 0, 0, cLoadExpr, DefaultLoadConfig)
 					if err != nil {
 						value += fmt.Sprintf(" - FAILED TO LOAD: %s", err)
@@ -2679,7 +2671,7 @@ func (s *Session) onEvaluateRequest(request *dap.EvaluateRequest) {
 					loadCfg := DefaultLoadConfig
 					loadCfg.MaxStringLen = maxSingleStringLen
 					if v, err := s.debugger.EvalVariableInScope(goid, frame, 0, request.Arguments.Expression, loadCfg); err != nil {
-						s.config.log.Debugf("Failed to load more for %v: %v", request.Arguments.Expression, err)
+						log.Debug("Failed to load more for %v: %v", request.Arguments.Expression, err)
 					} else {
 						exprVar = v
 					}
@@ -3312,7 +3304,7 @@ func (s *Session) sendErrorResponseWithOpts(request dap.Request, id int, summary
 	er.Body.Error.Id = id
 	er.Body.Error.Format = fmt.Sprintf("%s: %s", summary, details)
 	er.Body.Error.ShowUser = showUser
-	s.config.log.Debug(er.Body.Error.Format)
+	fmt.Printf(er.Body.Error.Format)
 	s.send(er)
 }
 
@@ -3337,7 +3329,7 @@ func (s *Session) sendInternalErrorResponse(seq int, details string) {
 	er.Message = "Internal Error"
 	er.Body.Error.Id = InternalError
 	er.Body.Error.Format = fmt.Sprintf("%s: %s", er.Message, details)
-	s.config.log.Debug(er.Body.Error.Format)
+	fmt.Printf(er.Body.Error.Format)
 	s.send(er)
 }
 
@@ -3449,7 +3441,7 @@ func (s *Session) runUntilStopAndNotify(command string, allowNextStateChange cha
 	state, err := s.runUntilStop(command, allowNextStateChange)
 
 	if s.conn.isClosed() {
-		s.config.log.Debugf("connection %d closed - stopping %q command", s.id, command)
+		log.Debug("connection %d closed - stopping %q command", s.id, command)
 		return
 	}
 
@@ -3463,7 +3455,7 @@ func (s *Session) runUntilStopAndNotify(command string, allowNextStateChange cha
 	if state != nil && state.CurrentThread != nil {
 		file, line = state.CurrentThread.File, state.CurrentThread.Line
 	}
-	s.config.log.Debugf("%q command stopped - reason %q, location %s:%d", command, stopReason, file, line)
+	log.Debug("%q command stopped - reason %q, location %s:%d", command, stopReason, file, line)
 
 	s.resetHandlesForStoppedEvent()
 	stopped := &dap.StoppedEvent{Event: *newEvent("stopped")}
@@ -3472,7 +3464,7 @@ func (s *Session) runUntilStopAndNotify(command string, allowNextStateChange cha
 	if err == nil {
 		if stopReason == proc.StopManual {
 			if err := s.debugger.CancelNext(); err != nil {
-				s.config.log.Error(err)
+				log.Error("%v", err)
 			} else {
 				state.NextInProgress = false
 			}
@@ -3517,14 +3509,14 @@ func (s *Session) runUntilStopAndNotify(command string, allowNextStateChange cha
 		// so that the stop reason is determined by that function which
 		// has all the context.
 		if stopped.Body.Reason != "exception" && s.checkHaltRequested() {
-			s.config.log.Debugf("manual halt requested, stop reason %q converted to \"pause\"", stopped.Body.Reason)
+			log.Debug("manual halt requested, stop reason %q converted to \"pause\"", stopped.Body.Reason)
 			stopped.Body.Reason = "pause"
 			stopped.Body.HitBreakpointIds = []int{}
 		}
 
 	} else {
 		s.exceptionErr = err
-		s.config.log.Error("runtime error: ", err)
+		log.Error("runtime error: ", err)
 		stopped.Body.Reason = "exception"
 		stopped.Body.Description = "runtime error"
 		stopped.Body.Text = err.Error()
@@ -3684,7 +3676,7 @@ func (s *Session) toClientPath(path string) string {
 	}
 	clientPath := locspec.SubstitutePath(path, s.args.substitutePathServerToClient)
 	if clientPath != path {
-		s.config.log.Debugf("server path=%s converted to client path=%s\n", path, clientPath)
+		log.Debug("server path=%s converted to client path=%s\n", path, clientPath)
 	}
 	return clientPath
 }
@@ -3695,7 +3687,7 @@ func (s *Session) toServerPath(path string) string {
 	}
 	serverPath := locspec.SubstitutePath(path, s.args.substitutePathClientToServer)
 	if serverPath != path {
-		s.config.log.Debugf("client path=%s converted to server path=%s\n", path, serverPath)
+		log.Debug("client path=%s converted to server path=%s\n", path, serverPath)
 	}
 	return serverPath
 }

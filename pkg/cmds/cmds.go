@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hitzhangjie/dlv/pkg/config"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
@@ -20,11 +20,6 @@ import (
 )
 
 var (
-	// logging options
-	log       bool   // whether to log debug statements
-	logOutput string // a comma separated list of components that should produce debug output
-	logDest   string // the file path or file descriptor where logs should go
-
 	// debugger mode
 	headless        bool // whether to run without terminal
 	continueOnStart bool // whether to continue the process on startup
@@ -70,12 +65,6 @@ func New() *cobra.Command {
 
 // 返回错误码给os.Exit(?)
 func execute(attachPid int, processArgs []string, conf *config.Config, coreFile string, kind debugger.ExecuteKind, dlvArgs []string, buildFlags string) int {
-	if err := logflags.Setup(log, logOutput, logDest); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 1
-	}
-	defer logflags.Close()
-
 	if headless && (initFile != "") {
 		fmt.Fprint(os.Stderr, "Warning: init file ignored with --headless\n")
 	}
@@ -106,20 +95,20 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 				continue
 			}
 			if !isatty.IsTerminal(f.file.Fd()) {
-				fmt.Fprintf(os.Stderr, "%s is not a terminal, use '-r' to specify redirects for the target process or --allow-non-terminal-interactive=true if you really want to specify a redirect for Delve\n", f.name)
+				log.Error("%s is not a terminal, use '-r' to specify redirects for the target process or --allow-non-terminal-interactive=true if you really want to specify a redirect for Delve", f.name)
 				return 1
 			}
 		}
 	}
 
 	if len(redirects) > 0 && tty != "" {
-		fmt.Fprintf(os.Stderr, "Can not use -r and --tty together\n")
+		log.Error("Can not use -r and --tty together")
 		return 1
 	}
 
 	redirects, err := parseRedirects(redirects)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		log.Error("%v", err)
 		return 1
 	}
 
@@ -133,7 +122,7 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 		listener, clientConn = service.ListenerPipe()
 	}
 	if err != nil {
-		fmt.Printf("couldn't start listener: %s\n", err)
+		log.Error("couldn't start listener: %s", err)
 		return 1
 	}
 	defer listener.Close()
@@ -177,7 +166,7 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 				fmt.Fprintln(os.Stderr, "Can not debug non-main package")
 				return 1
 			case debugger.ExecutingExistingFile:
-				fmt.Fprintf(os.Stderr, "%s is not executable\n", processArgs[0])
+				log.Error("%s is not executable", processArgs[0])
 				return 1
 			default:
 			}
@@ -195,7 +184,7 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 		waitForDisconnectSignal(disconnectChan)
 		err = server.Stop()
 		if err != nil {
-			fmt.Println(err)
+			log.Error("%v", err)
 		}
 
 		return status

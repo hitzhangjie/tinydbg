@@ -18,7 +18,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/dwarf/godwarf"
 	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 const (
@@ -1149,7 +1149,7 @@ func extractVarInfoFromEntry(tgt *Target, bi *BinaryInfo, image *Image, regs op.
 	t, err = resolveParametricType(tgt, bi, mem, t, dictAddr)
 	if err != nil {
 		// Log the error, keep going with t, which will be the shape type
-		logflags.DebuggerLogger().Errorf("could not resolve parametric type of %s", n)
+		log.Error("could not resolve parametric type of %s", n)
 	}
 
 	addr, pieces, descr, err := bi.Location(entry, dwarf.AttrLocation, regs.PC(), regs, mem)

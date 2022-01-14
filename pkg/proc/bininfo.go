@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/golang-lru/simplelru"
-	"github.com/sirupsen/logrus"
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/frame"
 	"github.com/hitzhangjie/dlv/pkg/dwarf/godwarf"
@@ -32,7 +31,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/dwarf/reader"
 	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 const (
@@ -109,8 +108,6 @@ type BinaryInfo struct {
 
 	// Go 1.17 register ABI is enabled.
 	regabi bool
-
-	logger *logrus.Entry
 }
 
 var (
@@ -625,7 +622,7 @@ type ElfDynamicSection struct {
 
 // NewBinaryInfo returns an initialized but unloaded BinaryInfo struct.
 func NewBinaryInfo(goos, goarch string) *BinaryInfo {
-	r := &BinaryInfo{GOOS: goos, nameOfRuntimeType: make(map[uint64]nameOfRuntimeTypeEntry), logger: logflags.DebuggerLogger()}
+	r := &BinaryInfo{GOOS: goos, nameOfRuntimeType: make(map[uint64]nameOfRuntimeTypeEntry)}
 
 	// TODO: find better way to determine proc arch (perhaps use executable file info).
 	switch goarch {
@@ -891,13 +888,11 @@ func (image *Image) Close() error {
 	return err2
 }
 
-func (image *Image) setLoadError(logger *logrus.Entry, fmtstr string, args ...interface{}) {
+func (image *Image) setLoadError(fmtstr string, args ...interface{}) {
 	image.loadErrMu.Lock()
 	image.loadErr = fmt.Errorf(fmtstr, args...)
 	image.loadErrMu.Unlock()
-	if logger != nil {
-		logger.Errorf("error loading binary %q: %v", image.Path, image.loadErr)
-	}
+	log.Error("error loading binary %q: %v", image.Path, image.loadErr)
 }
 
 // LoadError returns any error incurred while loading this image.
@@ -1081,7 +1076,7 @@ func (bi *BinaryInfo) loclistEntry(off int64, pc uint64) []byte {
 
 	e, err := loclist.Find(int(off), image.StaticBase, base, pc, debugAddr)
 	if err != nil {
-		bi.logger.Errorf("error reading loclist section: %v", err)
+		log.Error("error reading loclist section: %v", err)
 		return nil
 	}
 	if e != nil {
@@ -1144,14 +1139,14 @@ func (bi *BinaryInfo) funcToImage(fn *Function) *Image {
 // debug_frame is present it must be parsable correctly.
 func (bi *BinaryInfo) parseDebugFrameGeneral(image *Image, debugFrameBytes []byte, debugFrameName string, debugFrameErr error, ehFrameBytes []byte, ehFrameAddr uint64, ehFrameName string, byteOrder binary.ByteOrder) {
 	if debugFrameBytes == nil && ehFrameBytes == nil {
-		image.setLoadError(bi.logger, "could not get %s section: %v", debugFrameName, debugFrameErr)
+		log.Error("could not get %s section: %v", debugFrameName, debugFrameErr)
 		return
 	}
 
 	if debugFrameBytes != nil {
 		fe, err := frame.Parse(debugFrameBytes, byteOrder, image.StaticBase, bi.Arch.PtrSize(), 0)
 		if err != nil {
-			image.setLoadError(bi.logger, "could not parse %s section: %v", debugFrameName, err)
+			log.Error("could not parse %s section: %v", debugFrameName, err)
 			return
 		}
 		bi.frameEntries = bi.frameEntries.Append(fe)
@@ -1161,10 +1156,10 @@ func (bi *BinaryInfo) parseDebugFrameGeneral(image *Image, debugFrameBytes []byt
 		fe, err := frame.Parse(ehFrameBytes, byteOrder, image.StaticBase, bi.Arch.PtrSize(), ehFrameAddr)
 		if err != nil {
 			if debugFrameBytes == nil {
-				image.setLoadError(bi.logger, "could not parse %s section: %v", ehFrameName, err)
+				log.Error("could not parse %s section: %v", ehFrameName, err)
 				return
 			}
-			bi.logger.Warnf("could not parse %s section: %v", ehFrameName, err)
+			log.Error("could not parse %s section: %v", ehFrameName, err)
 			return
 		}
 		bi.frameEntries = bi.frameEntries.Append(fe)
@@ -1414,7 +1409,7 @@ func (bi *BinaryInfo) setGStructOffsetElf(image *Image, exe *elf.File, wg *sync.
 
 	switch exe.Machine {
 	case elf.EM_X86_64, elf.EM_386:
-		tlsg := getSymbol(image, bi.logger, exe, "runtime.tlsg")
+		tlsg := getSymbol(image, exe, "runtime.tlsg")
 		if tlsg == nil || tls == nil {
 			bi.gStructOffset = ^uint64(bi.Arch.PtrSize()) + 1 //-ptrSize
 			return
@@ -1431,7 +1426,7 @@ func (bi *BinaryInfo) setGStructOffsetElf(image *Image, exe *elf.File, wg *sync.
 		bi.gStructOffset = ^(memsz) + 1 + tlsg.Value // -tls.Memsz + tlsg.Value
 
 	case elf.EM_AARCH64:
-		tlsg := getSymbol(image, bi.logger, exe, "runtime.tls_g")
+		tlsg := getSymbol(image, exe, "runtime.tls_g")
 		if tlsg == nil || tls == nil {
 			bi.gStructOffset = 2 * uint64(bi.Arch.PtrSize())
 			return
@@ -1445,10 +1440,10 @@ func (bi *BinaryInfo) setGStructOffsetElf(image *Image, exe *elf.File, wg *sync.
 	}
 }
 
-func getSymbol(image *Image, logger *logrus.Entry, exe *elf.File, name string) *elf.Symbol {
+func getSymbol(image *Image, exe *elf.File, name string) *elf.Symbol {
 	symbols, err := exe.Symbols()
 	if err != nil {
-		image.setLoadError(logger, "could not parse ELF symbols: %v", err)
+		log.Error("could not parse ELF symbols: %v", err)
 		return nil
 	}
 
@@ -1598,7 +1593,7 @@ func (bi *BinaryInfo) loadDebugInfoMaps(image *Image, debugInfoBytes, debugLineB
 	for {
 		entry, err := reader.Next()
 		if err != nil {
-			image.setLoadError(bi.logger, "error reading debug_info: %v", err)
+			log.Error("error reading debug_info: %v", err)
 			break
 		}
 		if entry == nil {
@@ -1629,15 +1624,7 @@ func (bi *BinaryInfo) loadDebugInfoMaps(image *Image, debugInfoBytes, debugLineB
 			}
 			lineInfoOffset, hasLineInfo := entry.Val(dwarf.AttrStmtList).(int64)
 			if hasLineInfo && lineInfoOffset >= 0 && lineInfoOffset < int64(len(debugLineBytes)) {
-				var logfn func(string, ...interface{})
-				if logflags.DebugLineErrors() {
-					logger := logrus.New().WithFields(logrus.Fields{"layer": "dwarf-line"})
-					logger.Logger.Level = logrus.DebugLevel
-					logfn = func(fmt string, args ...interface{}) {
-						logger.Printf(fmt, args)
-					}
-				}
-				cu.lineInfo = line.Parse(compdir, bytes.NewBuffer(debugLineBytes[lineInfoOffset:]), image.debugLineStr, logfn, image.StaticBase, false, bi.Arch.PtrSize())
+				cu.lineInfo = line.Parse(compdir, bytes.NewBuffer(debugLineBytes[lineInfoOffset:]), image.debugLineStr, image.StaticBase, false, bi.Arch.PtrSize())
 			}
 			cu.producer, _ = entry.Val(dwarf.AttrProducer).(string)
 			if cu.isgo && cu.producer != "" {
@@ -1702,7 +1689,7 @@ func (bi *BinaryInfo) loadDebugInfoMaps(image *Image, debugInfoBytes, debugLineB
 			if err == nil {
 				tree.Children, err = regabiMallocgcWorkaround(bi)
 				if err != nil {
-					bi.logger.Errorf("could not patch runtime.mallogc: %v", err)
+					log.Error("could not patch runtime.mallogc: %v", err)
 				} else {
 					image.runtimeMallocgcTree = tree
 				}
@@ -1742,7 +1729,7 @@ func (bi *BinaryInfo) loadDebugInfoMapsCompileUnit(ctxt *loadDebugInfoMapsContex
 	for {
 		entry, err := reader.Next()
 		if err != nil {
-			image.setLoadError(bi.logger, "error reading debug_info: %v", err)
+			image.setLoadError("error reading debug_info: %v", err)
 			return
 		}
 		if entry == nil {
@@ -1856,7 +1843,7 @@ func (bi *BinaryInfo) loadDebugInfoMapsImportedUnit(entry *dwarf.Entry, ctxt *lo
 func (bi *BinaryInfo) addAbstractSubprogram(entry *dwarf.Entry, ctxt *loadDebugInfoMapsContext, reader *reader.Reader, image *Image, cu *compileUnit) {
 	name, ok := subprogramEntryName(entry, cu)
 	if !ok {
-		bi.logger.Warnf("reading debug_info: abstract subprogram without name at %#x", entry.Offset)
+		log.Error("reading debug_info: abstract subprogram without name at %#x", entry.Offset)
 		// In some cases clang produces abstract subprograms that do not have a
 		// name, but we should process them anyway.
 	}
@@ -1876,7 +1863,7 @@ func (bi *BinaryInfo) addAbstractSubprogram(entry *dwarf.Entry, ctxt *loadDebugI
 func (bi *BinaryInfo) addConcreteInlinedSubprogram(entry *dwarf.Entry, originOffset dwarf.Offset, ctxt *loadDebugInfoMapsContext, reader *reader.Reader, cu *compileUnit) {
 	lowpc, highpc, ok := subprogramEntryRange(entry, cu.image)
 	if !ok {
-		bi.logger.Warnf("reading debug_info: concrete inlined subprogram without address range at %#x", entry.Offset)
+		log.Error("reading debug_info: concrete inlined subprogram without address range at %#x", entry.Offset)
 		if entry.Children {
 			reader.SkipChildren()
 		}
@@ -1900,7 +1887,7 @@ func (bi *BinaryInfo) addConcreteInlinedSubprogram(entry *dwarf.Entry, originOff
 func (bi *BinaryInfo) addConcreteSubprogram(entry *dwarf.Entry, ctxt *loadDebugInfoMapsContext, reader *reader.Reader, cu *compileUnit) {
 	lowpc, highpc, ok := subprogramEntryRange(entry, cu.image)
 	if !ok {
-		bi.logger.Warnf("reading debug_info: concrete subprogram without address range at %#x", entry.Offset)
+		log.Error("reading debug_info: concrete subprogram without address range at %#x", entry.Offset)
 		// When clang inlines a function, in some cases, it produces a concrete
 		// subprogram without address range and then inlined calls that reference
 		// it, instead of producing an abstract subprogram.
@@ -1909,7 +1896,7 @@ func (bi *BinaryInfo) addConcreteSubprogram(entry *dwarf.Entry, ctxt *loadDebugI
 
 	name, ok := subprogramEntryName(entry, cu)
 	if !ok {
-		bi.logger.Warnf("reading debug_info: concrete subprogram without name at %#x", entry.Offset)
+		log.Error("reading debug_info: concrete subprogram without name at %#x", entry.Offset)
 	}
 
 	trampoline, _ := entry.Val(dwarf.AttrTrampoline).(bool)
@@ -1954,7 +1941,7 @@ func (bi *BinaryInfo) loadDebugInfoMapsInlinedCalls(ctxt *loadDebugInfoMapsConte
 	for {
 		entry, err := reader.Next()
 		if err != nil {
-			cu.image.setLoadError(bi.logger, "error reading debug_info: %v", err)
+			log.Error("error reading debug_info: %v", err)
 			return
 		}
 		switch entry.Tag {
@@ -1963,14 +1950,14 @@ func (bi *BinaryInfo) loadDebugInfoMapsInlinedCalls(ctxt *loadDebugInfoMapsConte
 		case dwarf.TagInlinedSubroutine:
 			originOffset, ok := entry.Val(dwarf.AttrAbstractOrigin).(dwarf.Offset)
 			if !ok {
-				bi.logger.Warnf("reading debug_info: inlined call without origin offset at %#x", entry.Offset)
+				log.Error("reading debug_info: inlined call without origin offset at %#x", entry.Offset)
 				reader.SkipChildren()
 				continue
 			}
 
 			lowpc, highpc, ok := subprogramEntryRange(entry, cu.image)
 			if !ok {
-				bi.logger.Warnf("reading debug_info: inlined call without address range at %#x", entry.Offset)
+				log.Error("reading debug_info: inlined call without address range at %#x", entry.Offset)
 				reader.SkipChildren()
 				continue
 			}
@@ -1978,13 +1965,13 @@ func (bi *BinaryInfo) loadDebugInfoMapsInlinedCalls(ctxt *loadDebugInfoMapsConte
 			callfileidx, ok1 := entry.Val(dwarf.AttrCallFile).(int64)
 			callline, ok2 := entry.Val(dwarf.AttrCallLine).(int64)
 			if !ok1 || !ok2 {
-				bi.logger.Warnf("reading debug_info: inlined call without CallFile/CallLine at %#x", entry.Offset)
+				log.Error("reading debug_info: inlined call without CallFile/CallLine at %#x", entry.Offset)
 				reader.SkipChildren()
 				continue
 			}
 			callfile, cferr := cu.filePath(int(callfileidx), entry)
 			if cferr != nil {
-				bi.logger.Warnf("%v", cferr)
+				log.Error("%v", cferr)
 				reader.SkipChildren()
 				continue
 			}

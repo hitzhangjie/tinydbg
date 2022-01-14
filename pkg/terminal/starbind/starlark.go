@@ -11,6 +11,7 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 )
@@ -128,7 +129,7 @@ func (env *Env) Execute(path string, source interface{}, mainFnName string, args
 		if err == nil {
 			return
 		}
-		fmt.Printf("panic executing starlark script: %v\n", err)
+		log.Error("panic executing starlark script: %v", err)
 		for i := 0; ; i++ {
 			pc, file, line, ok := runtime.Caller(i)
 			if !ok {
@@ -139,7 +140,7 @@ func (env *Env) Execute(path string, source interface{}, mainFnName string, args
 			if fn != nil {
 				fname = fn.Name()
 			}
-			fmt.Printf("%s\n\tin %s:%d\n", fname, file, line)
+			log.Error("%s\n\tin %s:%d", fname, file, line)
 		}
 	}()
 
@@ -193,7 +194,7 @@ func (env *Env) Cancel() {
 
 func (env *Env) newThread() *starlark.Thread {
 	thread := &starlark.Thread{
-		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
+		Print: func(_ *starlark.Thread, msg string) { log.Info(msg) },
 	}
 	env.contextMu.Lock()
 	var ctx context.Context

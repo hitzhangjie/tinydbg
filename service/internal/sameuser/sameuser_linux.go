@@ -8,12 +8,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"strings"
 
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // for testing
@@ -61,8 +60,8 @@ func sameUserForHexLocalAddr(filename, localAddr, remoteAddr string) (bool, erro
 			continue
 		}
 		same := uid == int(remoteUID)
-		if !same && logflags.Any() {
-			log.Printf("connection from different user (remote: %d, local: %d) detected: %v", remoteUID, uid, line)
+		if !same {
+			log.Info("connection from different user (remote: %d, local: %d) detected: %v", remoteUID, uid, line)
 		}
 		return same, nil
 	}
@@ -120,14 +119,10 @@ func CanAccept(listenAddr, localAddr, remoteAddr net.Addr) bool {
 
 	same, err := sameUserForRemoteAddr(localAddrTCP, remoteaAddrTCP)
 	if err != nil {
-		log.Printf("cannot check remote address: %v", err)
+		log.Error("cannot check remote address: %v", err)
 	}
 	if !same {
-		if logflags.Any() {
-			log.Printf("closing connection from different user (%v): connections to localhost are only accepted from the same UNIX user for security reasons", remoteaAddrTCP)
-		} else {
-			fmt.Fprintf(os.Stderr, "closing connection from different user (%v): connections to localhost are only accepted from the same UNIX user for security reasons\n", remoteaAddrTCP)
-		}
+		log.Error("closing connection from different user (%v): connections to localhost are only accepted from the same UNIX user for security reasons", remoteaAddrTCP)
 		return false
 	}
 	return true

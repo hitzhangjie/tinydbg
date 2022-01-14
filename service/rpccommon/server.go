@@ -16,9 +16,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/sirupsen/logrus"
-
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/dap"
@@ -42,7 +40,6 @@ type ServerImpl struct {
 	rpcServer *rpcv2.RPCServer
 	// maps of served methods, one for each supported API.
 	methodMaps []map[string]*methodType
-	log        *logrus.Entry
 }
 
 type RPCCallback struct {
@@ -70,23 +67,21 @@ type methodType struct {
 
 // NewServer creates a new RPCServer.
 func NewServer(config *service.Config) *ServerImpl {
-	logger := logflags.RPCLogger()
 	if config.Debugger.Foreground {
 		// Print listener address
-		logflags.WriteAPIListeningMessage(config.Listener.Addr())
-		logger.Debug("API server pid = ", os.Getpid())
+		log.Info("listen address: %s", config.Listener.Addr())
+		log.Debug("API server pid = ", os.Getpid())
 	}
 	return &ServerImpl{
 		config:   config,
 		listener: config.Listener,
 		stopChan: make(chan struct{}),
-		log:      logger,
 	}
 }
 
 // Stop stops the JSON-RPC server.
 func (s *ServerImpl) Stop() error {
-	s.log.Debug("stopping")
+	log.Debug("stopping")
 	close(s.stopChan)
 	if s.config.AcceptMulti {
 		s.listener.Close()
@@ -117,9 +112,9 @@ func (s *ServerImpl) Run() error {
 
 	s.methodMaps[0] = map[string]*methodType{}
 	s.methodMaps[1] = map[string]*methodType{}
-	suitableMethods(rpcServer, s.methodMaps[0], s.log)
-	suitableMethods(s.rpcServer, s.methodMaps[1], s.log)
-	suitableMethods(rpcServer, s.methodMaps[1], s.log)
+	suitableMethods(rpcServer, s.methodMaps[0])
+	suitableMethods(s.rpcServer, s.methodMaps[1])
+	suitableMethods(rpcServer, s.methodMaps[1])
 
 	go func() {
 		defer s.listener.Close()
@@ -160,15 +155,15 @@ func (s *ServerImpl) serveConnectionDemux(c io.ReadWriteCloser) {
 	conn := &bufReadWriteCloser{bufio.NewReader(c), c}
 	b, err := conn.Peek(1)
 	if err != nil {
-		s.log.Warnf("error determining new connection protocol: %v", err)
+		log.Warn("error determining new connection protocol: %v", err)
 		return
 	}
 	if b[0] == 'C' { // C is for DAP's Content-Length
-		s.log.Debugf("serving DAP on new connection")
+		log.Debug("serving DAP on new connection")
 		ds := dap.NewSession(conn, &dap.Config{Config: s.config, StopTriggered: s.stopChan}, s.debugger)
 		go ds.ServeDAPCodec()
 	} else {
-		s.log.Debugf("serving JSON-RPC on new connection")
+		log.Debug("serving JSON-RPC on new connection")
 		go s.serveJSONCodec(conn)
 	}
 }
@@ -199,12 +194,12 @@ func isExportedOrBuiltinType(t reflect.Type) bool {
 // two signatures:
 //  func (rcvr ReceiverType) Method(in InputType, out *ReplyType) error
 //  func (rcvr ReceiverType) Method(in InputType, cb service.RPCCallback)
-func suitableMethods(rcvr interface{}, methods map[string]*methodType, log *logrus.Entry) {
+func suitableMethods(rcvr interface{}, methods map[string]*methodType) {
 	typ := reflect.TypeOf(rcvr)
 	rcvrv := reflect.ValueOf(rcvr)
 	sname := reflect.Indirect(rcvrv).Type().Name()
 	if sname == "" {
-		log.Debugf("rpcv2.Register: no service name for type %s", typ)
+		log.Debug("rpcv2.Register: no service name for type %s", typ)
 		return
 	}
 	for m := 0; m < typ.NumMethod(); m++ {
@@ -277,14 +272,14 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 		err := codec.ReadRequestHeader(&req)
 		if err != nil {
 			if err != io.EOF {
-				s.log.Error("rpcv2:", err)
+				log.Error("rpcv2:", err)
 			}
 			break
 		}
 
 		mtype, ok := s.methodMaps[1][req.ServiceMethod]
 		if !ok {
-			s.log.Errorf("rpcv2: can't find method %s", req.ServiceMethod)
+			log.Error("rpcv2: can't find method %s", req.ServiceMethod)
 			s.sendResponse(sending, &req, &rpc.Response{}, nil, codec, fmt.Sprintf("unknown method: %s", req.ServiceMethod))
 			continue
 		}
@@ -308,10 +303,9 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 		}
 
 		if mtype.Synchronous {
-			if logflags.RPC() {
-				argvbytes, _ := json.Marshal(argv.Interface())
-				s.log.Debugf("<- %s(%T%s)", req.ServiceMethod, argv.Interface(), argvbytes)
-			}
+			argvbytes, _ := json.Marshal(argv.Interface())
+			log.Debug("<- %s(%T%s)", req.ServiceMethod, argv.Interface(), argvbytes)
+
 			replyv = reflect.New(mtype.ReplyType.Elem())
 			function := mtype.method.Func
 			var returnValues []reflect.Value
@@ -331,20 +325,18 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 				errmsg = errInter.(error).Error()
 			}
 			resp = rpc.Response{}
-			if logflags.RPC() {
-				replyvbytes, _ := json.Marshal(replyv.Interface())
-				s.log.Debugf("-> %T%s error: %q", replyv.Interface(), replyvbytes, errmsg)
-			}
+			replyvbytes, _ := json.Marshal(replyv.Interface())
+			log.Debug("-> %T%s error: %q", replyv.Interface(), replyvbytes, errmsg)
+
 			s.sendResponse(sending, &req, &resp, replyv.Interface(), codec, errmsg)
 			if req.ServiceMethod == "RPCServer.Detach" && s.config.DisconnectChan != nil {
 				close(s.config.DisconnectChan)
 				s.config.DisconnectChan = nil
 			}
 		} else {
-			if logflags.RPC() {
-				argvbytes, _ := json.Marshal(argv.Interface())
-				s.log.Debugf("(async %d) <- %s(%T%s)", req.Seq, req.ServiceMethod, argv.Interface(), argvbytes)
-			}
+			argvbytes, _ := json.Marshal(argv.Interface())
+			log.Debug("(async %d) <- %s(%T%s)", req.Seq, req.ServiceMethod, argv.Interface(), argvbytes)
+
 			function := mtype.method.Func
 			ctl := &RPCCallback{s, sending, codec, req, make(chan struct{})}
 			go func() {
@@ -377,7 +369,7 @@ func (s *ServerImpl) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *r
 	defer sending.Unlock()
 	err := codec.WriteResponse(resp, reply)
 	if err != nil {
-		s.log.Error("writing response:", err)
+		log.Error("writing response:", err)
 	}
 }
 
@@ -393,10 +385,9 @@ func (cb *RPCCallback) Return(out interface{}, err error) {
 		errmsg = err.Error()
 	}
 	var resp rpc.Response
-	if logflags.RPC() {
-		outbytes, _ := json.Marshal(out)
-		cb.s.log.Debugf("(async %d) -> %T%s error: %q", cb.req.Seq, out, outbytes, errmsg)
-	}
+	outbytes, _ := json.Marshal(out)
+	log.Debug("(async %d) -> %T%s error: %q", cb.req.Seq, out, outbytes, errmsg)
+
 	cb.s.sendResponse(cb.sending, &cb.req, &resp, out, cb.codec, errmsg)
 }
 

@@ -1,10 +1,11 @@
 package cmds
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // Deprecated 'run' subcommand.
@@ -12,7 +13,7 @@ var runCommand = &cobra.Command{
 	Use:   "run",
 	Short: "Deprecated command. Use 'debug' instead.",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("This command is deprecated, please use 'debug' instead.")
+		log.Info("This command is deprecated, please use 'debug' instead.")
 		os.Exit(0)
 	},
 }

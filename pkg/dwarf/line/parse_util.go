@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 const (
@@ -43,7 +44,6 @@ const (
 var ErrBufferUnderflow = errors.New("buffer underflow")
 
 type formReader struct {
-	logf         func(string, ...interface{})
 	contentTypes []uint64
 	formCodes    []uint64
 
@@ -59,13 +59,12 @@ type formReader struct {
 	nexti int
 }
 
-func readEntryFormat(buf *bytes.Buffer, logf func(string, ...interface{})) *formReader {
+func readEntryFormat(buf *bytes.Buffer) *formReader {
 	if buf.Len() < 1 {
 		return nil
 	}
 	count := buf.Next(1)[0]
 	r := &formReader{
-		logf:         logf,
 		contentTypes: make([]uint64, count),
 		formCodes:    make([]uint64, count),
 	}
@@ -169,9 +168,7 @@ func (rdr *formReader) next(buf *bytes.Buffer) bool {
 		// do nothing
 
 	default:
-		if rdr.logf != nil {
-			rdr.logf("unknown form code %#x", rdr.formCode)
-		}
+		log.Error("unknown form code %#x", rdr.formCode)
 		rdr.formCodes[rdr.nexti] = ^uint64(0) // only print error once
 	}
 

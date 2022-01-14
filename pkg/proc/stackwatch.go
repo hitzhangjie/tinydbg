@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/hitzhangjie/dlv/pkg/astutil"
-	"github.com/hitzhangjie/dlv/pkg/logflags"
+	"github.com/hitzhangjie/dlv/pkg/log"
 )
 
 // This file implements most of the details needed to support stack
@@ -161,8 +161,7 @@ func watchpointOutOfScope(t *Target, watchpoint *Breakpoint) {
 	t.Breakpoints().WatchOutOfScope = append(t.Breakpoints().WatchOutOfScope, watchpoint)
 	err := t.ClearBreakpoint(watchpoint.Addr)
 	if err != nil {
-		log := logflags.DebuggerLogger()
-		log.Errorf("could not clear out-of-scope watchpoint: %v", err)
+		log.Error("could not clear out-of-scope watchpoint: %v", err)
 	}
 }
 
@@ -176,16 +175,14 @@ func adjustStackWatchpoint(t *Target, th Thread, watchpoint *Breakpoint) {
 	}
 	err := t.proc.EraseBreakpoint(watchpoint)
 	if err != nil {
-		log := logflags.DebuggerLogger()
-		log.Errorf("could not adjust watchpoint at %#x: %v", watchpoint.Addr, err)
+		log.Error("could not adjust watchpoint at %#x: %v", watchpoint.Addr, err)
 		return
 	}
 	delete(t.Breakpoints().M, watchpoint.Addr)
 	watchpoint.Addr = uint64(int64(g.stack.hi) + watchpoint.watchStackOff)
 	err = t.proc.WriteBreakpoint(watchpoint)
 	if err != nil {
-		log := logflags.DebuggerLogger()
-		log.Errorf("could not adjust watchpoint at %#x: %v", watchpoint.Addr, err)
+		log.Error("could not adjust watchpoint at %#x: %v", watchpoint.Addr, err)
 		return
 	}
 	t.Breakpoints().M[watchpoint.Addr] = watchpoint
