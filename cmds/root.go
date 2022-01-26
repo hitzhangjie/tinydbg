@@ -71,7 +71,12 @@ func init() {
 }
 
 // 返回错误码给os.Exit(?)
-func execute(attachPid int, processArgs []string, conf *config.Config, coreFile string, kind debugger.ExecuteKind, dlvArgs []string) int {
+func execute(attachPid int, processArgs []string, coreFile string, kind debugger.ExecuteKind, dlvArgs []string) int {
+	conf, err := config.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
+
 	if continueOnStart {
 		if !headless {
 			fmt.Fprint(os.Stderr, "Error: --continue only works with --headless; use an init file\n")
@@ -92,7 +97,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 
 	var listener net.Listener
 	var clientConn net.Conn
-	var err error
 
 	// Make a TCP listener
 	if headless {
@@ -164,7 +168,7 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 		return status
 	}
 
-	return connect(listener.Addr().String(), clientConn, conf, kind)
+	return connect(listener.Addr().String(), clientConn, kind)
 }
 
 // waitForDisconnectSignal is a blocking function that waits for either
@@ -189,7 +193,12 @@ func splitArgs(cmd *cobra.Command, args []string) ([]string, []string) {
 	return args, []string{}
 }
 
-func connect(addr string, clientConn net.Conn, conf *config.Config, kind debugger.ExecuteKind) int {
+func connect(addr string, clientConn net.Conn, kind debugger.ExecuteKind) int {
+	conf, err := config.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
+
 	// Create and start a terminal - attach to running instance
 	var client *rpcv2.RPCClient
 	if clientConn != nil {

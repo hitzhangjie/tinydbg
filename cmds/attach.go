@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
@@ -28,24 +27,17 @@ the option to let the process continue or kill it.
 		}
 		return nil
 	},
-	Run: attachCmdRun,
+	Run: func(cmd *cobra.Command, args []string) {
+		pid, err := strconv.Atoi(args[0])
+		if err != nil {
+			log.Error("Invalid pid: %s", args[0])
+			os.Exit(1)
+		}
+		os.Exit(execute(pid, args[1:], "", debugger.ExecutingOther, args))
+	},
 }
 
 func init() {
 	attachCommand.Flags().BoolVar(&continueOnStart, "continue", false, "Continue the debugged process on start.")
 	rootCommand.AddCommand(attachCommand)
-}
-
-func attachCmdRun(cmd *cobra.Command, args []string) {
-	conf, err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
-
-	pid, err := strconv.Atoi(args[0])
-	if err != nil {
-		log.Error("Invalid pid: %s", args[0])
-		os.Exit(1)
-	}
-	os.Exit(execute(pid, args[1:], conf, "", debugger.ExecutingOther, args))
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
@@ -28,11 +27,7 @@ or later, -gcflags="-N -l" on earlier versions of Go.`,
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		conf, err := config.LoadConfig()
-		if err != nil {
-			panic(err)
-		}
-		os.Exit(execute(0, args, conf, "", debugger.ExecutingExistingFile, args))
+		os.Exit(execute(0, args, "", debugger.ExecutingExistingFile, args))
 	},
 }
 

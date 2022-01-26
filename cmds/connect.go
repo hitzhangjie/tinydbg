@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
@@ -22,23 +21,16 @@ var connectCommand = &cobra.Command{
 		}
 		return nil
 	},
-	Run: connectCmdRun,
+	Run: func(cmd *cobra.Command, args []string) {
+		addr := args[0]
+		if addr == "" {
+			fmt.Fprint(os.Stderr, "An empty address was provided. You must provide an address as the 1st argument.\n")
+			os.Exit(1)
+		}
+		os.Exit(connect(addr, nil, debugger.ExecutingOther))
+	},
 }
 
 func init() {
 	rootCommand.AddCommand(connectCommand)
-}
-
-func connectCmdRun(cmd *cobra.Command, args []string) {
-	conf, err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
-
-	addr := args[0]
-	if addr == "" {
-		fmt.Fprint(os.Stderr, "An empty address was provided. You must provide an address as the first argument.\n")
-		os.Exit(1)
-	}
-	os.Exit(connect(addr, nil, conf, debugger.ExecutingOther))
 }

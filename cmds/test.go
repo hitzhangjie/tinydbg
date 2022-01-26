@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
@@ -35,11 +34,6 @@ func init() {
 }
 
 func testCmdRun(cmd *cobra.Command, args []string) {
-	conf, err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
-
 	status := func() int {
 		dlvArgs, targetArgs := splitArgs(cmd, args)
 		debugname, ok := buildBinary(cmd, dlvArgs, true)
@@ -57,7 +51,7 @@ func testCmdRun(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		return execute(0, processArgs, conf, "", debugger.ExecutingGeneratedTest, dlvArgs)
+		return execute(0, processArgs, "", debugger.ExecutingGeneratedTest, dlvArgs)
 	}()
 	os.Exit(status)
 }
