@@ -26,14 +26,13 @@ var (
 	acceptMulti     bool // whether allows multiple clients to connect to the same server
 
 	// debugger settins
-	addr        string   // the debugging server listen address
-	initFile    string   // the path to initialization file
-	buildFlags  string   // the flags passed during compiler invocation
-	workingDir  string   // the working directory for running the program
-	tty         string   // provide an alternate TTY for the program you wish to debug
-	disableASLR bool     // whether disables ASLR
-	backend     string   // backend selection
-	redirects   []string // redirect specifications for target process
+	addr        string // the debugging server listen address
+	initFile    string // the path to initialization file
+	buildFlags  string // the flags passed during compiler invocation
+	workingDir  string // the working directory for running the program
+	tty         string // provide an alternate TTY for the program you wish to debug
+	disableASLR bool   // whether disables ASLR
+	backend     string // backend selection
 
 	// checkGoVersion is true if the debugger should check the version of Go
 	// used to compile the executable and refuse to work on incompatible
@@ -89,25 +88,15 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 				continue
 			}
 			if !isatty.IsTerminal(f.file.Fd()) {
-				log.Error("%s is not a terminal, use '-r' to specify redirects for the target process or --allow-non-terminal-interactive=true if you really want to specify a redirect for Delve", f.name)
+				log.Error("%s is not a terminal", f.name)
 				return 1
 			}
 		}
 	}
 
-	if len(redirects) > 0 && tty != "" {
-		log.Error("Can not use -r and --tty together")
-		return 1
-	}
-
-	redirects, err := parseRedirects(redirects)
-	if err != nil {
-		log.Error("%v", err)
-		return 1
-	}
-
 	var listener net.Listener
 	var clientConn net.Conn
+	var err error
 
 	// Make a TCP listener
 	if headless {
@@ -148,7 +137,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 			DebugInfoDirectories: conf.DebugInfoDirectories,
 			CheckGoVersion:       checkGoVersion,
 			TTY:                  tty,
-			Redirects:            redirects,
 			DisableASLR:          disableASLR,
 		},
 	})

@@ -77,8 +77,6 @@ type RestartIn struct {
 
 	// When Rebuild is set the process will be build again
 	Rebuild bool
-
-	NewRedirects [3]string
 }
 
 type RestartOut struct {
@@ -94,7 +92,7 @@ func (s *RPCServer) Restart(arg RestartIn, cb service.RPCCallback) {
 	}
 	var out RestartOut
 	var err error
-	out.DiscardedBreakpoints, err = s.debugger.Restart(arg.Rerecord, arg.Position, arg.ResetArgs, arg.NewArgs, arg.NewRedirects, arg.Rebuild)
+	out.DiscardedBreakpoints, err = s.debugger.Restart(arg.Rerecord, arg.Position, arg.ResetArgs, arg.NewArgs, arg.Rebuild)
 	cb.Return(out, err)
 }
 
@@ -650,7 +648,7 @@ type ListGoroutinesOut struct {
 // For each group a maximum of MaxExamples example goroutines are
 // returned, as well as the total number of goroutines in the group.
 func (s *RPCServer) ListGoroutines(arg ListGoroutinesIn, out *ListGoroutinesOut) error {
-	//TODO(aarzilli): if arg contains a running goroutines filter (not negated)
+	// TODO(aarzilli): if arg contains a running goroutines filter (not negated)
 	// and start == 0 and count == 0 then we can optimize this by just looking
 	// at threads directly.
 	gs, nextg, err := s.debugger.Goroutines(arg.Start, arg.Count)
@@ -929,7 +927,7 @@ func (s *RPCServer) ExamineMemory(arg ExamineMemoryIn, out *ExaminedMemoryOut) e
 	}
 
 	out.Mem = Mem
-	out.IsLittleEndian = true //TODO: get byte order from debugger.target.BinInfo().Arch
+	out.IsLittleEndian = true // TODO: get byte order from debugger.target.BinInfo().Arch
 
 	return nil
 }

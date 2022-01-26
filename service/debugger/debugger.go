@@ -127,9 +127,6 @@ type Config struct {
 	// ExecuteKind contains the kind of the executed program.
 	ExecuteKind ExecuteKind
 
-	// Redirects specifies redirect rules for stdin, stdout and stderr
-	Redirects [3]string
-
 	// DisableASLR disables ASLR
 	DisableASLR bool
 }
@@ -246,7 +243,7 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.Target, error)
 
 	switch d.config.Backend {
 	case "native":
-		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Redirects)
+		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY)
 	default:
 		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
 	}
@@ -364,7 +361,7 @@ func (d *Debugger) detach(kill bool) error {
 // If the target process is a recording it will restart it from the given
 // position. If pos starts with 'c' it's a checkpoint ID, otherwise it's an
 // event number. If resetArgs is true, newArgs will replace the process args.
-func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []string, newRedirects [3]string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
+func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
 
@@ -392,7 +389,6 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 	}
 	if resetArgs {
 		d.processArgs = append([]string{d.processArgs[0]}, newArgs...)
-		d.config.Redirects = newRedirects
 	}
 	var p *proc.Target
 	var err error
