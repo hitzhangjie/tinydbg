@@ -117,9 +117,6 @@ type Config struct {
 	// Packages contains the packages that we are debugging.
 	Packages []string
 
-	// BuildFlags contains the flags passed to the compiler.
-	BuildFlags string
-
 	// ExecuteKind contains the kind of the executed program.
 	ExecuteKind ExecuteKind
 
@@ -392,12 +389,12 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 	if rebuild {
 		switch d.config.ExecuteKind {
 		case ExecutingGeneratedFile:
-			err = gobuild.GoBuild(d.processArgs[0], d.config.Packages, d.config.BuildFlags)
+			err = gobuild.GoBuild(d.processArgs[0], d.config.Packages)
 			if err != nil {
 				return nil, fmt.Errorf("could not rebuild process: %s", err)
 			}
 		case ExecutingGeneratedTest:
-			err = gobuild.GoTestBuild(d.processArgs[0], d.config.Packages, d.config.BuildFlags)
+			err = gobuild.GoTestBuild(d.processArgs[0], d.config.Packages)
 			if err != nil {
 				return nil, fmt.Errorf("could not rebuild process: %s", err)
 			}

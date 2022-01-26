@@ -27,7 +27,6 @@ var (
 	// debugger settins
 	addr        string // the debugging server listen address
 	initFile    string // the path to initialization file
-	buildFlags  string // the flags passed during compiler invocation
 	workingDir  string // the working directory for running the program
 	disableASLR bool   // whether disables ASLR
 	backend     string // backend selection
@@ -55,7 +54,7 @@ func New() *cobra.Command {
 }
 
 // 返回错误码给os.Exit(?)
-func execute(attachPid int, processArgs []string, conf *config.Config, coreFile string, kind debugger.ExecuteKind, dlvArgs []string, buildFlags string) int {
+func execute(attachPid int, processArgs []string, conf *config.Config, coreFile string, kind debugger.ExecuteKind, dlvArgs []string) int {
 	if headless && (initFile != "") {
 		fmt.Fprint(os.Stderr, "Warning: init file ignored with --headless\n")
 	}
@@ -115,7 +114,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 			CoreFile:             coreFile,
 			Foreground:           headless,
 			Packages:             dlvArgs,
-			BuildFlags:           buildFlags,
 			ExecuteKind:          kind,
 			DebugInfoDirectories: conf.DebugInfoDirectories,
 			CheckGoVersion:       checkGoVersion,

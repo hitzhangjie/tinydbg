@@ -32,7 +32,7 @@ or later, -gcflags="-N -l" on earlier versions of Go.`,
 		if err != nil {
 			panic(err)
 		}
-		os.Exit(execute(0, args, conf, "", debugger.ExecutingExistingFile, args, buildFlags))
+		os.Exit(execute(0, args, conf, "", debugger.ExecutingExistingFile, args))
 	},
 }
 

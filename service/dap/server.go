@@ -680,7 +680,7 @@ func (s *Session) handleRequest(request dap.Message) {
 	resumeRequestLoop := make(chan struct{})
 
 	switch request := request.(type) {
-	//--- Asynchronous requests ---
+	// --- Asynchronous requests ---
 	case *dap.ConfigurationDoneRequest:
 		// Optional (capability ‘supportsConfigurationDoneRequest’)
 		go func() {
@@ -730,7 +730,7 @@ func (s *Session) handleRequest(request dap.Message) {
 			s.onReverseContinueRequest(request, resumeRequestLoop)
 		}()
 		<-resumeRequestLoop
-	//--- Synchronous requests ---
+	// --- Synchronous requests ---
 	case *dap.SetBreakpointsRequest:
 		// Required
 		s.onSetBreakpointsRequest(request)
@@ -786,7 +786,7 @@ func (s *Session) handleRequest(request dap.Message) {
 	case *dap.ExceptionInfoRequest:
 		// Optional (capability ‘supportsExceptionInfoRequest’)
 		s.onExceptionInfoRequest(request)
-	//--- Requests that we do not plan to support ---
+	// --- Requests that we do not plan to support ---
 	case *dap.RestartFrameRequest:
 		// Optional (capability ’supportsRestartFrame’)
 		s.sendUnsupportedErrorResponse(request.Request)
@@ -1009,9 +1009,9 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		var err error
 		switch args.Mode {
 		case "debug":
-			cmd, out, err = gobuild.GoBuildCombinedOutput(args.Output, []string{args.Program}, args.BuildFlags)
+			cmd, out, err = gobuild.GoBuildCombinedOutput(args.Output, []string{args.Program})
 		case "test":
-			cmd, out, err = gobuild.GoTestBuildCombinedOutput(args.Output, []string{args.Program}, args.BuildFlags)
+			cmd, out, err = gobuild.GoTestBuildCombinedOutput(args.Output, []string{args.Program})
 		}
 		args.DlvCwd, _ = filepath.Abs(args.DlvCwd)
 		log.Debug("building from %q: [%s]", args.DlvCwd, cmd)

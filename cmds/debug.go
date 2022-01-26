@@ -45,7 +45,7 @@ func debugCmdRun(cmd *cobra.Command, args []string) {
 		}
 		defer gobuild.Remove(debugname)
 		processArgs := append([]string{debugname}, targetArgs...)
-		return execute(0, processArgs, conf, "", debugger.ExecutingGeneratedFile, dlvArgs, buildFlags)
+		return execute(0, processArgs, conf, "", debugger.ExecutingGeneratedFile, dlvArgs)
 	}()
 	os.Exit(status)
 }
@@ -58,9 +58,9 @@ func buildBinary(cmd *cobra.Command, args []string, isTest bool) (string, bool) 
 	}
 
 	if isTest {
-		err = gobuild.GoTestBuild(debugname, args, buildFlags)
+		err = gobuild.GoTestBuild(debugname, args)
 	} else {
-		err = gobuild.GoBuild(debugname, args, buildFlags)
+		err = gobuild.GoBuild(debugname, args)
 	}
 	if err != nil {
 		log.Error("%v", err)

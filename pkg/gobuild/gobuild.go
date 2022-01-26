@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/pkg/log"
 )
@@ -39,43 +38,36 @@ func optflags(args []string) []string {
 	return args
 }
 
-// GoBuild builds non-test files in 'pkgs' with the specified 'buildflags'
-// and writes the output at 'debugname'.
-func GoBuild(debugname string, pkgs []string, buildflags string) error {
-	args := goBuildArgs(debugname, pkgs, buildflags, false)
+// GoBuild builds non-test files in 'pkgs' and writes the output at 'debugname'.
+func GoBuild(debugname string, pkgs []string) error {
+	args := goBuildArgs(debugname, pkgs, false)
 	return gocommandRun("build", args...)
 }
 
-// GoBuildCombinedOutput builds non-test files in 'pkgs' with the specified 'buildflags'
-// and writes the output at 'debugname'.
-func GoBuildCombinedOutput(debugname string, pkgs []string, buildflags string) (string, []byte, error) {
-	args := goBuildArgs(debugname, pkgs, buildflags, false)
+// GoBuildCombinedOutput builds non-test files in 'pkgs' and writes the output at 'debugname'.
+func GoBuildCombinedOutput(debugname string, pkgs []string) (string, []byte, error) {
+	args := goBuildArgs(debugname, pkgs, false)
 	return gocommandCombinedOutput("build", args...)
 }
 
-// GoTestBuild builds test files 'pkgs' with the specified 'buildflags'
-// and writes the output at 'debugname'.
-func GoTestBuild(debugname string, pkgs []string, buildflags string) error {
-	args := goBuildArgs(debugname, pkgs, buildflags, true)
+// GoTestBuild builds test files 'pkgs' and writes the output at 'debugname'.
+func GoTestBuild(debugname string, pkgs []string) error {
+	args := goBuildArgs(debugname, pkgs, true)
 	return gocommandRun("test", args...)
 }
 
-// GoTestBuildCombinedOutput builds test files 'pkgs' with the specified 'buildflags'
-// and writes the output at 'debugname'.
-func GoTestBuildCombinedOutput(debugname string, pkgs []string, buildflags string) (string, []byte, error) {
-	args := goBuildArgs(debugname, pkgs, buildflags, true)
+// GoTestBuildCombinedOutput builds test files 'pkgs' and writes the output at 'debugname'.
+func GoTestBuildCombinedOutput(debugname string, pkgs []string) (string, []byte, error) {
+	args := goBuildArgs(debugname, pkgs, true)
 	return gocommandCombinedOutput("test", args...)
 }
 
-func goBuildArgs(debugname string, pkgs []string, buildflags string, isTest bool) []string {
+func goBuildArgs(debugname string, pkgs []string, isTest bool) []string {
 	args := []string{"-o", debugname}
 	if isTest {
 		args = append([]string{"-c"}, args...)
 	}
 	args = optflags(args)
-	if buildflags != "" {
-		args = append(args, config.SplitQuotedFields(buildflags, '\'')...)
-	}
 	args = append(args, pkgs...)
 	return args
 }

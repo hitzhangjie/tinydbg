@@ -57,7 +57,7 @@ func testCmdRun(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		return execute(0, processArgs, conf, "", debugger.ExecutingGeneratedTest, dlvArgs, buildFlags)
+		return execute(0, processArgs, conf, "", debugger.ExecutingGeneratedTest, dlvArgs)
 	}()
 	os.Exit(status)
 }

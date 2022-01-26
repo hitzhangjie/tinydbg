@@ -47,5 +47,5 @@ func attachCmdRun(cmd *cobra.Command, args []string) {
 		log.Error("Invalid pid: %s", args[0])
 		os.Exit(1)
 	}
-	os.Exit(execute(pid, args[1:], conf, "", debugger.ExecutingOther, args, buildFlags))
+	os.Exit(execute(pid, args[1:], conf, "", debugger.ExecutingOther, args))
 }

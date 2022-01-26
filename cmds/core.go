@@ -39,5 +39,5 @@ func coreCmdRun(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	os.Exit(execute(0, []string{args[0]}, conf, args[1], debugger.ExecutingOther, args, buildFlags))
+	os.Exit(execute(0, []string{args[0]}, conf, args[1], debugger.ExecutingOther, args))
 }
