@@ -202,7 +202,7 @@ var ErrUnrecognizedFormat = errors.New("unrecognized core format")
 // OpenCore will open the core file and return a Process struct.
 // If the DWARF information cannot be found in the binary, Delve will look
 // for external debug files in the directories passed in.
-func OpenCore(corePath, exePath string, debugInfoDirs []string) (*proc.Target, error) {
+func OpenCore(corePath, exePath string) (*proc.Target, error) {
 	var p *process
 	var currentThread proc.Thread
 	var err error
@@ -222,7 +222,6 @@ func OpenCore(corePath, exePath string, debugInfoDirs []string) (*proc.Target, e
 
 	return proc.NewTarget(p, p.pid, currentThread, proc.NewTargetConfig{
 		Path:                exePath,
-		DebugInfoDirs:       debugInfoDirs,
 		DisableAsyncPreempt: false,
 		StopReason:          proc.StopAttached,
 		CanDump:             false})

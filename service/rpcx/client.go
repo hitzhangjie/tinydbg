@@ -1,4 +1,4 @@
-package rpcv2
+package rpcx
 
 import (
 	"fmt"

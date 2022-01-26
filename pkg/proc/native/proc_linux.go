@@ -62,7 +62,7 @@ func (os *osProcessDetails) Close() {
 // to be supplied to that process. `wd` is working directory of the program.
 // If the DWARF information cannot be found in the binary, Delve will look
 // for external debug files in the directories passed in.
-func Launch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []string) (*proc.Target, error) {
+func Launch(cmd []string, wd string, flags proc.LaunchFlags) (*proc.Target, error) {
 	var (
 		process *exec.Cmd
 		err     error
@@ -129,17 +129,18 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []str
 	if err != nil {
 		return nil, fmt.Errorf("waiting for target execve failed: %s", err)
 	}
-	tgt, err := dbp.initialize(cmd[0], debugInfoDirs)
+	tgt, err := dbp.initialize(cmd[0])
 	if err != nil {
 		return nil, err
 	}
 	return tgt, nil
 }
 
-// Attach to an existing process with the given PID. Once attached, if
-// the DWARF information cannot be found in the binary, Delve will look
-// for external debug files in the directories passed in.
-func Attach(pid int, debugInfoDirs []string) (*proc.Target, error) {
+// Attach to an existing process with the given PID.
+// Usually, go compiler/linker generate DWARF in the binary on Linux.
+// While on Darwin, DWARF may be generated into separate files.
+// here, we only care about the 1st occasion.
+func Attach(pid int) (*proc.Target, error) {
 	dbp := newProcess(pid)
 
 	var err error
@@ -152,7 +153,7 @@ func Attach(pid int, debugInfoDirs []string) (*proc.Target, error) {
 		return nil, err
 	}
 
-	tgt, err := dbp.initialize(findExecutable("", dbp.pid), debugInfoDirs)
+	tgt, err := dbp.initialize(findExecutable("", dbp.pid))
 	if err != nil {
 		_ = dbp.Detach(false)
 		return nil, err

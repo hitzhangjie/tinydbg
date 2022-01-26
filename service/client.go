@@ -184,6 +184,6 @@ type Client interface {
 	// If cont is true a continue command will be sent instead.
 	Disconnect(cont bool) error
 
-	// CallAPI allows calling an arbitrary rpcv2 method (used by starlark bindings)
+	// CallAPI allows calling an arbitrary rpcx method (used by starlark bindings)
 	CallAPI(method string, args, reply interface{}) error
 }

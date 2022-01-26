@@ -153,7 +153,6 @@ const (
 // NewTargetConfig contains the configuration for a new Target object,
 type NewTargetConfig struct {
 	Path                string     // path of the main executable
-	DebugInfoDirs       []string   // Directories to search for split debug info
 	DisableAsyncPreempt bool       // Go 1.14 asynchronous preemption should be disabled
 	StopReason          StopReason // Initial stop reason
 	CanDump             bool       // Can create core dumps (must implement ProcessInternal.MemoryMap)
@@ -181,7 +180,7 @@ func NewTarget(p ProcessInternal, pid int, currentThread Thread, cfg NewTargetCo
 		return nil, err
 	}
 
-	err = p.BinInfo().LoadBinaryInfo(cfg.Path, entryPoint, cfg.DebugInfoDirs)
+	err = p.BinInfo().LoadBinaryInfo(cfg.Path, entryPoint)
 	if err != nil {
 		return nil, err
 	}

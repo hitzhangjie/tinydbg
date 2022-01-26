@@ -102,10 +102,6 @@ type Config struct {
 	// Foreground lets target process access stdin.
 	Foreground bool
 
-	// DebugInfoDirectories is the list of directories to look for
-	// when resolving external debug info files.
-	DebugInfoDirectories []string
-
 	// CheckGoVersion is true if the debugger should check the version of Go
 	// used to compile the executable and refuse to work on incompatible
 	// versions.
@@ -146,7 +142,7 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 
 	case d.config.CoreFile != "":
 		log.Info("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
-		p, err := core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
+		p, err := core.OpenCore(d.config.CoreFile, d.processArgs[0])
 		if err != nil {
 			err = go11DecodeErrorCheck(err)
 			return nil, err
@@ -226,7 +222,7 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.Target, error)
 		launchFlags |= proc.LaunchDisableASLR
 	}
 
-	return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories)
+	return native.Launch(processArgs, wd, launchFlags)
 }
 
 func (d *Debugger) recordingStart(stop func() error) {
@@ -249,7 +245,7 @@ func (d *Debugger) isRecording() bool {
 
 // Attach will attach to the process specified by 'pid'.
 func (d *Debugger) Attach(pid int, path string) (*proc.Target, error) {
-	return native.Attach(pid, d.config.DebugInfoDirectories)
+	return native.Attach(pid)
 }
 
 // ProcessPid returns the PID of the process

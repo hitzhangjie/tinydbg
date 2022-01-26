@@ -2538,7 +2538,7 @@ func TestAttachDetach(t *testing.T) {
 
 	switch testBackend {
 	case "native":
-		p, err = native.Attach(cmd.Process.Pid, []string{})
+		p, err = native.Attach(cmd.Process.Pid)
 	default:
 		err = fmt.Errorf("unknown backend %q", testBackend)
 	}
@@ -2734,7 +2734,7 @@ func TestAttachStripped(t *testing.T) {
 
 	switch testBackend {
 	case "native":
-		p, err = native.Attach(cmd.Process.Pid, []string{})
+		p, err = native.Attach(cmd.Process.Pid)
 	default:
 		t.Fatalf("unknown backend %q", testBackend)
 	}

@@ -21,7 +21,7 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/dap"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
+	"github.com/hitzhangjie/dlv/service/rpcx"
 )
 
 // ServerImpl implements a JSON-RPC server that can switch between two
@@ -36,7 +36,7 @@ type ServerImpl struct {
 	// debugger is the debugger service.
 	debugger *debugger.Debugger
 	// rpcServer is APIv2 server.
-	rpcServer *rpcv2.RPCServer
+	rpcServer *rpcx.RPCServer
 	// maps of served methods, one for each supported API.
 	methodMaps []map[string]*methodType
 }
@@ -104,7 +104,7 @@ func (s *ServerImpl) Run() error {
 		return err
 	}
 
-	s.rpcServer = rpcv2.NewServer(s.config, s.debugger)
+	s.rpcServer = rpcx.NewServer(s.config, s.debugger)
 
 	rpcServer := &RPCServer{s}
 
@@ -192,7 +192,7 @@ func suitableMethods(rcvr interface{}, methods map[string]*methodType) {
 	rcvrv := reflect.ValueOf(rcvr)
 	sname := reflect.Indirect(rcvrv).Type().Name()
 	if sname == "" {
-		log.Debug("rpcv2.Register: no service name for type %s", typ)
+		log.Debug("rpcx.Register: no service name for type %s", typ)
 		return
 	}
 	for m := 0; m < typ.NumMethod(); m++ {
@@ -265,14 +265,14 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 		err := codec.ReadRequestHeader(&req)
 		if err != nil {
 			if err != io.EOF {
-				log.Error("rpcv2:", err)
+				log.Error("rpcx:", err)
 			}
 			break
 		}
 
 		mtype, ok := s.methodMaps[1][req.ServiceMethod]
 		if !ok {
-			log.Error("rpcv2: can't find method %s", req.ServiceMethod)
+			log.Error("rpcx: can't find method %s", req.ServiceMethod)
 			s.sendResponse(sending, &req, &rpc.Response{}, nil, codec, fmt.Sprintf("unknown method: %s", req.ServiceMethod))
 			continue
 		}

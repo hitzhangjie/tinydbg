@@ -15,7 +15,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// getSuitableMethods returns the list of methods of service/rpcv2.RPCServer that are exported as API calls
+// getSuitableMethods returns the list of methods of service/rpcx.RPCServer that are exported as API calls
 func getSuitableMethods(pkg *types.Package, typename string) []*types.Func {
 	r := []*types.Func{}
 	mset := types.NewMethodSet(types.NewPointer(pkg.Scope().Lookup(typename).Type()))
@@ -124,11 +124,11 @@ func processServerMethods(serverMethods []*types.Func) []binding {
 		retType := sig.Params().At(1).Type().String()
 		switch fn.Name() {
 		case "Command":
-			retType = "rpcv2.CommandOut"
+			retType = "rpcx.CommandOut"
 		case "Restart":
-			retType = "rpcv2.RestartOut"
+			retType = "rpcx.RestartOut"
 		case "State":
-			retType = "rpcv2.StateOut"
+			retType = "rpcx.StateOut"
 		}
 
 		bindings[i] = binding{
@@ -156,7 +156,7 @@ func genMapping(bindings []binding) []byte {
 
 	fmt.Fprintf(buf, "// DO NOT EDIT: auto-generated using _scripts/gen-starlark-bindings.go\n\n")
 	fmt.Fprintf(buf, "package starbind\n\n")
-	fmt.Fprintf(buf, "import ( \"go.starlark.net/starlark\" \n \"github.com/go-delve/delve/service/api\" \n \"github.com/go-delve/delve/service/rpcv2\" \n \"fmt\" )\n\n")
+	fmt.Fprintf(buf, "import ( \"go.starlark.net/starlark\" \n \"github.com/go-delve/delve/service/api\" \n \"github.com/go-delve/delve/service/rpcx\" \n \"fmt\" )\n\n")
 	fmt.Fprintf(buf, "func (env *Env) starlarkPredeclare() starlark.StringDict {\n")
 	fmt.Fprintf(buf, "r := starlark.StringDict{}\n\n")
 
@@ -223,7 +223,7 @@ func genDocs(bindings []binding) []byte {
 
 	for _, binding := range bindings {
 		argNames := strings.Join(binding.argNames, ", ")
-		fmt.Fprintf(&buf, "%s(%s) | Equivalent to API call [%s](https://godoc.org/github.com/go-delve/delve/service/rpcv2#RPCServer.%s)\n", binding.name, argNames, binding.fn.Name(), binding.fn.Name())
+		fmt.Fprintf(&buf, "%s(%s) | Equivalent to API call [%s](https://godoc.org/github.com/go-delve/delve/service/rpcx#RPCServer.%s)\n", binding.name, argNames, binding.fn.Name(), binding.fn.Name())
 	}
 
 	fmt.Fprintf(&buf, "dlv_command(command) | Executes the specified command as if typed at the dlv_prompt\n")
@@ -293,14 +293,14 @@ func main() {
 		Mode: packages.LoadSyntax,
 		Fset: fset,
 	}
-	pkgs, err := packages.Load(cfg, "github.com/go-delve/delve/service/rpcv2")
+	pkgs, err := packages.Load(cfg, "github.com/go-delve/delve/service/rpcx")
 	if err != nil {
 		log.Fatalf("could not load packages: %v", err)
 	}
 
 	var serverMethods []*types.Func
 	packages.Visit(pkgs, func(pkg *packages.Package) bool {
-		if pkg.PkgPath == "github.com/go-delve/delve/service/rpcv2" {
+		if pkg.PkgPath == "github.com/go-delve/delve/service/rpcx" {
 			serverMethods = getSuitableMethods(pkg.Types, "RPCServer")
 		}
 		return true

@@ -17,7 +17,7 @@ names selected from this list:
 	gdbwire		Log connection to gdbserial backend
 	lldbout		Copy output from debugserver/lldb to standard output
 	debuglineerr	Log recoverable errors reading .debug_line
-	rpcv2		Log all RPC messages
+	rpcx		Log all RPC messages
 	fncall		Log function call protocol
 	minidump	Log minidump loading
 

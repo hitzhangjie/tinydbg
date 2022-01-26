@@ -5,7 +5,7 @@ package starbind
 import (
 	"fmt"
 	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
+	"github.com/hitzhangjie/dlv/service/rpcx"
 	"go.starlark.net/starlark"
 )
 
@@ -16,8 +16,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.AmendBreakpointIn
-		var rpcRet rpcv2.AmendBreakpointOut
+		var rpcArgs rpcx.AmendBreakpointIn
+		var rpcRet rpcx.AmendBreakpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Breakpoint, "Breakpoint")
 			if err != nil {
@@ -46,8 +46,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.AncestorsIn
-		var rpcRet rpcv2.AncestorsOut
+		var rpcArgs rpcx.AncestorsIn
+		var rpcRet rpcx.AncestorsOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.GoroutineID, "GoroutineID")
 			if err != nil {
@@ -92,8 +92,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.AttachedToExistingProcessIn
-		var rpcRet rpcv2.AttachedToExistingProcessOut
+		var rpcArgs rpcx.AttachedToExistingProcessIn
+		var rpcRet rpcx.AttachedToExistingProcessOut
 		err := env.ctx.Client().CallAPI("AttachedToExistingProcess", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -104,8 +104,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.CancelNextIn
-		var rpcRet rpcv2.CancelNextOut
+		var rpcArgs rpcx.CancelNextIn
+		var rpcRet rpcx.CancelNextOut
 		err := env.ctx.Client().CallAPI("CancelNext", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -116,8 +116,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.CheckpointIn
-		var rpcRet rpcv2.CheckpointOut
+		var rpcArgs rpcx.CheckpointIn
+		var rpcRet rpcx.CheckpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Where, "Where")
 			if err != nil {
@@ -146,8 +146,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ClearBreakpointIn
-		var rpcRet rpcv2.ClearBreakpointOut
+		var rpcArgs rpcx.ClearBreakpointIn
+		var rpcRet rpcx.ClearBreakpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Id, "Id")
 			if err != nil {
@@ -184,8 +184,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ClearCheckpointIn
-		var rpcRet rpcv2.ClearCheckpointOut
+		var rpcArgs rpcx.ClearCheckpointIn
+		var rpcRet rpcx.ClearCheckpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.ID, "ID")
 			if err != nil {
@@ -215,7 +215,7 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 			return starlark.None, decorateError(thread, err)
 		}
 		var rpcArgs api.DebuggerCommand
-		var rpcRet rpcv2.CommandOut
+		var rpcRet rpcx.CommandOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Name, "Name")
 			if err != nil {
@@ -287,8 +287,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.CreateBreakpointIn
-		var rpcRet rpcv2.CreateBreakpointOut
+		var rpcArgs rpcx.CreateBreakpointIn
+		var rpcRet rpcx.CreateBreakpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Breakpoint, "Breakpoint")
 			if err != nil {
@@ -317,8 +317,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.CreateEBPFTracepointIn
-		var rpcRet rpcv2.CreateEBPFTracepointOut
+		var rpcArgs rpcx.CreateEBPFTracepointIn
+		var rpcRet rpcx.CreateEBPFTracepointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.FunctionName, "FunctionName")
 			if err != nil {
@@ -347,8 +347,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.CreateWatchpointIn
-		var rpcRet rpcv2.CreateWatchpointOut
+		var rpcArgs rpcx.CreateWatchpointIn
+		var rpcRet rpcx.CreateWatchpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Scope, "Scope")
 			if err != nil {
@@ -395,8 +395,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.DetachIn
-		var rpcRet rpcv2.DetachOut
+		var rpcArgs rpcx.DetachIn
+		var rpcRet rpcx.DetachOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Kill, "Kill")
 			if err != nil {
@@ -425,8 +425,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.DisassembleIn
-		var rpcRet rpcv2.DisassembleOut
+		var rpcArgs rpcx.DisassembleIn
+		var rpcRet rpcx.DisassembleOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Scope, "Scope")
 			if err != nil {
@@ -481,8 +481,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.DumpCancelIn
-		var rpcRet rpcv2.DumpCancelOut
+		var rpcArgs rpcx.DumpCancelIn
+		var rpcRet rpcx.DumpCancelOut
 		err := env.ctx.Client().CallAPI("DumpCancel", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -493,8 +493,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.DumpStartIn
-		var rpcRet rpcv2.DumpStartOut
+		var rpcArgs rpcx.DumpStartIn
+		var rpcRet rpcx.DumpStartOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Destination, "Destination")
 			if err != nil {
@@ -523,8 +523,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.DumpWaitIn
-		var rpcRet rpcv2.DumpWaitOut
+		var rpcArgs rpcx.DumpWaitIn
+		var rpcRet rpcx.DumpWaitOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Wait, "Wait")
 			if err != nil {
@@ -553,8 +553,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.EvalIn
-		var rpcRet rpcv2.EvalOut
+		var rpcArgs rpcx.EvalIn
+		var rpcRet rpcx.EvalOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Scope, "Scope")
 			if err != nil {
@@ -604,8 +604,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ExamineMemoryIn
-		var rpcRet rpcv2.ExaminedMemoryOut
+		var rpcArgs rpcx.ExamineMemoryIn
+		var rpcRet rpcx.ExaminedMemoryOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Address, "Address")
 			if err != nil {
@@ -642,8 +642,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.FindLocationIn
-		var rpcRet rpcv2.FindLocationOut
+		var rpcArgs rpcx.FindLocationIn
+		var rpcRet rpcx.FindLocationOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Scope, "Scope")
 			if err != nil {
@@ -698,8 +698,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.FunctionReturnLocationsIn
-		var rpcRet rpcv2.FunctionReturnLocationsOut
+		var rpcArgs rpcx.FunctionReturnLocationsIn
+		var rpcRet rpcx.FunctionReturnLocationsOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.FnName, "FnName")
 			if err != nil {
@@ -728,8 +728,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.GetBreakpointIn
-		var rpcRet rpcv2.GetBreakpointOut
+		var rpcArgs rpcx.GetBreakpointIn
+		var rpcRet rpcx.GetBreakpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Id, "Id")
 			if err != nil {
@@ -766,8 +766,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.GetBufferedTracepointsIn
-		var rpcRet rpcv2.GetBufferedTracepointsOut
+		var rpcArgs rpcx.GetBufferedTracepointsIn
+		var rpcRet rpcx.GetBufferedTracepointsOut
 		err := env.ctx.Client().CallAPI("GetBufferedTracepoints", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -778,8 +778,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.GetThreadIn
-		var rpcRet rpcv2.GetThreadOut
+		var rpcArgs rpcx.GetThreadIn
+		var rpcRet rpcx.GetThreadOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Id, "Id")
 			if err != nil {
@@ -808,8 +808,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.IsMulticlientIn
-		var rpcRet rpcv2.IsMulticlientOut
+		var rpcArgs rpcx.IsMulticlientIn
+		var rpcRet rpcx.IsMulticlientOut
 		err := env.ctx.Client().CallAPI("IsMulticlient", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -820,8 +820,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.LastModifiedIn
-		var rpcRet rpcv2.LastModifiedOut
+		var rpcArgs rpcx.LastModifiedIn
+		var rpcRet rpcx.LastModifiedOut
 		err := env.ctx.Client().CallAPI("LastModified", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -832,8 +832,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListBreakpointsIn
-		var rpcRet rpcv2.ListBreakpointsOut
+		var rpcArgs rpcx.ListBreakpointsIn
+		var rpcRet rpcx.ListBreakpointsOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.All, "All")
 			if err != nil {
@@ -862,8 +862,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListCheckpointsIn
-		var rpcRet rpcv2.ListCheckpointsOut
+		var rpcArgs rpcx.ListCheckpointsIn
+		var rpcRet rpcx.ListCheckpointsOut
 		err := env.ctx.Client().CallAPI("ListCheckpoints", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -874,8 +874,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListDynamicLibrariesIn
-		var rpcRet rpcv2.ListDynamicLibrariesOut
+		var rpcArgs rpcx.ListDynamicLibrariesIn
+		var rpcRet rpcx.ListDynamicLibrariesOut
 		err := env.ctx.Client().CallAPI("ListDynamicLibraries", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -886,8 +886,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListFunctionArgsIn
-		var rpcRet rpcv2.ListFunctionArgsOut
+		var rpcArgs rpcx.ListFunctionArgsIn
+		var rpcRet rpcx.ListFunctionArgsOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Scope, "Scope")
 			if err != nil {
@@ -928,8 +928,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListFunctionsIn
-		var rpcRet rpcv2.ListFunctionsOut
+		var rpcArgs rpcx.ListFunctionsIn
+		var rpcRet rpcx.ListFunctionsOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Filter, "Filter")
 			if err != nil {
@@ -958,8 +958,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListGoroutinesIn
-		var rpcRet rpcv2.ListGoroutinesOut
+		var rpcArgs rpcx.ListGoroutinesIn
+		var rpcRet rpcx.ListGoroutinesOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Start, "Start")
 			if err != nil {
@@ -1012,8 +1012,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListLocalVarsIn
-		var rpcRet rpcv2.ListLocalVarsOut
+		var rpcArgs rpcx.ListLocalVarsIn
+		var rpcRet rpcx.ListLocalVarsOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Scope, "Scope")
 			if err != nil {
@@ -1054,8 +1054,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListPackageVarsIn
-		var rpcRet rpcv2.ListPackageVarsOut
+		var rpcArgs rpcx.ListPackageVarsIn
+		var rpcRet rpcx.ListPackageVarsOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Filter, "Filter")
 			if err != nil {
@@ -1094,8 +1094,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListPackagesBuildInfoIn
-		var rpcRet rpcv2.ListPackagesBuildInfoOut
+		var rpcArgs rpcx.ListPackagesBuildInfoIn
+		var rpcRet rpcx.ListPackagesBuildInfoOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.IncludeFiles, "IncludeFiles")
 			if err != nil {
@@ -1124,8 +1124,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListRegistersIn
-		var rpcRet rpcv2.ListRegistersOut
+		var rpcArgs rpcx.ListRegistersIn
+		var rpcRet rpcx.ListRegistersOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.ThreadID, "ThreadID")
 			if err != nil {
@@ -1173,8 +1173,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListSourcesIn
-		var rpcRet rpcv2.ListSourcesOut
+		var rpcArgs rpcx.ListSourcesIn
+		var rpcRet rpcx.ListSourcesOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Filter, "Filter")
 			if err != nil {
@@ -1203,8 +1203,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListThreadsIn
-		var rpcRet rpcv2.ListThreadsOut
+		var rpcArgs rpcx.ListThreadsIn
+		var rpcRet rpcx.ListThreadsOut
 		err := env.ctx.Client().CallAPI("ListThreads", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -1215,8 +1215,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ListTypesIn
-		var rpcRet rpcv2.ListTypesOut
+		var rpcArgs rpcx.ListTypesIn
+		var rpcRet rpcx.ListTypesOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Filter, "Filter")
 			if err != nil {
@@ -1245,8 +1245,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ProcessPidIn
-		var rpcRet rpcv2.ProcessPidOut
+		var rpcArgs rpcx.ProcessPidIn
+		var rpcRet rpcx.ProcessPidOut
 		err := env.ctx.Client().CallAPI("ProcessPid", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -1257,8 +1257,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.RecordedIn
-		var rpcRet rpcv2.RecordedOut
+		var rpcArgs rpcx.RecordedIn
+		var rpcRet rpcx.RecordedOut
 		err := env.ctx.Client().CallAPI("Recorded", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
@@ -1269,8 +1269,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.RestartIn
-		var rpcRet rpcv2.RestartOut
+		var rpcArgs rpcx.RestartIn
+		var rpcRet rpcx.RestartOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Position, "Position")
 			if err != nil {
@@ -1331,8 +1331,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.SetIn
-		var rpcRet rpcv2.SetOut
+		var rpcArgs rpcx.SetIn
+		var rpcRet rpcx.SetOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Scope, "Scope")
 			if err != nil {
@@ -1379,8 +1379,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.StacktraceIn
-		var rpcRet rpcv2.StacktraceOut
+		var rpcArgs rpcx.StacktraceIn
+		var rpcRet rpcx.StacktraceOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Id, "Id")
 			if err != nil {
@@ -1449,8 +1449,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.StateIn
-		var rpcRet rpcv2.StateOut
+		var rpcArgs rpcx.StateIn
+		var rpcRet rpcx.StateOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.NonBlocking, "NonBlocking")
 			if err != nil {
@@ -1479,8 +1479,8 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
 		}
-		var rpcArgs rpcv2.ToggleBreakpointIn
-		var rpcRet rpcv2.ToggleBreakpointOut
+		var rpcArgs rpcx.ToggleBreakpointIn
+		var rpcRet rpcx.ToggleBreakpointOut
 		if len(args) > 0 && args[0] != starlark.None {
 			err := unmarshalStarlarkValue(args[0], &rpcArgs.Id, "Id")
 			if err != nil {

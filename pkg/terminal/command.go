@@ -33,7 +33,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/terminal/colorize"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
+	"github.com/hitzhangjie/dlv/service/rpcx"
 )
 
 const optimizedFunctionWarning = "Warning: debugging optimized function"
@@ -1737,7 +1737,7 @@ func setBreakpoint(t *Term, ctx callContext, tracepoint bool, argstr string) ([]
 			if locs[i].Function == nil {
 				continue
 			}
-			addrs, err := t.client.(*rpcv2.RPCClient).FunctionReturnLocations(locs[0].Function.Name())
+			addrs, err := t.client.(*rpcx.RPCClient).FunctionReturnLocations(locs[0].Function.Name())
 			if err != nil {
 				return nil, err
 			}

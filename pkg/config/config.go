@@ -6,18 +6,15 @@ import (
 	"io/ioutil"
 	"os"
 	"os/user"
-	"path"
 	"path/filepath"
-	"runtime"
 	"sync"
 
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	configDir       string = "dlv"
-	configDirHidden string = ".dlv"
-	configFile      string = "config.yml"
+	configDir  string = "dlv"
+	configFile string = "config.yml"
 )
 
 // SubstitutePathRule describes a rule for substitution of path to source code file.
@@ -77,12 +74,6 @@ type Config struct {
 	// number of lines to list above and below cursor when printfile() is
 	// called (i.e. when execution stops, listCommand is used, etc)
 	SourceListLineCount *int `yaml:"source-list-line-count,omitempty"`
-
-	// DebugFileDirectories is the list of directories Delve will use
-	// in order to resolve external debug info files.
-	//
-	// TODO 这个可能对我们的mo没什么作用，macOS下dwarf与二进制信息分离还是有用的，linux下应该没有什么作用
-	DebugInfoDirectories []string `yaml:"debug-info-directories"`
 }
 
 func (c *Config) GetSourceListLineCount() int {
@@ -133,9 +124,6 @@ func loadConfig() (*Config, error) {
 	if err = yaml.Unmarshal(data, &c); err != nil {
 		return &Config{}, fmt.Errorf("unable to decode config file: %v", err)
 	}
-	if len(c.DebugInfoDirectories) == 0 {
-		c.DebugInfoDirectories = []string{"/usr/lib/debug/.build-id"}
-	}
 	return &c, nil
 }
 
@@ -160,32 +148,6 @@ func SaveConfig(conf *Config) error {
 
 	_, err = f.Write(out)
 	return err
-}
-
-// moveOldConfig attempts to move config to new location
-// $HOME/.dlv to $XDG_CONFIG_HOME/dlv
-func moveOldConfig() error {
-	if os.Getenv("XDG_CONFIG_HOME") == "" && runtime.GOOS != "linux" {
-		return nil
-	}
-
-	userHomeDir := getUserHomeDir()
-
-	p := path.Join(userHomeDir, configDirHidden, configFile)
-	_, err := os.Stat(p)
-	if err != nil {
-		return fmt.Errorf("unable to read config file located at: %s", p)
-	}
-
-	newFile, err := GetConfigFilePath(configFile)
-	if err != nil {
-		return fmt.Errorf("unable to read config file located at: %s", err)
-	}
-
-	if err := os.Rename(p, newFile); err != nil {
-		return fmt.Errorf("unable to move %s to %s", p, newFile)
-	}
-	return nil
 }
 
 func createDefaultConfig(path string) (*os.File, error) {
@@ -269,16 +231,9 @@ func createConfigPath() error {
 
 // GetConfigFilePath gets the full path to the given config file name.
 func GetConfigFilePath(file string) (string, error) {
-	if configPath := os.Getenv("XDG_CONFIG_HOME"); configPath != "" {
-		return filepath.Join(configPath, configDir, file), nil
-	}
-
-	userHomeDir := getUserHomeDir()
-
-	if runtime.GOOS == "linux" {
-		return filepath.Join(userHomeDir, ".config", configDir, file), nil
-	}
-	return filepath.Join(userHomeDir, configDirHidden, file), nil
+	home := getUserHomeDir()
+	fp := filepath.Join(home, ".config", configDir, file)
+	return fp, nil
 }
 
 func getUserHomeDir() string {

@@ -23,7 +23,7 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
+	"github.com/hitzhangjie/dlv/service/rpcx"
 )
 
 var normalLoadConfig = api.LoadConfig{
@@ -85,7 +85,7 @@ func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redir
 
 func withTestClient2Extended(name string, t *testing.T, buildFlags protest.BuildFlags, redirects [3]string, fn func(c service.Client, fixture protest.Fixture)) {
 	clientConn, fixture := startServer(name, buildFlags, t, redirects)
-	client := rpcv2.NewClientFromConn(clientConn)
+	client := rpcx.NewClientFromConn(clientConn)
 	defer func() {
 		client.Detach(true)
 	}()
@@ -1770,10 +1770,10 @@ func TestAcceptMulticlient(t *testing.T) {
 		<-disconnectChan
 		server.Stop()
 	}()
-	client1 := rpcv2.NewClient(listener.Addr().String())
+	client1 := rpcx.NewClient(listener.Addr().String())
 	client1.Disconnect(false)
 
-	client2 := rpcv2.NewClient(listener.Addr().String())
+	client2 := rpcx.NewClient(listener.Addr().String())
 	state := <-client2.Continue()
 	if state.CurrentThread.Function.Name() != "main.main" {
 		t.Fatalf("bad state after continue: %v\n", state)
@@ -1806,7 +1806,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 		server.Stop()
 	}()
 
-	client := rpcv2.NewClient(listener.Addr().String())
+	client := rpcx.NewClient(listener.Addr().String())
 	client.Disconnect(true /*continue*/)
 	time.Sleep(10 * time.Millisecond) // give server time to start running
 	close(disconnectChan)             // stop the server
@@ -1956,8 +1956,8 @@ type brokenRPCClient struct {
 
 func (c *brokenRPCClient) Detach(kill bool) error {
 	defer c.client.Close()
-	out := new(rpcv2.DetachOut)
-	return c.call("Detach", rpcv2.DetachIn{Kill: kill}, out)
+	out := new(rpcx.DetachOut)
+	return c.call("Detach", rpcx.DetachIn{Kill: kill}, out)
 }
 
 func (c *brokenRPCClient) call(method string, args, reply interface{}) error {
@@ -2093,7 +2093,7 @@ func TestDetachLeaveRunning(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := rpcv2.NewClientFromConn(clientConn)
+	client := rpcx.NewClientFromConn(clientConn)
 	defer server.Stop()
 	assertNoError(client.Detach(false), t, "Detach")
 }

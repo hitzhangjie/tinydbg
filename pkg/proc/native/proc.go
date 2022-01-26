@@ -249,7 +249,7 @@ func (dbp *nativeProcess) FindBreakpoint(pc uint64, adjustPC bool) (*proc.Breakp
 
 // initialize will ensure that all relevant information is loaded
 // so the process is ready to be debugged.
-func (dbp *nativeProcess) initialize(path string, debugInfoDirs []string) (*proc.Target, error) {
+func (dbp *nativeProcess) initialize(path string) (*proc.Target, error) {
 	if err := initialize(dbp); err != nil {
 		return nil, err
 	}
@@ -262,7 +262,6 @@ func (dbp *nativeProcess) initialize(path string, debugInfoDirs []string) (*proc
 	}
 	return proc.NewTarget(dbp, dbp.pid, dbp.memthread, proc.NewTargetConfig{
 		Path:                path,
-		DebugInfoDirs:       debugInfoDirs,
 		DisableAsyncPreempt: false,
 		StopReason:          stopReason,
 		CanDump:             true})

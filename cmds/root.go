@@ -9,7 +9,7 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
+	"github.com/hitzhangjie/dlv/service/rpcx"
 	"github.com/spf13/cobra"
 	"net"
 	"os"
@@ -71,10 +71,7 @@ func init() {
 }
 
 func execute(attachPid int, processArgs []string, coreFile string, kind debugger.ExecuteKind, dlvArgs []string) int {
-	conf, err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
+	var err error
 
 	if continueOnStart {
 		if !headless {
@@ -123,15 +120,14 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 		AcceptMulti:    acceptMulti,
 		DisconnectChan: disconnectChan,
 		DebuggerConfig: debugger.Config{
-			AttachPid:            attachPid,
-			WorkingDir:           workingDir,
-			CoreFile:             coreFile,
-			Foreground:           headless,
-			Packages:             dlvArgs,
-			ExecuteKind:          kind,
-			DebugInfoDirectories: conf.DebugInfoDirectories,
-			CheckGoVersion:       checkGoVersion,
-			DisableASLR:          disableASLR,
+			AttachPid:      attachPid,
+			WorkingDir:     workingDir,
+			CoreFile:       coreFile,
+			Foreground:     headless,
+			Packages:       dlvArgs,
+			ExecuteKind:    kind,
+			CheckGoVersion: checkGoVersion,
+			DisableASLR:    disableASLR,
 		},
 	})
 
@@ -154,7 +150,7 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 	var status int
 	if headless {
 		if continueOnStart {
-			client := rpcv2.NewClient(listener.Addr().String())
+			client := rpcx.NewClient(listener.Addr().String())
 			client.Disconnect(true) // true = continue after disconnect
 		}
 		waitForDisconnectSignal(disconnectChan)
@@ -198,11 +194,11 @@ func connect(addr string, clientConn net.Conn, kind debugger.ExecuteKind) int {
 	}
 
 	// Create and start a terminal - attach to running instance
-	var client *rpcv2.RPCClient
+	var client *rpcx.RPCClient
 	if clientConn != nil {
-		client = rpcv2.NewClientFromConn(clientConn)
+		client = rpcx.NewClientFromConn(clientConn)
 	} else {
-		client = rpcv2.NewClient(addr)
+		client = rpcx.NewClient(addr)
 	}
 	if client.IsMulticlient() {
 		state, _ := client.GetStateNonBlocking()
