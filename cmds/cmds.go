@@ -27,7 +27,6 @@ var (
 
 	// debugger settins
 	addr        string // the debugging server listen address
-	initFile    string // the path to initialization file
 	workingDir  string // the working directory for running the program
 	disableASLR bool   // whether disables ASLR
 	backend     string // backend selection
@@ -56,9 +55,6 @@ func New() *cobra.Command {
 
 // 返回错误码给os.Exit(?)
 func execute(attachPid int, processArgs []string, conf *config.Config, coreFile string, kind debugger.ExecuteKind, dlvArgs []string) int {
-	if headless && (initFile != "") {
-		fmt.Fprint(os.Stderr, "Warning: init file ignored with --headless\n")
-	}
 	if continueOnStart {
 		if !headless {
 			fmt.Fprint(os.Stderr, "Error: --continue only works with --headless; use an init file\n")
@@ -201,7 +197,6 @@ func connect(addr string, clientConn net.Conn, conf *config.Config, kind debugge
 		}
 	}
 	term := terminal.New(client, conf)
-	term.InitFile = initFile
 	status, err := term.Run()
 	if err != nil {
 		log.Error("%v", err)

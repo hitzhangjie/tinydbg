@@ -57,7 +57,6 @@ type Term struct {
 	line         *liner.State
 	cmds         *Commands
 	stdout       io.Writer
-	InitFile     string
 	displays     []displayEntry
 	colorEscapes map[colorize.Style]string
 
@@ -258,16 +257,6 @@ func (t *Term) Run() (int, error) {
 	}
 
 	log.Info("Type 'help' for list of commands.")
-
-	if t.InitFile != "" {
-		err := t.cmds.executeFile(t, t.InitFile)
-		if err != nil {
-			if _, ok := err.(ExitRequestError); ok {
-				return t.handleExit()
-			}
-			log.Error("Error executing init file: %s", err)
-		}
-	}
 
 	var lastCmd string
 
