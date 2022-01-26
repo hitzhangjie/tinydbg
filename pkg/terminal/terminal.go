@@ -274,6 +274,7 @@ func (t *Term) Run() (int, error) {
 			return 1, fmt.Errorf("Prompt for input failed.")
 		}
 
+		// if pressing <enter>, using last command instead
 		if strings.TrimSpace(cmdstr) == "" {
 			cmdstr = lastCmd
 		}

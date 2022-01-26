@@ -18,53 +18,15 @@ const maxFindLocationCandidates = 5
 // LocationSpec is an interface that represents a parsed location spec string.
 type LocationSpec interface {
 	// Find returns all locations that match the location spec.
-	Find(t *proc.Target, processArgs []string, scope *proc.EvalScope, locStr string, includeNonExecutableLines bool, substitutePathRules [][2]string) ([]api.Location, error)
-}
-
-// NormalLocationSpec represents a basic location spec.
-// This can be a file:line or func:line.
-type NormalLocationSpec struct {
-	Base       string
-	FuncBase   *FuncLocationSpec
-	LineOffset int
-}
-
-// RegexLocationSpec represents a regular expression
-// location expression such as /^myfunc$/.
-type RegexLocationSpec struct {
-	FuncRegex string
-}
-
-// AddrLocationSpec represents an address when used
-// as a location spec.
-type AddrLocationSpec struct {
-	AddrExpr string
-}
-
-// OffsetLocationSpec represents a location spec that
-// is an offset of the current location (file:line).
-type OffsetLocationSpec struct {
-	Offset int
-}
-
-// LineLocationSpec represents a line number in the current file.
-type LineLocationSpec struct {
-	Line int
-}
-
-// FuncLocationSpec represents a function in the target program.
-type FuncLocationSpec struct {
-	PackageName           string
-	AbsolutePackage       bool
-	ReceiverName          string
-	PackageOrReceiverName string
-	BaseName              string
+	Find(t *proc.Target, processArgs []string, scope *proc.EvalScope, locStr string,
+		includeNonExecutableLines bool, substitutePathRules [][2]string) ([]api.Location, error)
 }
 
 // Parse will turn locStr into a parsed LocationSpec.
 func Parse(locStr string) (LocationSpec, error) {
 	rest := locStr
 
+	// report what's wrong happening at offset of `locstr`
 	malformed := func(reason string) error {
 		//lint:ignore ST1005 backwards compatibility
 		return fmt.Errorf("Malformed breakpoint location \"%s\" at %d: %s", locStr, len(locStr)-len(rest), reason)
@@ -76,6 +38,7 @@ func Parse(locStr string) (LocationSpec, error) {
 
 	switch rest[0] {
 	case '+', '-':
+		// parsing OffsetLocationSpec
 		offset, err := strconv.Atoi(rest)
 		if err != nil {
 			return nil, malformed(err.Error())
@@ -83,23 +46,26 @@ func Parse(locStr string) (LocationSpec, error) {
 		return &OffsetLocationSpec{offset}, nil
 
 	case '/':
+		// parsing RegexLocationSpec or LocationSpec
 		if rest[len(rest)-1] == '/' {
-			rx, rest := readRegex(rest[1:])
+			regex, rest := readRegex(rest[1:])
 			if len(rest) == 0 {
 				return nil, malformed("non-terminated regular expression")
 			}
 			if len(rest) > 1 {
 				return nil, malformed("no line offset can be specified for regular expression locations")
 			}
-			return &RegexLocationSpec{rx}, nil
+			return &RegexLocationSpec{regex}, nil
 		} else {
 			return parseLocationSpecDefault(locStr, rest)
 		}
 
 	case '*':
+		// parsing AddrLocationSpec
 		return &AddrLocationSpec{AddrExpr: rest[1:]}, nil
 
 	default:
+		// parsing LocationSpec
 		return parseLocationSpecDefault(locStr, rest)
 	}
 }
@@ -116,6 +82,7 @@ func parseLocationSpecDefault(locStr, rest string) (LocationSpec, error) {
 		v = []string{strings.Join(v[0:len(v)-1], ":"), v[len(v)-1]}
 	}
 
+	// LineLocationSpec
 	if len(v) == 1 {
 		n, err := strconv.ParseInt(v[0], 0, 64)
 		if err == nil {
@@ -123,6 +90,7 @@ func parseLocationSpecDefault(locStr, rest string) (LocationSpec, error) {
 		}
 	}
 
+	// NormalLocationSpec
 	spec := &NormalLocationSpec{}
 
 	spec.Base = v[0]
@@ -473,8 +441,8 @@ func SubstitutePath(path string, rules [][2]string) string {
 	// On windows paths returned from headless server are as c:/dir/dir
 	// though os.PathSeparator is '\\'
 
-	separator := "/"                  //make it default
-	if strings.Contains(path, "\\") { //dependent on the path
+	separator := "/"                  // make it default
+	if strings.Contains(path, "\\") { // dependent on the path
 		separator = "\\"
 	}
 	for _, r := range rules {
