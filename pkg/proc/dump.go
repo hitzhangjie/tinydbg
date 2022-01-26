@@ -130,8 +130,6 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 		fhdr.Machine = elf.EM_X86_64
 	case "386":
 		fhdr.Machine = elf.EM_386
-	case "arm64":
-		fhdr.Machine = elf.EM_AARCH64
 	default:
 		panic("not implemented")
 	}

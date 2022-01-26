@@ -37,9 +37,8 @@ const _NT_FPREGSET elf.NType = 0x2
 // Fetch architecture using exeELF.Machine from core file
 // Refer http://man7.org/linux/man-pages/man5/elf.5.html
 const (
-	_EM_AARCH64          = 183
-	_EM_X86_64           = 62
-	_ARM_FP_HEADER_START = 512
+	_EM_AARCH64 = 183
+	_EM_X86_64  = 62
 )
 
 const elfErrorBadMagicNumber = "bad magic number"
@@ -136,8 +135,6 @@ func readLinuxOrPlatformIndependentCore(corePath, exePath string) (*process, pro
 		switch machineType {
 		case _EM_X86_64:
 			bi = proc.NewBinaryInfo("linux", "amd64")
-		case _EM_AARCH64:
-			bi = proc.NewBinaryInfo("linux", "arm64")
 		default:
 			return nil, nil, fmt.Errorf("unsupported machine type")
 		}

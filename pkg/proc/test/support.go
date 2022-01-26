@@ -304,18 +304,6 @@ func SafeRemoveAll(dir string) {
 	os.Remove(dir)
 }
 
-// MustSupportFunctionCalls skips this test if function calls are
-// unsupported on this backend/architecture pair.
-func MustSupportFunctionCalls(t *testing.T, testBackend string) {
-	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 11) {
-		t.Skip("this version of Go does not support function calls")
-	}
-
-	if runtime.GOARCH == "arm64" || runtime.GOARCH == "386" {
-		t.Skip(fmt.Errorf("%s does not support FunctionCall for now", runtime.GOARCH))
-	}
-}
-
 // DefaultTestBackend changes the value of testBackend to be the default
 // test backend for the OS, if testBackend isn't already set.
 func DefaultTestBackend(testBackend *string) {
@@ -372,8 +360,8 @@ func RegabiSupported() bool {
 	case !goversion.VersionAfterOrEqual(runtime.Version(), 1, 17): // < 1.17
 		return false
 	case goversion.VersionAfterOrEqual(runtime.Version(), 1, 17):
-		return runtime.GOARCH == "amd64" && (runtime.GOOS == "android" || runtime.GOOS == "linux" || runtime.GOOS == "darwin" || runtime.GOOS == "windows")
+		return runtime.GOARCH == "amd64" && runtime.GOOS == "linux"
 	default: // >= 1.18
-		return runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64"
+		return runtime.GOARCH == "amd64"
 	}
 }

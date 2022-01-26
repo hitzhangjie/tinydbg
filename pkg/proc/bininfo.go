@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"debug/dwarf"
 	"debug/elf"
-	"debug/macho"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -125,15 +124,6 @@ var (
 		elf.EM_X86_64:  true,
 		elf.EM_AARCH64: true,
 		elf.EM_386:     true,
-	}
-
-	supportedWindowsArch = map[_PEMachine]bool{
-		_IMAGE_FILE_MACHINE_AMD64: true,
-	}
-
-	supportedDarwinArch = map[macho.Cpu]bool{
-		macho.CpuAmd64: true,
-		macho.CpuArm64: true,
 	}
 )
 
@@ -941,7 +931,7 @@ func (bi *BinaryInfo) LoadImageFromData(dwdata *dwarf.Data, debugFrameBytes, deb
 }
 
 func (bi *BinaryInfo) locationExpr(entry godwarf.Entry, attr dwarf.Attr, pc uint64) ([]byte, *locationExpr, error) {
-	//TODO(aarzilli): handle DW_FORM_loclistx attribute form new in DWARFv5
+	// TODO(aarzilli): handle DW_FORM_loclistx attribute form new in DWARFv5
 	a := entry.Val(attr)
 	if a == nil {
 		return nil, nil, fmt.Errorf("no location attribute %s", attr)
@@ -1396,8 +1386,8 @@ func (bi *BinaryInfo) setGStructOffsetElf(image *Image, exe *elf.File, wg *sync.
 	// - Otherwise, Go asks the external linker to place the G pointer by
 	//   emitting runtime.tlsg, a TLS symbol, which is relocated to the chosen
 	//   offset in libc's TLS block.
-	// - On ARM64 (but really, any architecture other than i386 and 86x64) the
-	//   offset is calculate using runtime.tls_g and the formula is different.
+	// - On any architecture other than i386 and 86x64, the offset is calculate
+	// 	 using runtime.tls_g and the formula is different.
 
 	var tls *elf.Prog
 	for _, prog := range exe.Progs {
@@ -1411,7 +1401,7 @@ func (bi *BinaryInfo) setGStructOffsetElf(image *Image, exe *elf.File, wg *sync.
 	case elf.EM_X86_64, elf.EM_386:
 		tlsg := getSymbol(image, exe, "runtime.tlsg")
 		if tlsg == nil || tls == nil {
-			bi.gStructOffset = ^uint64(bi.Arch.PtrSize()) + 1 //-ptrSize
+			bi.gStructOffset = ^uint64(bi.Arch.PtrSize()) + 1 // -ptrSize
 			return
 		}
 
@@ -1424,15 +1414,6 @@ func (bi *BinaryInfo) setGStructOffsetElf(image *Image, exe *elf.File, wg *sync.
 		// The TLS register points to the end of the TLS block, which is
 		// tls.Memsz long. runtime.tlsg is an offset from the beginning of that block.
 		bi.gStructOffset = ^(memsz) + 1 + tlsg.Value // -tls.Memsz + tlsg.Value
-
-	case elf.EM_AARCH64:
-		tlsg := getSymbol(image, exe, "runtime.tls_g")
-		if tlsg == nil || tls == nil {
-			bi.gStructOffset = 2 * uint64(bi.Arch.PtrSize())
-			return
-		}
-
-		bi.gStructOffset = tlsg.Value + uint64(bi.Arch.PtrSize()*2) + ((tls.Vaddr - uint64(bi.Arch.PtrSize()*2)) & (tls.Align - 1))
 
 	default:
 		// we should never get here
@@ -2107,7 +2088,7 @@ func (bi *BinaryInfo) ListPackagesBuildInfo(includeFiles bool) []*PackageBuildIn
 	m := make(map[string]*PackageBuildInfo)
 	for _, cu := range bi.Images[0].compileUnits {
 		if cu.image != bi.Images[0] || !cu.isgo || cu.lineInfo == nil {
-			//TODO(aarzilli): what's the correct thing to do for plugins?
+			// TODO(aarzilli): what's the correct thing to do for plugins?
 			continue
 		}
 

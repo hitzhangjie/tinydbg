@@ -384,10 +384,6 @@ var canonicalRegisterOrder = map[string]int{
 	"rbx": 3,
 	"rcx": 4,
 	"rdx": 5,
-
-	// arm64
-	"pc": 0,
-	"sp": 1,
 }
 
 // ConvertRegisters converts proc.Register to api.Register for a slice.

@@ -99,7 +99,7 @@ func withTestProcessArgs(name string, t testing.TB, wd string, args []string, bu
 
 	switch testBackend {
 	case "native":
-		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", [3]string{})
+		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{})
 	default:
 		t.Fatal("unknown backend")
 	}
@@ -821,15 +821,7 @@ func TestSwitchThread(t *testing.T) {
 }
 
 func TestCGONext(t *testing.T) {
-	// Test if one can do 'next' in a cgo binary
-	// On OSX with Go < 1.5 CGO is not supported due to: https://github.com/golang/go/issues/8973
-	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 5) {
-		skipOn(t, "upstream issue", "darwin")
-	}
 	protest.MustHaveCgo(t)
-
-	skipOn(t, "broken - cgo stacktraces", "darwin", "arm64")
-
 	protest.AllowRecording(t)
 	withTestProcess("cgotest", t, func(p *proc.Target, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.main")
@@ -936,8 +928,6 @@ func stackMatch(stack []loc, locations []proc.Stackframe, skipRuntime bool) bool
 }
 
 func TestStacktraceGoroutine(t *testing.T) {
-	skipOn(t, "broken - cgo stacktraces", "darwin", "arm64")
-
 	mainStack := []loc{{14, "main.stacktraceme"}, {29, "main.main"}}
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 11) {
 		mainStack[0].line = 15
@@ -1018,10 +1008,6 @@ func TestKill(t *testing.T) {
 			t.Fatal("expected process to have exited")
 		}
 		if runtime.GOOS == "linux" {
-			if runtime.GOARCH == "arm64" {
-				//there is no any sync between signal sended(tracee handled) and open /proc/%d/. It may fail on arm64
-				return
-			}
 			_, err := os.Open(fmt.Sprintf("/proc/%d/", p.Pid()))
 			if err == nil {
 				t.Fatal("process has not exited", p.Pid())
@@ -2144,7 +2130,7 @@ func TestUnsupportedArch(t *testing.T) {
 
 	switch testBackend {
 	case "native":
-		p, err = native.Launch([]string{outfile}, ".", 0, []string{}, "", [3]string{})
+		p, err = native.Launch([]string{outfile}, ".", 0, []string{})
 	default:
 		t.Skip("test not valid for this backend")
 	}
@@ -3255,8 +3241,6 @@ func frameInFile(frame proc.Stackframe, file string) bool {
 }
 
 func TestCgoStacktrace(t *testing.T) {
-	skipOn(t, "broken - cgo stacktraces", "386")
-	skipOn(t, "broken - cgo stacktraces", "linux", "arm64")
 	protest.MustHaveCgo(t)
 
 	// Tests that:
@@ -3619,15 +3603,6 @@ func TestHaltKeepsSteppingBreakpoints(t *testing.T) {
 }
 
 func TestDisassembleGlobalVars(t *testing.T) {
-	skipOn(t, "broken - global variable symbolication", "arm64") // On ARM64 symLookup can't look up variables due to how they are loaded, see issue #1778
-	// On 386 linux when pie, the genered code use __x86.get_pc_thunk to ensure position-independent.
-	// Locate global variable by
-	//    `CALL __x86.get_pc_thunk.ax(SB) 0xb0f7f
-	//     LEAL 0xc0a19(AX), AX`
-	// dynamically.
-	if runtime.GOARCH == "386" && runtime.GOOS == "linux" && buildMode == "pie" {
-		t.Skip("On 386 linux when pie, symLookup can't look up global variables")
-	}
 	withTestProcess("teststepconcurrent", t, func(p *proc.Target, fixture protest.Fixture) {
 		mainfn := p.BinInfo().LookupFunc["main.main"]
 		regs, _ := p.CurrentThread().Registers()
@@ -4423,8 +4398,8 @@ func TestCallConcurrent(t *testing.T) {
 	withTestProcess("teststepconcurrent", t, func(p *proc.Target, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 24)
 		assertNoError(p.Continue(), t, "Continue()")
-		//_, err := p.ClearBreakpoint(bp.Addr)
-		//assertNoError(err, t, "ClearBreakpoint() returned an error")
+		// _, err := p.ClearBreakpoint(bp.Addr)
+		// assertNoError(err, t, "ClearBreakpoint() returned an error")
 
 		gid1 := p.SelectedGoroutine().ID
 		t.Logf("starting injection in %d / %d", p.SelectedGoroutine().ID, p.CurrentThread().ThreadID())
@@ -4477,7 +4452,7 @@ func TestPluginStepping(t *testing.T) {
 
 func TestIssue1601(t *testing.T) {
 	protest.MustHaveCgo(t)
-	//Tests that recursive types involving C qualifiers and typedefs are parsed correctly
+	// Tests that recursive types involving C qualifiers and typedefs are parsed correctly
 	withTestProcess("issue1601", t, func(p *proc.Target, fixture protest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue")
 		evalVariable(p, t, "C.globalq")
@@ -4501,9 +4476,6 @@ func TestIssue1615(t *testing.T) {
 }
 
 func TestCgoStacktrace2(t *testing.T) {
-	skipOn(t, "upstream issue", "windows")
-	skipOn(t, "broken", "386")
-	skipOn(t, "broken", "arm64")
 	protest.MustHaveCgo(t)
 	// If a panic happens during cgo execution the stacktrace should show the C
 	// function that caused the problem.
@@ -5137,18 +5109,10 @@ func TestVariablesWithExternalLinking(t *testing.T) {
 }
 
 func TestWatchpointsBasic(t *testing.T) {
-	skipOn(t, "not implemented", "freebsd")
-	skipOn(t, "not implemented", "386")
-	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
 	protest.AllowRecording(t)
 
 	position1 := 19
 	position5 := 41
-
-	if runtime.GOARCH == "arm64" {
-		position1 = 18
-		position5 = 40
-	}
 
 	withTestProcess("databpeasy", t, func(p *proc.Target, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.main")
@@ -5317,10 +5281,6 @@ func TestWatchpointStack(t *testing.T) {
 	protest.AllowRecording(t)
 
 	position1 := 17
-
-	if runtime.GOARCH == "arm64" {
-		position1 = 16
-	}
 
 	withTestProcess("databpstack", t, func(p *proc.Target, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 11) // Position 0 breakpoint
@@ -5505,10 +5465,6 @@ func TestNilPtrDerefInBreakInstr(t *testing.T) {
 	switch runtime.GOARCH {
 	case "amd64":
 		asmfile = "main_amd64.s"
-	case "arm64":
-		asmfile = "main_arm64.s"
-	case "386":
-		asmfile = "main_386.s"
 	default:
 		t.Fatalf("assembly file for %s not provided", runtime.GOARCH)
 	}
