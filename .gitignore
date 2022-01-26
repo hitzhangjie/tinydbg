@@ -10,3 +10,6 @@ localtests
 *.iml
 .teamcity/target
 .vscode
+testcase/interface
+testcase/loop
+__debug_bin

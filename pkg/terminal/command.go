@@ -771,7 +771,7 @@ func restartRecorded(t *Term, ctx callContext, args string) error {
 	}
 	printcontext(t, state)
 	printfile(t, state.CurrentThread.File, state.CurrentThread.Line, true)
-	t.onStop()
+	t.printDisplays()
 	return nil
 }
 
@@ -873,7 +873,7 @@ func (c *Commands) rebuild(t *Term, ctx callContext, args string) error {
 	if ctx.Prefix == revPrefix {
 		return c.rewind(t, ctx, args)
 	}
-	defer t.onStop()
+	defer t.printDisplays()
 	discarded, err := t.client.Restart(true)
 	if len(discarded) > 0 {
 		log.Warn("not all breakpoints could be restored.")
@@ -881,7 +881,10 @@ func (c *Commands) rebuild(t *Term, ctx callContext, args string) error {
 	return err
 }
 
+// args != "", continue <locspec>
+// args == "", continue
 func (c *Commands) cont(t *Term, ctx callContext, args string) error {
+	// args != "", add breakpoint at <locspec> first
 	if args != "" {
 		tmp, err := setBreakpoint(t, ctx, false, args)
 		if err != nil {
@@ -897,10 +900,15 @@ func (c *Commands) cont(t *Term, ctx callContext, args string) error {
 			}
 		}()
 	}
+
+	// if reverse continue, so rewind
 	if ctx.Prefix == revPrefix {
 		return c.rewind(t, ctx, args)
 	}
-	defer t.onStop()
+
+	// if continue, so run to next breakpoint
+	defer t.printDisplays()
+
 	c.frame = 0
 	stateChan := t.client.Continue()
 	var state *api.DebuggerState
@@ -916,7 +924,7 @@ func (c *Commands) cont(t *Term, ctx callContext, args string) error {
 }
 
 func continueUntilCompleteNext(t *Term, state *api.DebuggerState, op string, shouldPrintFile bool) error {
-	defer t.onStop()
+	defer t.printDisplays()
 	if !state.NextInProgress {
 		if shouldPrintFile {
 			printfile(t, state.CurrentThread.File, state.CurrentThread.Line, true)
@@ -993,9 +1001,12 @@ func exitedToError(state *api.DebuggerState, err error) (*api.DebuggerState, err
 }
 
 func (c *Commands) step(t *Term, ctx callContext, args string) error {
+	// tell dbg server to switch to target goroutine
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
+	// tell dbg server to step target goroutine,
+	// this step operation maybe interrupted by some breakpoints.
 	c.frame = 0
 	stepfn := t.client.Step
 	if ctx.Prefix == revPrefix {
@@ -1007,12 +1018,14 @@ func (c *Commands) step(t *Term, ctx callContext, args string) error {
 		return err
 	}
 	printcontext(t, state)
+	// tell dbg server to continue to finish step operation
 	return continueUntilCompleteNext(t, state, "step", true)
 }
 
 var errNotOnFrameZero = errors.New("not on topmost frame")
 
 func (c *Commands) stepInstruction(t *Term, ctx callContext, args string) error {
+	// tell dbg server to switch to target goroutine
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -1020,8 +1033,9 @@ func (c *Commands) stepInstruction(t *Term, ctx callContext, args string) error 
 		return errNotOnFrameZero
 	}
 
-	defer t.onStop()
+	defer t.printDisplays()
 
+	// tell dbg server to step next instruction
 	var fn func() (*api.DebuggerState, error)
 	if ctx.Prefix == revPrefix {
 		fn = t.client.ReverseStepInstruction
@@ -1049,6 +1063,7 @@ func (c *Commands) revCmd(t *Term, ctx callContext, args string) error {
 }
 
 func (c *Commands) next(t *Term, ctx callContext, args string) error {
+	// tell dbg server to switch to target goroutine
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -1056,11 +1071,13 @@ func (c *Commands) next(t *Term, ctx callContext, args string) error {
 		return errNotOnFrameZero
 	}
 
+	// tell dbg server to run to next source
 	nextfn := t.client.Next
 	if ctx.Prefix == revPrefix {
 		nextfn = t.client.ReverseNext
 	}
 
+	// next [count]
 	var count int64
 	var err error
 	if count, err = parseOptionalCount(args); err != nil {
@@ -1068,6 +1085,7 @@ func (c *Commands) next(t *Term, ctx callContext, args string) error {
 	} else if count <= 0 {
 		return errors.New("Invalid next count")
 	}
+
 	for ; count > 0; count-- {
 		state, err := exitedToError(nextfn())
 		if err != nil {
@@ -1079,6 +1097,9 @@ func (c *Commands) next(t *Term, ctx callContext, args string) error {
 		if finishedNext {
 			printcontext(t, state)
 		}
+		// this next operation maybe interrupted by breakpoints,
+		// here, we try to finish the next operation by relaunch
+		// this operation.
 		if err := continueUntilCompleteNext(t, state, "next", finishedNext); err != nil {
 			return err
 		}
@@ -1618,6 +1639,8 @@ func whatisCommand(t *Term, ctx callContext, args string) error {
 	return nil
 }
 
+// analyze the lexpr and rexpr by AST analysis, then tell dbg server
+// to set the value (`rexpr`) to the variable (`lexpr`).
 func setVar(t *Term, ctx callContext, args string) error {
 	// HACK: in go '=' is not an operator, we detect the error and try to recover from it by splitting the input string
 	_, err := parser.ParseExpr(args)

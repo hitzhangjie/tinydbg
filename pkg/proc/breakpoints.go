@@ -485,6 +485,8 @@ func (t *Target) SetBreakpoint(addr uint64, kind BreakpointKind, cond ast.Expr) 
 
 // SetEBPFTracepoint will attach a uprobe to the function
 // specified by 'fnName'.
+//
+// Note: Not all Linux versions supported.
 func (t *Target) SetEBPFTracepoint(fnName string) error {
 	// Not every OS/arch that we support has support for eBPF,
 	// so check early and return an error if this is called on an
@@ -573,7 +575,7 @@ func (t *Target) setEBPFTracepointOnFunc(fn *Function, goidOffset int64) error {
 		})
 	}
 
-	//TODO(aarzilli): inlined calls?
+	// TODO(aarzilli): inlined calls?
 
 	// Finally, set the uprobe on the function.
 	t.proc.SetUProbe(fn.Name, goidOffset, args)
@@ -581,7 +583,7 @@ func (t *Target) setEBPFTracepointOnFunc(fn *Function, goidOffset int64) error {
 }
 
 // SetWatchpoint sets a data breakpoint at addr and stores it in the
-// process wide break point table.
+// process wide breakpoint table.
 func (t *Target) SetWatchpoint(scope *EvalScope, expr string, wtype WatchType, cond ast.Expr) (*Breakpoint, error) {
 	if (wtype&WatchWrite == 0) && (wtype&WatchRead == 0) {
 		return nil, errors.New("at least one of read and write must be set for watchpoint")
@@ -606,9 +608,9 @@ func (t *Target) SetWatchpoint(scope *EvalScope, expr string, wtype WatchType, c
 	}
 	sz := xv.DwarfType.Size()
 	if sz <= 0 || sz > int64(t.BinInfo().Arch.PtrSize()) {
-		//TODO(aarzilli): it is reasonable to expect to be able to watch string
-		//and interface variables and we could support it by watching certain
-		//member fields here.
+		// TODO(aarzilli): it is reasonable to expect to be able to watch string
+		// and interface variables and we could support it by watching certain
+		// member fields here.
 		return nil, fmt.Errorf("can not watch variable of type %s", xv.DwarfType.String())
 	}
 

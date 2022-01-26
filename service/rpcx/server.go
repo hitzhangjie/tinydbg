@@ -13,6 +13,7 @@ import (
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
+// RPCServer rpc server of the debugger instance.
 type RPCServer struct {
 	// config is all the information necessary to start the debugger and server.
 	config *service.Config
@@ -24,63 +25,21 @@ func NewServer(config *service.Config, debugger *debugger.Debugger) *RPCServer {
 	return &RPCServer{config, debugger}
 }
 
-type ProcessPidIn struct {
-}
-
-type ProcessPidOut struct {
-	Pid int
-}
-
 // ProcessPid returns the pid of the process we are debugging.
 func (s *RPCServer) ProcessPid(arg ProcessPidIn, out *ProcessPidOut) error {
 	out.Pid = s.debugger.ProcessPid()
 	return nil
 }
 
-type LastModifiedIn struct {
-}
-
-type LastModifiedOut struct {
-	Time time.Time
-}
-
+// LastModified returns the last modified time of the debugged program.
 func (s *RPCServer) LastModified(arg LastModifiedIn, out *LastModifiedOut) error {
 	out.Time = s.debugger.LastModified()
 	return nil
 }
 
-type DetachIn struct {
-	Kill bool
-}
-
-type DetachOut struct {
-}
-
 // Detach detaches the debugger, optionally killing the process.
 func (s *RPCServer) Detach(arg DetachIn, out *DetachOut) error {
 	return s.debugger.Detach(arg.Kill)
-}
-
-type RestartIn struct {
-	// Position to restart from, if it starts with 'c' it's a checkpoint ID,
-	// otherwise it's an event number. Only valid for recorded targets.
-	Position string
-
-	// ResetArgs tell whether NewArgs and NewRedirects should take effect.
-	ResetArgs bool
-	// NewArgs are arguments to launch a new process.  They replace only the
-	// argv[1] and later. Argv[0] cannot be changed.
-	NewArgs []string
-
-	// When Rerecord is set the target will be rerecorded
-	Rerecord bool
-
-	// When Rebuild is set the process will be build again
-	Rebuild bool
-}
-
-type RestartOut struct {
-	DiscardedBreakpoints []api.DiscardedBreakpoint
 }
 
 // Restart restarts program.
@@ -96,16 +55,7 @@ func (s *RPCServer) Restart(arg RestartIn, cb service.RPCCallback) {
 	cb.Return(out, err)
 }
 
-type StateIn struct {
-	// If NonBlocking is true State will return immediately even if the target process is running.
-	NonBlocking bool
-}
-
-type StateOut struct {
-	State *api.DebuggerState
-}
-
-// State returns the current debugger state.
+// State returns the current debugger's state.
 func (s *RPCServer) State(arg StateIn, cb service.RPCCallback) {
 	close(cb.SetupDoneChan())
 	var out StateOut
@@ -116,10 +66,6 @@ func (s *RPCServer) State(arg StateIn, cb service.RPCCallback) {
 	}
 	out.State = st
 	cb.Return(out, nil)
-}
-
-type CommandOut struct {
-	State api.DebuggerState
 }
 
 // Command interrupts, continues and steps through the program.
@@ -134,25 +80,10 @@ func (s *RPCServer) Command(command api.DebuggerCommand, cb service.RPCCallback)
 	cb.Return(out, nil)
 }
 
-type GetBufferedTracepointsIn struct {
-}
-
-type GetBufferedTracepointsOut struct {
-	TracepointResults []api.TracepointResult
-}
-
+// GetBufferedTracepoints returns the buffered tracepoints? todo so what does it actually do?
 func (s *RPCServer) GetBufferedTracepoints(arg GetBufferedTracepointsIn, out *GetBufferedTracepointsOut) error {
 	out.TracepointResults = s.debugger.GetBufferedTracepoints()
 	return nil
-}
-
-type GetBreakpointIn struct {
-	Id   int
-	Name string
-}
-
-type GetBreakpointOut struct {
-	Breakpoint api.Breakpoint
 }
 
 // GetBreakpoint gets a breakpoint by Name (if Name is not an empty string) or by ID.
@@ -171,19 +102,6 @@ func (s *RPCServer) GetBreakpoint(arg GetBreakpointIn, out *GetBreakpointOut) er
 	}
 	out.Breakpoint = *bp
 	return nil
-}
-
-type StacktraceIn struct {
-	Id     int
-	Depth  int
-	Full   bool
-	Defers bool // read deferred functions (equivalent to passing StacktraceReadDefers in Opts)
-	Opts   api.StacktraceOptions
-	Cfg    *api.LoadConfig
-}
-
-type StacktraceOut struct {
-	Locations []api.Stackframe
 }
 
 // Stacktrace returns stacktrace of goroutine Id up to the specified Depth.
@@ -207,16 +125,6 @@ func (s *RPCServer) Stacktrace(arg StacktraceIn, out *StacktraceOut) error {
 	return err
 }
 
-type AncestorsIn struct {
-	GoroutineID  int
-	NumAncestors int
-	Depth        int
-}
-
-type AncestorsOut struct {
-	Ancestors []api.Ancestor
-}
-
 // Ancestors returns the stacktraces for the ancestors of a goroutine.
 func (s *RPCServer) Ancestors(arg AncestorsIn, out *AncestorsOut) error {
 	var err error
@@ -224,26 +132,10 @@ func (s *RPCServer) Ancestors(arg AncestorsIn, out *AncestorsOut) error {
 	return err
 }
 
-type ListBreakpointsIn struct {
-	All bool
-}
-
-type ListBreakpointsOut struct {
-	Breakpoints []*api.Breakpoint
-}
-
 // ListBreakpoints gets all breakpoints.
 func (s *RPCServer) ListBreakpoints(arg ListBreakpointsIn, out *ListBreakpointsOut) error {
 	out.Breakpoints = s.debugger.Breakpoints(arg.All)
 	return nil
-}
-
-type CreateBreakpointIn struct {
-	Breakpoint api.Breakpoint
-}
-
-type CreateBreakpointOut struct {
-	Breakpoint api.Breakpoint
 }
 
 // CreateBreakpoint creates a new breakpoint. The client is expected to populate `CreateBreakpointIn`
@@ -262,25 +154,9 @@ func (s *RPCServer) CreateBreakpoint(arg CreateBreakpointIn, out *CreateBreakpoi
 	return nil
 }
 
-type CreateEBPFTracepointIn struct {
-	FunctionName string
-}
-
-type CreateEBPFTracepointOut struct {
-	Breakpoint api.Breakpoint
-}
-
+// CreateEBPFTracepoint create ebpf tracepoint
 func (s *RPCServer) CreateEBPFTracepoint(arg CreateEBPFTracepointIn, out *CreateEBPFTracepointOut) error {
 	return s.debugger.CreateEBPFTracepoint(arg.FunctionName)
-}
-
-type ClearBreakpointIn struct {
-	Id   int
-	Name string
-}
-
-type ClearBreakpointOut struct {
-	Breakpoint *api.Breakpoint
 }
 
 // ClearBreakpoint deletes a breakpoint by Name (if Name is not an
@@ -304,15 +180,6 @@ func (s *RPCServer) ClearBreakpoint(arg ClearBreakpointIn, out *ClearBreakpointO
 	}
 	out.Breakpoint = deleted
 	return nil
-}
-
-type ToggleBreakpointIn struct {
-	Id   int
-	Name string
-}
-
-type ToggleBreakpointOut struct {
-	Breakpoint *api.Breakpoint
 }
 
 // ToggleBreakpoint toggles on or off a breakpoint by Name (if Name is not an
@@ -341,13 +208,6 @@ func (s *RPCServer) ToggleBreakpoint(arg ToggleBreakpointIn, out *ToggleBreakpoi
 	return nil
 }
 
-type AmendBreakpointIn struct {
-	Breakpoint api.Breakpoint
-}
-
-type AmendBreakpointOut struct {
-}
-
 // AmendBreakpoint allows user to update an existing breakpoint
 // for example to change the information retrieved when the
 // breakpoint is hit or to change, add or remove the break condition.
@@ -360,21 +220,8 @@ func (s *RPCServer) AmendBreakpoint(arg AmendBreakpointIn, out *AmendBreakpointO
 	return s.debugger.AmendBreakpoint(&arg.Breakpoint)
 }
 
-type CancelNextIn struct {
-}
-
-type CancelNextOut struct {
-}
-
 func (s *RPCServer) CancelNext(arg CancelNextIn, out *CancelNextOut) error {
 	return s.debugger.CancelNext()
-}
-
-type ListThreadsIn struct {
-}
-
-type ListThreadsOut struct {
-	Threads []*api.Thread
 }
 
 // ListThreads lists all threads.
@@ -387,14 +234,6 @@ func (s *RPCServer) ListThreads(arg ListThreadsIn, out *ListThreadsOut) (err err
 	defer s.debugger.UnlockTarget()
 	out.Threads = api.ConvertThreads(threads)
 	return nil
-}
-
-type GetThreadIn struct {
-	Id int
-}
-
-type GetThreadOut struct {
-	Thread *api.Thread
 }
 
 // GetThread gets a thread by its ID.
@@ -412,15 +251,6 @@ func (s *RPCServer) GetThread(arg GetThreadIn, out *GetThreadOut) error {
 	return nil
 }
 
-type ListPackageVarsIn struct {
-	Filter string
-	Cfg    api.LoadConfig
-}
-
-type ListPackageVarsOut struct {
-	Variables []api.Variable
-}
-
 // ListPackageVars lists all package variables in the context of the current thread.
 func (s *RPCServer) ListPackageVars(arg ListPackageVarsIn, out *ListPackageVarsOut) error {
 	vars, err := s.debugger.PackageVariables(arg.Filter, *api.LoadConfigToProc(&arg.Cfg))
@@ -429,17 +259,6 @@ func (s *RPCServer) ListPackageVars(arg ListPackageVarsIn, out *ListPackageVarsO
 	}
 	out.Variables = api.ConvertVars(vars)
 	return nil
-}
-
-type ListRegistersIn struct {
-	ThreadID  int
-	IncludeFp bool
-	Scope     *api.EvalScope
-}
-
-type ListRegistersOut struct {
-	Registers string
-	Regs      api.Registers
 }
 
 // ListRegisters lists registers and their values.
@@ -471,15 +290,6 @@ func (s *RPCServer) ListRegisters(arg ListRegistersIn, out *ListRegistersOut) er
 	return nil
 }
 
-type ListLocalVarsIn struct {
-	Scope api.EvalScope
-	Cfg   api.LoadConfig
-}
-
-type ListLocalVarsOut struct {
-	Variables []api.Variable
-}
-
 // ListLocalVars lists all local variables in scope.
 func (s *RPCServer) ListLocalVars(arg ListLocalVarsIn, out *ListLocalVarsOut) error {
 	vars, err := s.debugger.LocalVariables(arg.Scope.GoroutineID, arg.Scope.Frame, arg.Scope.DeferredCall, *api.LoadConfigToProc(&arg.Cfg))
@@ -490,15 +300,6 @@ func (s *RPCServer) ListLocalVars(arg ListLocalVarsIn, out *ListLocalVarsOut) er
 	return nil
 }
 
-type ListFunctionArgsIn struct {
-	Scope api.EvalScope
-	Cfg   api.LoadConfig
-}
-
-type ListFunctionArgsOut struct {
-	Args []api.Variable
-}
-
 // ListFunctionArgs lists all arguments to the current function
 func (s *RPCServer) ListFunctionArgs(arg ListFunctionArgsIn, out *ListFunctionArgsOut) error {
 	vars, err := s.debugger.FunctionArguments(arg.Scope.GoroutineID, arg.Scope.Frame, arg.Scope.DeferredCall, *api.LoadConfigToProc(&arg.Cfg))
@@ -507,16 +308,6 @@ func (s *RPCServer) ListFunctionArgs(arg ListFunctionArgsIn, out *ListFunctionAr
 	}
 	out.Args = api.ConvertVars(vars)
 	return nil
-}
-
-type EvalIn struct {
-	Scope api.EvalScope
-	Expr  string
-	Cfg   *api.LoadConfig
-}
-
-type EvalOut struct {
-	Variable *api.Variable
 }
 
 // Eval returns a variable in the specified context.
@@ -536,27 +327,10 @@ func (s *RPCServer) Eval(arg EvalIn, out *EvalOut) error {
 	return nil
 }
 
-type SetIn struct {
-	Scope  api.EvalScope
-	Symbol string
-	Value  string
-}
-
-type SetOut struct {
-}
-
 // Set sets the value of a variable. Only numerical types and
 // pointers are currently supported.
 func (s *RPCServer) Set(arg SetIn, out *SetOut) error {
 	return s.debugger.SetVariableInScope(arg.Scope.GoroutineID, arg.Scope.Frame, arg.Scope.DeferredCall, arg.Symbol, arg.Value)
-}
-
-type ListSourcesIn struct {
-	Filter string
-}
-
-type ListSourcesOut struct {
-	Sources []string
 }
 
 // ListSources lists all source files in the process matching filter.
@@ -569,14 +343,6 @@ func (s *RPCServer) ListSources(arg ListSourcesIn, out *ListSourcesOut) error {
 	return nil
 }
 
-type ListFunctionsIn struct {
-	Filter string
-}
-
-type ListFunctionsOut struct {
-	Funcs []string
-}
-
 // ListFunctions lists all functions in the process matching filter.
 func (s *RPCServer) ListFunctions(arg ListFunctionsIn, out *ListFunctionsOut) error {
 	fns, err := s.debugger.Functions(arg.Filter)
@@ -587,14 +353,6 @@ func (s *RPCServer) ListFunctions(arg ListFunctionsIn, out *ListFunctionsOut) er
 	return nil
 }
 
-type ListTypesIn struct {
-	Filter string
-}
-
-type ListTypesOut struct {
-	Types []string
-}
-
 // ListTypes lists all types in the process matching filter.
 func (s *RPCServer) ListTypes(arg ListTypesIn, out *ListTypesOut) error {
 	tps, err := s.debugger.Types(arg.Filter)
@@ -603,21 +361,6 @@ func (s *RPCServer) ListTypes(arg ListTypesIn, out *ListTypesOut) error {
 	}
 	out.Types = tps
 	return nil
-}
-
-type ListGoroutinesIn struct {
-	Start int
-	Count int
-
-	Filters []api.ListGoroutinesFilter
-	api.GoroutineGroupingOptions
-}
-
-type ListGoroutinesOut struct {
-	Goroutines    []*api.Goroutine
-	Nextg         int
-	Groups        []api.GoroutineGroup
-	TooManyGroups bool
 }
 
 // ListGoroutines lists all goroutines.
@@ -664,36 +407,12 @@ func (s *RPCServer) ListGoroutines(arg ListGoroutinesIn, out *ListGoroutinesOut)
 	return nil
 }
 
-type AttachedToExistingProcessIn struct {
-}
-
-type AttachedToExistingProcessOut struct {
-	Answer bool
-}
-
 // AttachedToExistingProcess returns whether we attached to a running process or not
 func (c *RPCServer) AttachedToExistingProcess(arg AttachedToExistingProcessIn, out *AttachedToExistingProcessOut) error {
 	if c.config.DebuggerConfig.AttachPid != 0 {
 		out.Answer = true
 	}
 	return nil
-}
-
-type FindLocationIn struct {
-	Scope                     api.EvalScope
-	Loc                       string
-	IncludeNonExecutableLines bool
-
-	// SubstitutePathRules is a slice of source code path substitution rules,
-	// the first entry of each pair is the path of a directory as it appears in
-	// the executable file (i.e. the location of a source file when the program
-	// was compiled), the second entry of each pair is the location of the same
-	// directory on the client system.
-	SubstitutePathRules [][2]string
-}
-
-type FindLocationOut struct {
-	Locations []api.Location
 }
 
 // FindLocation returns concrete location information described by a location expression.
@@ -713,16 +432,6 @@ func (c *RPCServer) FindLocation(arg FindLocationIn, out *FindLocationOut) error
 	var err error
 	out.Locations, err = c.debugger.FindLocation(arg.Scope.GoroutineID, arg.Scope.Frame, arg.Scope.DeferredCall, arg.Loc, arg.IncludeNonExecutableLines, arg.SubstitutePathRules)
 	return err
-}
-
-type DisassembleIn struct {
-	Scope          api.EvalScope
-	StartPC, EndPC uint64
-	Flavour        api.AssemblyFlavour
-}
-
-type DisassembleOut struct {
-	Disassemble api.AsmInstructions
 }
 
 // Disassemble code.
@@ -745,38 +454,15 @@ func (c *RPCServer) Disassemble(arg DisassembleIn, out *DisassembleOut) error {
 	return nil
 }
 
-type RecordedIn struct {
-}
-
-type RecordedOut struct {
-	Recorded       bool
-	TraceDirectory string
-}
-
 func (s *RPCServer) Recorded(arg RecordedIn, out *RecordedOut) error {
 	out.Recorded, out.TraceDirectory = s.debugger.Recorded()
 	return nil
-}
-
-type CheckpointIn struct {
-	Where string
-}
-
-type CheckpointOut struct {
-	ID int
 }
 
 func (s *RPCServer) Checkpoint(arg CheckpointIn, out *CheckpointOut) error {
 	var err error
 	out.ID, err = s.debugger.Checkpoint(arg.Where)
 	return err
-}
-
-type ListCheckpointsIn struct {
-}
-
-type ListCheckpointsOut struct {
-	Checkpoints []api.Checkpoint
 }
 
 func (s *RPCServer) ListCheckpoints(arg ListCheckpointsIn, out *ListCheckpointsOut) error {
@@ -792,23 +478,8 @@ func (s *RPCServer) ListCheckpoints(arg ListCheckpointsIn, out *ListCheckpointsO
 	return nil
 }
 
-type ClearCheckpointIn struct {
-	ID int
-}
-
-type ClearCheckpointOut struct {
-}
-
 func (s *RPCServer) ClearCheckpoint(arg ClearCheckpointIn, out *ClearCheckpointOut) error {
 	return s.debugger.ClearCheckpoint(arg.ID)
-}
-
-type IsMulticlientIn struct {
-}
-
-type IsMulticlientOut struct {
-	// IsMulticlient returns true if the headless instance was started with --accept-multiclient
-	IsMulticlient bool
 }
 
 func (s *RPCServer) IsMulticlient(arg IsMulticlientIn, out *IsMulticlientOut) error {
@@ -816,24 +487,6 @@ func (s *RPCServer) IsMulticlient(arg IsMulticlientIn, out *IsMulticlientOut) er
 		IsMulticlient: s.config.AcceptMulti,
 	}
 	return nil
-}
-
-// FunctionReturnLocationsIn holds arguments for the
-// FunctionReturnLocationsRPC call. It holds the name of
-// the function for which all return locations should be
-// given.
-type FunctionReturnLocationsIn struct {
-	// FnName is the name of the function for which all
-	// return locations should be given.
-	FnName string
-}
-
-// FunctionReturnLocationsOut holds the result of the FunctionReturnLocations
-// RPC call. It provides the list of addresses that the given function returns,
-// for example with a `RET` instruction or `CALL runtime.deferreturn`.
-type FunctionReturnLocationsOut struct {
-	// Addrs is the list of all locations where the given function returns.
-	Addrs []uint64
 }
 
 // FunctionReturnLocations is the implements the client call of the same name. Look at client documentation for more information.
@@ -848,15 +501,6 @@ func (s *RPCServer) FunctionReturnLocations(in FunctionReturnLocationsIn, out *F
 	return nil
 }
 
-// ListDynamicLibrariesIn holds the arguments of ListDynamicLibraries
-type ListDynamicLibrariesIn struct {
-}
-
-// ListDynamicLibrariesOut holds the return values of ListDynamicLibraries
-type ListDynamicLibrariesOut struct {
-	List []api.Image
-}
-
 func (s *RPCServer) ListDynamicLibraries(in ListDynamicLibrariesIn, out *ListDynamicLibrariesOut) error {
 	imgs := s.debugger.ListDynamicLibraries()
 	out.List = make([]api.Image, 0, len(imgs))
@@ -864,16 +508,6 @@ func (s *RPCServer) ListDynamicLibraries(in ListDynamicLibrariesIn, out *ListDyn
 		out.List = append(out.List, api.ConvertImage(imgs[i]))
 	}
 	return nil
-}
-
-// ListPackagesBuildInfoIn holds the arguments of ListPackages.
-type ListPackagesBuildInfoIn struct {
-	IncludeFiles bool
-}
-
-// ListPackagesBuildInfoOut holds the return values of ListPackages.
-type ListPackagesBuildInfoOut struct {
-	List []api.PackageBuildInfo
 }
 
 // ListPackagesBuildInfo returns the list of packages used by the program along with
@@ -905,18 +539,6 @@ func (s *RPCServer) ListPackagesBuildInfo(in ListPackagesBuildInfoIn, out *ListP
 	return nil
 }
 
-// ExamineMemoryIn holds the arguments of ExamineMemory
-type ExamineMemoryIn struct {
-	Address uint64
-	Length  int
-}
-
-// ExaminedMemoryOut holds the return values of ExamineMemory
-type ExaminedMemoryOut struct {
-	Mem            []byte
-	IsLittleEndian bool
-}
-
 func (s *RPCServer) ExamineMemory(arg ExamineMemoryIn, out *ExaminedMemoryOut) error {
 	if arg.Length > 1000 {
 		return fmt.Errorf("len must be less than or equal to 1000")
@@ -932,12 +554,6 @@ func (s *RPCServer) ExamineMemory(arg ExamineMemoryIn, out *ExaminedMemoryOut) e
 	return nil
 }
 
-type StopRecordingIn struct {
-}
-
-type StopRecordingOut struct {
-}
-
 func (s *RPCServer) StopRecording(arg StopRecordingIn, cb service.RPCCallback) {
 	close(cb.SetupDoneChan())
 	var out StopRecordingOut
@@ -947,14 +563,6 @@ func (s *RPCServer) StopRecording(arg StopRecordingIn, cb service.RPCCallback) {
 		return
 	}
 	cb.Return(out, nil)
-}
-
-type DumpStartIn struct {
-	Destination string
-}
-
-type DumpStartOut struct {
-	State api.DumpState
 }
 
 // DumpStart starts a core dump to arg.Destination.
@@ -967,14 +575,6 @@ func (s *RPCServer) DumpStart(arg DumpStartIn, out *DumpStartOut) error {
 	return nil
 }
 
-type DumpWaitIn struct {
-	Wait int
-}
-
-type DumpWaitOut struct {
-	State api.DumpState
-}
-
 // DumpWait waits for the core dump to finish or for arg.Wait milliseconds.
 // Wait == 0 means return immediately.
 // Returns the core dump status
@@ -983,25 +583,9 @@ func (s *RPCServer) DumpWait(arg DumpWaitIn, out *DumpWaitOut) error {
 	return nil
 }
 
-type DumpCancelIn struct {
-}
-
-type DumpCancelOut struct {
-}
-
 // DumpCancel cancels the core dump.
 func (s *RPCServer) DumpCancel(arg DumpCancelIn, out *DumpCancelOut) error {
 	return s.debugger.DumpCancel()
-}
-
-type CreateWatchpointIn struct {
-	Scope api.EvalScope
-	Expr  string
-	Type  api.WatchType
-}
-
-type CreateWatchpointOut struct {
-	*api.Breakpoint
 }
 
 func (s *RPCServer) CreateWatchpoint(arg CreateWatchpointIn, out *CreateWatchpointOut) error {

@@ -502,10 +502,6 @@ func (t *Term) printDisplays() {
 	}
 }
 
-func (t *Term) onStop() {
-	t.printDisplays()
-}
-
 func (t *Term) longCommandCancel() {
 	t.longCommandMu.Lock()
 	defer t.longCommandMu.Unlock()
