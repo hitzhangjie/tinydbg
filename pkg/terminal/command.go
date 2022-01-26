@@ -741,7 +741,6 @@ func restartRecorded(t *Term, ctx callContext, args string) error {
 	rerecord := false
 	resetArgs := false
 	newArgv := []string{}
-	newRedirects := [3]string{}
 	restartPos := ""
 
 	if len(v) > 0 {
@@ -749,7 +748,7 @@ func restartRecorded(t *Term, ctx callContext, args string) error {
 			rerecord = true
 			if len(v) == 2 {
 				var err error
-				resetArgs, newArgv, newRedirects, err = parseNewArgv(v[1])
+				resetArgs, newArgv, err = parseNewArgv(v[1])
 				if err != nil {
 					return err
 				}
@@ -762,7 +761,7 @@ func restartRecorded(t *Term, ctx callContext, args string) error {
 		}
 	}
 
-	if err := restartIntl(t, rerecord, restartPos, resetArgs, newArgv, newRedirects); err != nil {
+	if err := restartIntl(t, rerecord, restartPos, resetArgs, newArgv); err != nil {
 		return err
 	}
 
@@ -786,12 +785,12 @@ func parseOptionalCount(arg string) (int64, error) {
 }
 
 func restartLive(t *Term, ctx callContext, args string) error {
-	resetArgs, newArgv, newRedirects, err := parseNewArgv(args)
+	resetArgs, newArgv, err := parseNewArgv(args)
 	if err != nil {
 		return err
 	}
 
-	if err := restartIntl(t, false, "", resetArgs, newArgv, newRedirects); err != nil {
+	if err := restartIntl(t, false, "", resetArgs, newArgv); err != nil {
 		return err
 	}
 
@@ -799,8 +798,8 @@ func restartLive(t *Term, ctx callContext, args string) error {
 	return nil
 }
 
-func restartIntl(t *Term, rerecord bool, restartPos string, resetArgs bool, newArgv []string, newRedirects [3]string) error {
-	discarded, err := t.client.RestartFrom(rerecord, restartPos, resetArgs, newArgv, newRedirects, false)
+func restartIntl(t *Term, rerecord bool, restartPos string, resetArgs bool, newArgv []string) error {
+	discarded, err := t.client.RestartFrom(rerecord, restartPos, resetArgs, newArgv, false)
 	if err != nil {
 		return err
 	}
@@ -810,9 +809,9 @@ func restartIntl(t *Term, rerecord bool, restartPos string, resetArgs bool, newA
 	return nil
 }
 
-func parseNewArgv(args string) (resetArgs bool, newArgv []string, newRedirects [3]string, err error) {
+func parseNewArgv(args string) (resetArgs bool, newArgv []string, err error) {
 	if args == "" {
-		return false, nil, [3]string{}, nil
+		return false, nil, nil
 	}
 	v, err := argv.Argv(args,
 		func(s string) (string, error) {
@@ -820,34 +819,22 @@ func parseNewArgv(args string) (resetArgs bool, newArgv []string, newRedirects [
 		},
 		nil)
 	if err != nil {
-		return false, nil, [3]string{}, err
+		return false, nil, err
 	}
 	if len(v) != 1 {
-		return false, nil, [3]string{}, fmt.Errorf("illegal commandline '%s'", args)
+		return false, nil, fmt.Errorf("illegal commandline '%s'", args)
 	}
 	w := v[0]
 	if len(w) == 0 {
-		return false, nil, [3]string{}, nil
+		return false, nil, nil
 	}
 	if w[0] == "-noargs" {
 		if len(w) > 1 {
-			return false, nil, [3]string{}, fmt.Errorf("too many arguments to restart")
+			return false, nil, fmt.Errorf("too many arguments to restart")
 		}
-		return true, nil, [3]string{}, nil
+		return true, nil, nil
 	}
-	redirs := [3]string{}
-	for len(w) > 0 {
-		var found bool
-		var err error
-		w, found, err = parseOneRedirect(w, &redirs)
-		if err != nil {
-			return false, nil, [3]string{}, err
-		}
-		if !found {
-			break
-		}
-	}
-	return true, w, redirs, nil
+	return true, w, nil
 }
 
 func parseOneRedirect(w []string, redirs *[3]string) ([]string, bool, error) {
@@ -1292,9 +1279,9 @@ func setBreakpoint(t *Term, ctx callContext, tracepoint bool, argstr string) ([]
 	requestedBp := &api.Breakpoint{}
 	spec := ""
 	switch len(args) {
-	case 1:
+	case 1: // break <locspec>
 		spec = argstr
-	case 2:
+	case 2: // break [name] <locspec>
 		if api.ValidBreakpointName(args[0]) == nil {
 			requestedBp.Name = args[0]
 			spec = args[1]
@@ -1305,6 +1292,7 @@ func setBreakpoint(t *Term, ctx callContext, tracepoint bool, argstr string) ([]
 		return nil, fmt.Errorf("address required")
 	}
 
+	// launch rpc to find candidated locations for this locspec
 	requestedBp.Tracepoint = tracepoint
 	locs, err := t.client.FindLocation(ctx.Scope, spec, true, t.substitutePathRules())
 	if err != nil {
@@ -1319,6 +1307,8 @@ func setBreakpoint(t *Term, ctx callContext, tracepoint bool, argstr string) ([]
 			return nil, err
 		}
 	}
+
+	// launch rpc to create breakpoints for each candidated location?
 	created := []*api.Breakpoint{}
 	for _, loc := range locs {
 		requestedBp.Addr = loc.PC
@@ -1336,6 +1326,7 @@ func setBreakpoint(t *Term, ctx callContext, tracepoint bool, argstr string) ([]
 		log.Info("%s set at %s", formatBreakpointName(bp, true), t.formatBreakpointLocation(bp))
 	}
 
+	// test whether we should set another breakpoint at return position for function call
 	var shouldSetReturnBreakpoints bool
 	loc, err := locspec.Parse(spec)
 	if err != nil {
@@ -1347,25 +1338,30 @@ func setBreakpoint(t *Term, ctx callContext, tracepoint bool, argstr string) ([]
 	case *locspec.RegexLocationSpec:
 		shouldSetReturnBreakpoints = true
 	}
-	if tracepoint && shouldSetReturnBreakpoints && locs[0].Function != nil {
-		for i := range locs {
-			if locs[i].Function == nil {
-				continue
-			}
-			addrs, err := t.client.(*rpcx.RPCClient).FunctionReturnLocations(locs[0].Function.Name())
+
+	if !(tracepoint && shouldSetReturnBreakpoints && locs[0].Function != nil) {
+		return created, nil
+	}
+
+	// create the breakpoints at return position for function call
+	for i := range locs {
+		if locs[i].Function == nil {
+			continue
+		}
+		// todo why we launch the same RPC in a for-loop? maybe the result is different each call?
+		addrs, err := t.client.(*rpcx.RPCClient).FunctionReturnLocations(locs[0].Function.Name())
+		if err != nil {
+			return nil, err
+		}
+		for j := range addrs {
+			_, err = t.client.CreateBreakpoint(&api.Breakpoint{
+				Addr:        addrs[j],
+				TraceReturn: true,
+				Line:        -1,
+				LoadArgs:    &ShortLoadConfig,
+			})
 			if err != nil {
 				return nil, err
-			}
-			for j := range addrs {
-				_, err = t.client.CreateBreakpoint(&api.Breakpoint{
-					Addr:        addrs[j],
-					TraceReturn: true,
-					Line:        -1,
-					LoadArgs:    &ShortLoadConfig,
-				})
-				if err != nil {
-					return nil, err
-				}
 			}
 		}
 	}
