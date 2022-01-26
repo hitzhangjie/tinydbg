@@ -66,7 +66,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "-" {
 		fh = os.Stdout
 	} else {
-		fh, err = os.Create("./Documentation/backend_test_health.md")
+		fh, err = os.Create("./_docs/backend_test_health.md")
 		if err != nil {
 			log.Fatalf("could not create backend_test_health.md: %v", err)
 		}

@@ -13,7 +13,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/cmds"
 )
 
-const defaultUsageDir = "./Documentation/usage"
+const defaultUsageDir = "./_docs/usage"
 
 func main() {
 	usageDir := defaultUsageDir

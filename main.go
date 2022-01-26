@@ -1,12 +1,11 @@
 package main
 
 import (
+	"github.com/hitzhangjie/dlv/cmds"
 	"os"
 
 	"github.com/sirupsen/logrus"
 	_ "github.com/spf13/cobra/doc"
-
-	"github.com/hitzhangjie/dlv/pkg/cmds"
 )
 
 const cgoCflagsEnv = "CGO_CFLAGS"
