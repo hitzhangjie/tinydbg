@@ -37,7 +37,6 @@ or later, -gcflags="-N -l" on earlier versions of Go.`,
 }
 
 func init() {
-	execCommand.Flags().StringVar(&tty, "tty", "", "TTY to use for the target program")
 	execCommand.Flags().BoolVar(&continueOnStart, "continue", false, "Continue the debugged process on start.")
 	rootCommand.AddCommand(execCommand)
 }

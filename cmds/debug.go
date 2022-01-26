@@ -28,7 +28,6 @@ session.`,
 func init() {
 	debugCommand.Flags().String("output", "./__debug_bin", "Output path for the binary.")
 	debugCommand.Flags().BoolVar(&continueOnStart, "continue", false, "Continue the debugged process on start.")
-	debugCommand.Flags().StringVar(&tty, "tty", "", "TTY to use for the target program")
 	rootCommand.AddCommand(debugCommand)
 }
 

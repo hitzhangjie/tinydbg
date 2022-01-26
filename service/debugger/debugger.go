@@ -114,10 +114,6 @@ type Config struct {
 	// versions.
 	CheckGoVersion bool
 
-	// TTY is passed along to the target process on creation. Used to specify a
-	// TTY for that process.
-	TTY string
-
 	// Packages contains the packages that we are debugging.
 	Packages []string
 
@@ -243,7 +239,7 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.Target, error)
 
 	switch d.config.Backend {
 	case "native":
-		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY)
+		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories)
 	default:
 		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
 	}

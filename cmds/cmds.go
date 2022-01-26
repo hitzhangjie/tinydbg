@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/hitzhangjie/dlv/pkg/config"
@@ -30,7 +29,6 @@ var (
 	initFile    string // the path to initialization file
 	buildFlags  string // the flags passed during compiler invocation
 	workingDir  string // the working directory for running the program
-	tty         string // provide an alternate TTY for the program you wish to debug
 	disableASLR bool   // whether disables ASLR
 	backend     string // backend selection
 
@@ -79,21 +77,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 		acceptMulti = false
 	}
 
-	if !headless {
-		for _, f := range []struct {
-			name string
-			file *os.File
-		}{{"Stdin", os.Stdin}, {"Stdout", os.Stdout}, {"Stderr", os.Stderr}} {
-			if f.file == nil {
-				continue
-			}
-			if !isatty.IsTerminal(f.file.Fd()) {
-				log.Error("%s is not a terminal", f.name)
-				return 1
-			}
-		}
-	}
-
 	var listener net.Listener
 	var clientConn net.Conn
 	var err error
@@ -130,13 +113,12 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 			WorkingDir:           workingDir,
 			Backend:              backend,
 			CoreFile:             coreFile,
-			Foreground:           headless && tty == "",
+			Foreground:           headless,
 			Packages:             dlvArgs,
 			BuildFlags:           buildFlags,
 			ExecuteKind:          kind,
 			DebugInfoDirectories: conf.DebugInfoDirectories,
 			CheckGoVersion:       checkGoVersion,
-			TTY:                  tty,
 			DisableASLR:          disableASLR,
 		},
 	})

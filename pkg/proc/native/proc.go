@@ -1,7 +1,6 @@
 package native
 
 import (
-	"os"
 	"runtime"
 	"sync"
 
@@ -36,10 +35,6 @@ type nativeProcess struct {
 	// signalled to stop as a result of a Halt API call. Used to disambiguate
 	// why a thread is found to have stopped.
 	manualStopRequested bool
-
-	// Controlling terminal file descriptor for
-	// this process.
-	ctty *os.File
 
 	iscgo bool
 
@@ -295,9 +290,6 @@ func (dbp *nativeProcess) postExit() {
 	close(dbp.ptraceChan)
 	close(dbp.ptraceDoneChan)
 	dbp.bi.Close()
-	if dbp.ctty != nil {
-		dbp.ctty.Close()
-	}
 	dbp.os.Close()
 }
 
