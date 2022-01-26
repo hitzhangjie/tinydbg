@@ -12,7 +12,7 @@ import (
 var coreCommand = &cobra.Command{
 	Use:   "core <executable> <core>",
 	Short: "Examine a core dump.",
-	Long: `Examine a core dump (only supports linux and windows core dumps).
+	Long: `Examine a core dump (only supports linux core dumps).
 
 The core command will open the specified core file and the associated
 executable and let you examine the state of the process when the

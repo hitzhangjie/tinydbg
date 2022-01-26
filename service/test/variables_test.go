@@ -3,7 +3,6 @@ package service_test
 import (
 	"errors"
 	"fmt"
-	"go/constant"
 	"io/ioutil"
 	"path/filepath"
 	"runtime"
@@ -123,7 +122,7 @@ func withTestProcessArgs(name string, t *testing.T, wd string, args []string, bu
 	var err error
 	switch testBackend {
 	case "native":
-		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", [3]string{})
+		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{})
 	default:
 		t.Fatalf("unknown backend %q", testBackend)
 	}
@@ -941,41 +940,6 @@ type issue426TestCase struct {
 	typ  string
 }
 
-func TestIssue426(t *testing.T) {
-	// type casts using quoted type names
-	testcases := []issue426TestCase{
-		{"iface1", `interface {}`},
-		{"mapanonstruct1", `map[string]struct {}`},
-		{"anonstruct1", `struct { val go/constant.Value }`},
-		{"anonfunc", `func(struct { i int }, interface {}, struct { val go/constant.Value })`},
-		{"anonstruct2", `struct { i int; j int }`},
-		{"anoniface1", `interface { OtherFunction(int, int); SomeFunction(struct { val go/constant.Value }) }`},
-	}
-
-	ver, _ := goversion.Parse(runtime.Version())
-	if ver.Major < 0 || ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 8, Rev: -1}) {
-		testcases[2].typ = `struct { main.val go/constant.Value }`
-		testcases[3].typ = `func(struct { main.i int }, interface {}, struct { main.val go/constant.Value })`
-		testcases[4].typ = `struct { main.i int; main.j int }`
-		testcases[5].typ = `interface { OtherFunction(int, int); SomeFunction(struct { main.val go/constant.Value }) }`
-	}
-
-	// Serialization of type expressions (go/ast.Expr) containing anonymous structs or interfaces
-	// differs from the serialization used by the linker to produce DWARF type information
-	protest.AllowRecording(t)
-	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
-		assertNoError(p.Continue(), t, "Continue() returned an error")
-		for _, testcase := range testcases {
-			v, err := evalVariable(p, testcase.name, pnormalLoadConfig)
-			assertNoError(err, t, fmt.Sprintf("EvalVariable(%s)", testcase.name))
-			t.Logf("%s → %s", testcase.name, v.RealType.String())
-			expr := fmt.Sprintf("(*%q)(%d)", testcase.typ, v.Addr)
-			_, err = evalVariable(p, expr, pnormalLoadConfig)
-			assertNoError(err, t, fmt.Sprintf("EvalVariable(%s)", expr))
-		}
-	})
-}
-
 func testPackageRenamesHelper(t *testing.T, p *proc.Target, testcases []varTest) {
 	for _, tc := range testcases {
 		variable, err := evalVariable(p, tc.name, pnormalLoadConfig)
@@ -1122,22 +1086,6 @@ func setFunctionBreakpoint(p *proc.Target, t testing.TB, fname string) *proc.Bre
 	return bp
 }
 
-func TestIssue1075(t *testing.T) {
-	withTestProcess("clientdo", t, func(p *proc.Target, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "net/http.(*Client).Do")
-		assertNoError(p.Continue(), t, "Continue()")
-		for i := 0; i < 10; i++ {
-			scope, err := proc.GoroutineScope(p, p.CurrentThread())
-			assertNoError(err, t, fmt.Sprintf("GoroutineScope (%d)", i))
-			vars, err := scope.LocalVariables(pnormalLoadConfig)
-			assertNoError(err, t, fmt.Sprintf("LocalVariables (%d)", i))
-			for _, v := range vars {
-				api.ConvertVar(v).SinglelineString()
-			}
-		}
-	})
-}
-
 type testCaseCallFunction struct {
 	expr string   // call expression to evaluate
 	outs []string // list of return parameters in this format: <param name>:<param type>:<param value>
@@ -1145,7 +1093,6 @@ type testCaseCallFunction struct {
 }
 
 func TestCallFunction(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
 	protest.AllowRecording(t)
 
 	var testcases = []testCaseCallFunction{
@@ -1390,48 +1337,6 @@ func testCallFunction(t *testing.T, p *proc.Target, tc testCaseCallFunction) {
 			t.Fatalf("call %q, output parameter %d: expected value %q, got %q", tc.expr, i, tgtValue, cvs)
 		}
 	}
-}
-
-func TestIssue1531(t *testing.T) {
-	// Go 1.12 introduced a change to the map representation where empty cells can be marked with 1 instead of just 0.
-	withTestProcess("issue1531", t, func(p *proc.Target, fixture protest.Fixture) {
-		assertNoError(p.Continue(), t, "Continue()")
-
-		hasKeys := func(mv *proc.Variable, keys ...string) {
-			n := 0
-			for i := 0; i < len(mv.Children); i += 2 {
-				cv := &mv.Children[i]
-				s := constant.StringVal(cv.Value)
-				found := false
-				for j := range keys {
-					if keys[j] == s {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("key %q not allowed", s)
-					return
-				}
-				n++
-			}
-			if n != len(keys) {
-				t.Fatalf("wrong number of keys found")
-			}
-		}
-
-		mv, err := evalVariable(p, "m", pnormalLoadConfig)
-		assertNoError(err, t, "EvalVariable(m)")
-		cmv := api.ConvertVar(mv)
-		t.Logf("m = %s", cmv.SinglelineString())
-		hasKeys(mv, "s", "r", "v")
-
-		mmv, err := evalVariable(p, "mm", pnormalLoadConfig)
-		assertNoError(err, t, "EvalVariable(mm)")
-		cmmv := api.ConvertVar(mmv)
-		t.Logf("mm = %s", cmmv.SinglelineString())
-		hasKeys(mmv, "r", "t", "v")
-	})
 }
 
 func setFileBreakpoint(p *proc.Target, t *testing.T, fixture protest.Fixture, lineno int) *proc.Breakpoint {

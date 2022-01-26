@@ -284,47 +284,6 @@ func TestDwarfExprLoclist(t *testing.T) {
 	uintExprCheck(t, scope, "a", after)
 }
 
-func TestIssue1419(t *testing.T) {
-	// trying to read a slice variable with a location list that tries to read
-	// from registers we don't have should not cause a panic.
-
-	dwb := dwarfbuilder.New()
-
-	uint64off := dwb.AddBaseType("uint64", dwarfbuilder.DW_ATE_unsigned, 8)
-	intoff := dwb.AddBaseType("int", dwarfbuilder.DW_ATE_signed, 8)
-	intptroff := dwb.AddPointerType("*int", intoff)
-
-	sliceoff := dwb.AddStructType("[]int", 24)
-	dwb.Attr(godwarf.AttrGoKind, uint8(23))
-	dwb.AddMember("array", intptroff, dwarfbuilder.LocationBlock(op.DW_OP_plus_uconst, uint(0)))
-	dwb.AddMember("len", uint64off, dwarfbuilder.LocationBlock(op.DW_OP_plus_uconst, uint(8)))
-	dwb.AddMember("cap", uint64off, dwarfbuilder.LocationBlock(op.DW_OP_plus_uconst, uint(16)))
-	dwb.TagClose()
-
-	dwb.AddSubprogram("main.main", 0x40100, 0x41000)
-	dwb.AddVariable("a", sliceoff, dwarfbuilder.LocationBlock(op.DW_OP_reg2, op.DW_OP_piece, uint(8), op.DW_OP_reg2, op.DW_OP_piece, uint(8), op.DW_OP_reg2, op.DW_OP_piece, uint(8)))
-	dwb.TagClose()
-
-	bi, _ := fakeBinaryInfo(t, dwb)
-
-	mainfn := bi.LookupFunc["main.main"]
-
-	mem := newFakeMemory(fakeCFA())
-
-	scope := &proc.EvalScope{Location: proc.Location{PC: 0x40100, Fn: mainfn}, Regs: op.DwarfRegisters{}, Mem: mem, BinInfo: bi}
-
-	va, err := scope.EvalExpression("a", normalLoadConfig)
-	assertNoError(err, t, "EvalExpression(a)")
-	t.Logf("%#x\n", va.Addr)
-	t.Logf("%v", va)
-	if va.Unreadable == nil {
-		t.Fatalf("expected 'a' to be unreadable but it wasn't")
-	}
-	if va.Unreadable.Error() != "could not read 8 bytes from register 2 (size: 0)" {
-		t.Fatalf("wrong unreadable reason for variable 'a': %v", va.Unreadable)
-	}
-}
-
 func TestLocationCovers(t *testing.T) {
 	dwb := dwarfbuilder.New()
 
@@ -352,21 +311,6 @@ func TestLocationCovers(t *testing.T) {
 		t.Error("wrong value returned by LocationCover")
 	}
 
-}
-
-func TestIssue1636_InlineWithoutOrigin(t *testing.T) {
-	// Gcc (specifically GNU C++11 6.3.0) will emit DW_TAG_inlined_subroutine
-	// without a DW_AT_abstract_origin or a name. What is an inlined subroutine
-	// without a reference to an abstract origin or even a name? Regardless,
-	// Delve shouldn't crash.
-	dwb := dwarfbuilder.New()
-	dwb.AddCompileUnit("main", 0x0)
-	dwb.AddSubprogram("main.main", 0x40100, 0x41000)
-	dwb.TagOpen(dwarf.TagInlinedSubroutine, "")
-	dwb.TagClose()
-	dwb.TagClose()
-	dwb.TagClose()
-	fakeBinaryInfo(t, dwb)
 }
 
 func TestUnsupportedType(t *testing.T) {

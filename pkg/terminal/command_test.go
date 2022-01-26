@@ -3,19 +3,6 @@ package terminal
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"os"
-	"path/filepath"
-	"reflect"
-	"regexp"
-	"runtime"
-	"strconv"
-	"strings"
-	"testing"
-	"time"
-
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/pkg/log"
@@ -25,6 +12,16 @@ import (
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
 	"github.com/hitzhangjie/dlv/service/rpcv2"
+	"io/ioutil"
+	"net"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"runtime"
+	"strconv"
+	"strings"
+	"testing"
 )
 
 var testBackend, buildMode string
@@ -241,26 +238,6 @@ func TestExecuteFile(t *testing.T) {
 	if breakCount != 1 || traceCount != 1 {
 		t.Fatalf("Wrong counts break: %d trace: %d\n", breakCount, traceCount)
 	}
-}
-
-func TestIssue354(t *testing.T) {
-	printStack(&Term{}, os.Stdout, []api.Stackframe{}, "", false)
-	printStack(&Term{}, os.Stdout, []api.Stackframe{
-		{Location: api.Location{PC: 0, File: "irrelevant.go", Line: 10, Function: nil},
-			Bottom: true}}, "", false)
-}
-
-func TestIssue411(t *testing.T) {
-	test.AllowRecording(t)
-	withTestTerminal("math", t, func(term *FakeTerminal) {
-		term.MustExec("break _fixtures/math.go:8")
-		term.MustExec("trace _fixtures/math.go:9")
-		term.MustExec("continue")
-		out := term.MustExec("next")
-		if !strings.HasPrefix(out, "> goroutine(1): main.main()") {
-			t.Fatalf("Wrong output for next: <%s>", out)
-		}
-	})
 }
 
 func TestTrace(t *testing.T) {
@@ -681,21 +658,6 @@ func TestRestart(t *testing.T) {
 	})
 }
 
-func TestIssue827(t *testing.T) {
-	// switching goroutines when the current thread isn't running any goroutine
-	// causes nil pointer dereference.
-	withTestTerminal("notify-v2", t, func(term *FakeTerminal) {
-		go func() {
-			time.Sleep(1 * time.Second)
-			http.Get("http://127.0.0.1:8888/test")
-			time.Sleep(1 * time.Second)
-			term.client.Halt()
-		}()
-		term.MustExec("continue")
-		term.MustExec("goroutine 1")
-	})
-}
-
 func findCmdName(c *Commands, cmdstr string, prefix cmdPrefix) string {
 	for _, v := range c.cmds {
 		if v.match(cmdstr) {
@@ -783,21 +745,6 @@ func TestConfig(t *testing.T) {
 	if findCmdName(term.cmds, "blah", noPrefix) != "" {
 		t.Fatalf("new alias found after delete")
 	}
-}
-
-func TestIssue1090(t *testing.T) {
-	// Exit while executing 'next' should report the "Process exited" error
-	// message instead of crashing.
-	withTestTerminal("math", t, func(term *FakeTerminal) {
-		term.MustExec("break main.main")
-		term.MustExec("continue")
-		for {
-			_, err := term.Exec("next")
-			if err != nil && strings.Contains(err.Error(), " has exited with status ") {
-				break
-			}
-		}
-	})
 }
 
 func TestPrintContextParkedGoroutine(t *testing.T) {
@@ -891,38 +838,8 @@ func TestTruncateStacktrace(t *testing.T) {
 	})
 }
 
-func TestIssue1493(t *testing.T) {
-	// The 'regs' command without the '-a' option should only return
-	// general purpose registers.
-	withTestTerminal("continuetestprog", t, func(term *FakeTerminal) {
-		r := term.MustExec("regs")
-		nr := len(strings.Split(r, "\n"))
-		t.Logf("regs: %s", r)
-		ra := term.MustExec("regs -a")
-		nra := len(strings.Split(ra, "\n"))
-		t.Logf("regs -a: %s", ra)
-		if nr > nra/2+1 {
-			t.Fatalf("'regs' returned too many registers (%d) compared to 'regs -a' (%d)", nr, nra)
-		}
-	})
-}
-
 func findStarFile(name string) string {
 	return filepath.Join(test.FindFixturesDir(), name+".star")
-}
-
-func TestIssue1598(t *testing.T) {
-	test.MustSupportFunctionCalls(t, testBackend)
-	withTestTerminal("issue1598", t, func(term *FakeTerminal) {
-		term.MustExec("break issue1598.go:5")
-		term.MustExec("continue")
-		term.MustExec("config max-string-len 500")
-		r := term.MustExec("call x()")
-		t.Logf("result %q", r)
-		if !strings.Contains(r, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut \\nlabore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut") {
-			t.Fatalf("wrong value returned")
-		}
-	})
 }
 
 func TestExamineMemoryCmd(t *testing.T) {

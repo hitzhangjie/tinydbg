@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/rpc"
 	"os"
@@ -73,12 +72,9 @@ func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redir
 		Listener:    listener,
 		ProcessArgs: []string{fixture.Path},
 		DebuggerConfig: debugger.Config{
-			Backend:        testBackend,
 			CheckGoVersion: true,
 			Packages:       []string{fixture.Source},
-			BuildFlags:     "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
 			ExecuteKind:    debugger.ExecutingGeneratedFile,
-			Redirects:      redirects,
 		},
 	})
 	if err := server.Run(); err != nil {
@@ -107,7 +103,6 @@ func TestRunWithInvalidPath(t *testing.T) {
 		Listener:    listener,
 		ProcessArgs: []string{"invalid_path"},
 		DebuggerConfig: debugger.Config{
-			Backend:     testBackend,
 			ExecuteKind: debugger.ExecutingGeneratedFile,
 		},
 	})
@@ -1369,28 +1364,6 @@ func TestSkipPrologue2(t *testing.T) {
 	})
 }
 
-func TestIssue419(t *testing.T) {
-	// Calling service/rpcv2.(*Client).Halt could cause a crash because both Halt and Continue simultaneously
-	// try to read 'runtime.g' and debug/dwarf.Data.Type is not thread safe
-	finish := make(chan struct{})
-	withTestClient2("issue419", t, func(c service.Client) {
-		go func() {
-			defer close(finish)
-			rand.Seed(time.Now().Unix())
-			d := time.Duration(rand.Intn(4) + 1)
-			time.Sleep(d * time.Second)
-			t.Logf("halt")
-			_, err := c.Halt()
-			assertNoError(err, t, "RequestManualStop()")
-		}()
-		statech := c.Continue()
-		state := <-statech
-		assertNoError(state.Err, t, "Continue()")
-		t.Logf("done")
-		<-finish
-	})
-}
-
 func TestTypesCommand(t *testing.T) {
 	protest.AllowRecording(t)
 	withTestClient2("testvariables2", t, func(c service.Client) {
@@ -1415,23 +1388,6 @@ func TestTypesCommand(t *testing.T) {
 		if len(types) != 1 {
 			t.Fatalf("ListTypes(\"^main.astruct$\") did not filter properly, expected 1 got %d: %v", len(types), types)
 		}
-	})
-}
-
-func TestIssue406(t *testing.T) {
-	protest.AllowRecording(t)
-	withTestClient2("issue406", t, func(c service.Client) {
-		locs, err := c.FindLocation(api.EvalScope{GoroutineID: -1}, "issue406.go:146", false, nil)
-		assertNoError(err, t, "FindLocation()")
-		_, err = c.CreateBreakpoint(&api.Breakpoint{Addr: locs[0].PC})
-		assertNoError(err, t, "CreateBreakpoint()")
-		ch := c.Continue()
-		state := <-ch
-		assertNoError(state.Err, t, "Continue()")
-		v, err := c.EvalVariable(api.EvalScope{GoroutineID: -1}, "cfgtree", normalLoadConfig)
-		assertNoError(err, t, "EvalVariable()")
-		vs := v.MultilineString("", "")
-		t.Logf("cfgtree formats to: %s\n", vs)
 	})
 }
 
@@ -1805,7 +1761,6 @@ func TestAcceptMulticlient(t *testing.T) {
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
 			DebuggerConfig: debugger.Config{
-				Backend:     testBackend,
 				ExecuteKind: debugger.ExecutingGeneratedTest,
 			},
 		})
@@ -1842,9 +1797,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 			ProcessArgs:    []string{protest.BuildFixture("http_server", protest.AllNonOptimized).Path},
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
-			DebuggerConfig: debugger.Config{
-				Backend: "default",
-			},
+			DebuggerConfig: debugger.Config{},
 		})
 		if err := server.Run(); err != nil {
 			panic(err)
@@ -1861,7 +1814,6 @@ func TestForceStopWhileContinue(t *testing.T) {
 }
 
 func TestClientServerFunctionCall(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
 	withTestClient2("fncall", t, func(c service.Client) {
 		c.SetReturnValuesLoadConfig(&normalLoadConfig)
 		state := <-c.Continue()
@@ -1891,7 +1843,6 @@ func TestClientServerFunctionCall(t *testing.T) {
 }
 
 func TestClientServerFunctionCallBadPos(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 12) {
 		t.Skip("this is a safe point for Go 1.12")
 	}
@@ -1917,7 +1868,6 @@ func TestClientServerFunctionCallBadPos(t *testing.T) {
 }
 
 func TestClientServerFunctionCallPanic(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
 	withTestClient2("fncall", t, func(c service.Client) {
 		c.SetReturnValuesLoadConfig(&normalLoadConfig)
 		state := <-c.Continue()
@@ -1945,7 +1895,6 @@ func TestClientServerFunctionCallStacktrace(t *testing.T) {
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
 		t.Skip("Go 1.15 executes function calls in a different goroutine so the stack trace will not contain main.main or runtime.main")
 	}
-	protest.MustSupportFunctionCalls(t, testBackend)
 	withTestClient2("fncall", t, func(c service.Client) {
 		c.SetReturnValuesLoadConfig(&api.LoadConfig{FollowPointers: false, MaxStringLen: 2048})
 		state := <-c.Continue()
@@ -2013,28 +1962,6 @@ func (c *brokenRPCClient) Detach(kill bool) error {
 
 func (c *brokenRPCClient) call(method string, args, reply interface{}) error {
 	return c.client.Call("RPCServer."+method, args, reply)
-}
-
-func TestIssue1703(t *testing.T) {
-	// Calling Disassemble when there is no current goroutine should work.
-	withTestClient2("testnextprog", t, func(c service.Client) {
-		locs, err := c.FindLocation(api.EvalScope{GoroutineID: -1}, "main.main", true, nil)
-		assertNoError(err, t, "FindLocation")
-		t.Logf("FindLocation: %#v", locs)
-		text, err := c.DisassemblePC(api.EvalScope{GoroutineID: -1}, locs[0].PC, api.IntelFlavour)
-		assertNoError(err, t, "DisassemblePC")
-		t.Logf("text: %#v\n", text)
-	})
-}
-
-func TestIssue1787(t *testing.T) {
-	// Calling FunctionReturnLocations without a selected goroutine should
-	// work.
-	withTestClient2("testnextprog", t, func(c service.Client) {
-		if c, _ := c.(*rpcv2.RPCClient); c != nil {
-			c.FunctionReturnLocations("main.main")
-		}
-	})
 }
 
 func TestDoubleCreateBreakpoint(t *testing.T) {
@@ -2126,28 +2053,6 @@ func TestRedirects(t *testing.T) {
 	})
 }
 
-func TestIssue2162(t *testing.T) {
-	if buildMode == "pie" {
-		t.Skip("skip it for stepping into one place where no source for pc when on pie mode")
-	}
-	withTestClient2("issue2162", t, func(c service.Client) {
-		state, err := c.GetState()
-		assertNoError(err, t, "GetState()")
-		if state.CurrentThread.Function == nil {
-			// Can't call Step if we don't have the source code of the current function
-			return
-		}
-
-		_, err = c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main"})
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		_, err = c.Step()
-		assertNoError(err, t, "Step()")
-	})
-}
-
 func TestDetachLeaveRunning(t *testing.T) {
 	listener, clientConn := service.ListenerPipe()
 	defer listener.Close()
@@ -2182,7 +2087,6 @@ func TestDetachLeaveRunning(t *testing.T) {
 		DebuggerConfig: debugger.Config{
 			AttachPid:  cmd.Process.Pid,
 			WorkingDir: ".",
-			Backend:    testBackend,
 		},
 	})
 	if err := server.Run(); err != nil {
@@ -2242,9 +2146,7 @@ func TestStopServerWithClosedListener(t *testing.T) {
 		ProcessArgs:        []string{fixture.Path},
 		DebuggerConfig: debugger.Config{
 			WorkingDir:  ".",
-			Backend:     "default",
 			Foreground:  false,
-			BuildFlags:  "",
 			ExecuteKind: debugger.ExecutingGeneratedFile,
 		},
 	})

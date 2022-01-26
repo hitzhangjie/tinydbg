@@ -2131,7 +2131,6 @@ func TestVariablesLoading(t *testing.T) {
 					}
 
 					// Auto-loading works with call return variables as well
-					protest.MustSupportFunctionCalls(t, testBackend)
 					client.EvaluateRequest("call rettm()", 1000, "repl")
 					got := client.ExpectEvaluateResponse(t)
 					ref = checkEval(t, got, "main.truncatedMap {v: []map[string]main.astruct len: 1, cap: 1, [[...]]}", hasChildren)
@@ -4740,87 +4739,6 @@ func TestBadAccess(t *testing.T) {
 	})
 }
 
-// TestNextWhileNexting is inspired by command_test.TestIssue387 and tests
-// that when 'next' is interrupted by a 'breakpoint', calling 'next'
-// again will produce an error with a helpful message, and 'continue'
-// will resume the program.
-func TestNextWhileNexting(t *testing.T) {
-	// a breakpoint triggering during a 'next' operation will interrupt 'next''
-	// Unlike the test for the terminal package, we cannot be certain
-	// of the number of breakpoints we expect to hit, since multiple
-	// breakpoints being hit at the same time is not supported in DAP stopped
-	// events.
-	runTest(t, "issue387", func(client *daptest.Client, fixture protest.Fixture) {
-		runDebugSessionWithBPs(t, client, "launch",
-			// Launch
-			func() {
-				client.LaunchRequest("exec", fixture.Path, !stopOnEntry)
-			},
-			// Set breakpoints
-			fixture.Source, []int{15},
-			[]onBreakpoint{{ // Stop at line 15
-				execute: func() {
-					checkStop(t, client, 1, "main.main", 15)
-
-					client.SetBreakpointsRequest(fixture.Source, []int{8})
-					client.ExpectSetBreakpointsResponse(t)
-
-					client.ContinueRequest(1)
-					client.ExpectContinueResponse(t)
-
-					bpSe := client.ExpectStoppedEvent(t)
-					threadID := bpSe.Body.ThreadId
-					checkStop(t, client, threadID, "main.dostuff", 8)
-
-					for pos := 9; pos < 11; pos++ {
-						client.NextRequest(threadID)
-						client.ExpectNextResponse(t)
-
-						stepInProgress := true
-						for stepInProgress {
-							m := client.ExpectStoppedEvent(t)
-							switch m.Body.Reason {
-							case "step":
-								if !m.Body.AllThreadsStopped {
-									t.Errorf("got %#v, want Reason=\"step\", AllThreadsStopped=true", m)
-								}
-								checkStop(t, client, m.Body.ThreadId, "main.dostuff", pos)
-								stepInProgress = false
-							case "breakpoint":
-								if !m.Body.AllThreadsStopped {
-									t.Errorf("got %#v, want Reason=\"breakpoint\", AllThreadsStopped=true", m)
-								}
-
-								if stepInProgress {
-									// We encountered a breakpoint on a different thread. We should have to resume execution
-									// using continue.
-									oe := client.ExpectOutputEvent(t)
-									if oe.Body.Category != "console" || !strings.Contains(oe.Body.Output, "Step interrupted by a breakpoint.") {
-										t.Errorf("\ngot  %#v\nwant Category=\"console\" Output=\"Step interrupted by a breakpoint.\"", oe)
-									}
-									client.NextRequest(m.Body.ThreadId)
-									client.ExpectNextResponse(t)
-									checkStopOnNextWhileNextingError(t, client, m.Body.ThreadId)
-									// Continue since we have not finished the step request.
-									client.ContinueRequest(threadID)
-									client.ExpectContinueResponse(t)
-								} else {
-									checkStop(t, client, m.Body.ThreadId, "main.dostuff", 8)
-									// Switch to stepping on this thread instead.
-									pos = 8
-									threadID = m.Body.ThreadId
-								}
-							default:
-								t.Fatalf("got %#v, want StoppedEvent on step or breakpoint", m)
-							}
-						}
-					}
-				},
-				disconnect: true,
-			}})
-	})
-}
-
 func TestPanicBreakpointOnContinue(t *testing.T) {
 	runTest(t, "panic", func(client *daptest.Client, fixture protest.Fixture) {
 		runDebugSessionWithBPs(t, client, "launch",
@@ -5131,21 +5049,7 @@ func TestLaunchDebugRequest(t *testing.T) {
 	rmErrRe, _ := regexp.Compile(`could not remove .*\n`)
 	rmErr := rmErrRe.FindString(string(err))
 	if rmErr != "" {
-		// On Windows, a file in use cannot be removed, resulting in "Access is denied".
-		// When the process exits, Delve releases the binary by calling
-		// BinaryInfo.Close(), but it appears that it is still in use (by Windows?)
-		// shortly after. gobuild.Remove has a delay to address this, but
-		// to avoid any test flakiness we guard against this failure here as well.
-		if runtime.GOOS != "windows" || !stringContainsCaseInsensitive(rmErr, "Access is denied") {
-			t.Fatalf("Binary removal failure:\n%s\n", rmErr)
-		}
-	} else {
-		tmpBin = cleanExeName(tmpBin)
-		// We did not get a removal error, but did we even try to remove before exiting?
-		// Confirm that the binary did get removed.
-		if _, err := os.Stat(tmpBin); err == nil || os.IsExist(err) {
-			t.Fatal("Failed to remove temp binary", tmpBin)
-		}
+		t.Fatalf("Binary removal failure:\n%s\n", rmErr)
 	}
 }
 

@@ -1,5 +1,3 @@
-// +build !windows
-
 package debugger
 
 import (
@@ -14,44 +12,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
 	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
-	"github.com/hitzhangjie/dlv/service/api"
 )
-
-func TestDebugger_LaunchNoExecutablePerm(t *testing.T) {
-	defer func() {
-		os.Setenv("GOOS", runtime.GOOS)
-		os.Setenv("GOARCH", runtime.GOARCH)
-	}()
-	fixturesDir := protest.FindFixturesDir()
-	buildtestdir := filepath.Join(fixturesDir, "buildtest")
-	debugname := "debug"
-	switchOS := map[string]string{
-		"darwin":  "linux",
-		"windows": "linux",
-		"freebsd": "windows",
-		"linux":   "windows",
-	}
-	if runtime.GOOS == "linux" {
-		os.Setenv("GOARCH", "amd64")
-	}
-	os.Setenv("GOOS", switchOS[runtime.GOOS])
-	exepath := filepath.Join(buildtestdir, debugname)
-	defer os.Remove(exepath)
-	if err := gobuild.GoBuild(debugname, []string{buildtestdir}); err != nil {
-		t.Fatalf("go build error %v", err)
-	}
-	if err := os.Chmod(exepath, 0644); err != nil {
-		t.Fatal(err)
-	}
-	d := new(Debugger)
-	_, err := d.Launch([]string{exepath}, ".")
-	if err == nil {
-		t.Fatalf("expected error but none was generated")
-	}
-	if err != api.ErrNotExecutable {
-		t.Fatalf("expected error \"%s\" got \"%v\"", api.ErrNotExecutable, err)
-	}
-}
 
 func TestDebugger_LaunchWithTTY(t *testing.T) {
 	if os.Getenv("CI") == "true" {
