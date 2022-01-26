@@ -67,8 +67,9 @@ const (
 
 type cmdfunc func(t *Term, ctx callContext, args string) error
 
+// command debugging command
 type command struct {
-	aliases         []string
+	aliases         []string // command aliases, like `h` for `help`
 	builtinAliases  []string
 	group           commandGroup
 	allowedPrefixes cmdPrefix
