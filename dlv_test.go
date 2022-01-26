@@ -98,7 +98,7 @@ func TestBuild(t *testing.T) {
 
 	buildtestdir := filepath.Join(fixtures, "buildtest")
 
-	cmd = exec.Command(dlvbin, "debug", "--headless=true", "--listen="+listenAddr, "--api-version=2", "--backend="+testBackend, "--log", "--log-output=debugger,rpcv2")
+	cmd = exec.Command(dlvbin, "debug", "--headless=true", "--listen="+listenAddr, "--api-version=2", "--log", "--log-output=debugger,rpcv2")
 	cmd.Dir = buildtestdir
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -1106,7 +1106,7 @@ func TestVersion(t *testing.T) {
 
 func TestStaticcheck(t *testing.T) {
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 18) {
-		//TODO(aarzilli): remove this before version 1.8.0 is released
+		// TODO(aarzilli): remove this before version 1.8.0 is released
 		t.Skip("staticcheck does not currently support Go 1.18")
 	}
 	_, err := exec.LookPath("staticcheck")

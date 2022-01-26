@@ -320,15 +320,6 @@ func testCmdIntl(testSet, testRegex, testBackend, testBuildMode string) {
 		os.Exit(1)
 	}
 
-	backendFlag := ""
-	if testBackend != "" && testBackend != "default" {
-		if testSet != "basic" && len(testPackages) != 1 {
-			fmt.Printf("Can not use test-backend with test set %q\n", testSet)
-			os.Exit(1)
-		}
-		backendFlag = "-backend=" + testBackend
-	}
-
 	buildModeFlag := ""
 	if testBuildMode != "" && testBuildMode != "normal" {
 		if testSet != "basic" && len(testPackages) != 1 {
@@ -340,11 +331,11 @@ func testCmdIntl(testSet, testRegex, testBackend, testBuildMode string) {
 
 	if len(testPackages) > 3 {
 		env := []string{}
-		executeq(env, "go", "test", testFlags(), buildFlags(), testPackages, backendFlag, buildModeFlag)
+		executeq(env, "go", "test", testFlags(), buildFlags(), testPackages, buildModeFlag)
 	} else if testRegex != "" {
-		execute("go", "test", testFlags(), buildFlags(), testPackages, "-run="+testRegex, backendFlag, buildModeFlag)
+		execute("go", "test", testFlags(), buildFlags(), testPackages, "-run="+testRegex, buildModeFlag)
 	} else {
-		execute("go", "test", testFlags(), buildFlags(), testPackages, backendFlag, buildModeFlag)
+		execute("go", "test", testFlags(), buildFlags(), testPackages, buildModeFlag)
 	}
 }
 
