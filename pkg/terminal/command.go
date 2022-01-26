@@ -116,6 +116,7 @@ func (a byFirstAlias) Less(i, j int) bool { return a[i].aliases[0] < a[j].aliase
 func DebugCommands(client service.Client) *Commands {
 	c := &Commands{client: client}
 
+	// clientside debugging commands
 	c.cmds = []command{
 		{aliases: []string{"help", "h"}, cmdFn: c.help, helpMsg: `Prints the help message.
 

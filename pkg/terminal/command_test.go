@@ -147,11 +147,9 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 		buildFlags |= test.BuildModePIE
 	}
 	server := rpccommon.NewServer(&service.Config{
-		Listener:    listener,
-		ProcessArgs: []string{test.BuildFixture(name, buildFlags).Path},
-		DebuggerConfig: debugger.Config{
-			Backend: testBackend,
-		},
+		Listener:       listener,
+		ProcessArgs:    []string{test.BuildFixture(name, buildFlags).Path},
+		DebuggerConfig: debugger.Config{},
 	})
 	if err := server.Run(); err != nil {
 		t.Fatal(err)
