@@ -39,7 +39,6 @@ func isValidLaunchMode(mode string) bool {
 // arguments in launch/attach requests.
 var (
 	defaultLaunchAttachCommonConfig = LaunchAttachCommonConfig{
-		Backend:         "default",
 		StackTraceDepth: 50,
 	}
 	defaultLaunchConfig = LaunchConfig{
@@ -136,10 +135,6 @@ type LaunchConfig struct {
 type LaunchAttachCommonConfig struct {
 	// Automatically stop program after launch or attach.
 	StopOnEntry bool `json:"stopOnEntry,omitempty"`
-
-	// Backend used for debugging. See `dlv backend` for allowed values.
-	// Default is "default".
-	Backend string `json:"backend,omitempty"`
 
 	// Maximum depth of stack trace to return.
 	// Default is 50.

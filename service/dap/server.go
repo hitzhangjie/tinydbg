@@ -970,10 +970,6 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		return
 	}
 
-	if args.Backend == "" {
-		args.Backend = "default"
-	}
-
 	if args.Mode == "core" {
 		// Validate core dump path
 		if args.CoreFilePath == "" {
@@ -984,10 +980,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		// Assign the non-empty core file path to debugger configuration. This will
 		// trigger a native core file replay instead of an rr trace replay
 		s.config.Debugger.CoreFile = args.CoreFilePath
-		args.Backend = "core"
 	}
-
-	s.config.Debugger.Backend = args.Backend
 
 	// Prepare the debug executable filename, building it if necessary
 	debugbinary := args.Program
@@ -1760,10 +1753,6 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 			return
 		}
 		s.config.Debugger.AttachPid = args.ProcessID
-		if args.Backend == "" {
-			args.Backend = "default"
-		}
-		s.config.Debugger.Backend = args.Backend
 		log.Debug("attaching to pid %d", args.ProcessID)
 		var err error
 		func() {

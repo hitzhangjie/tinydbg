@@ -29,7 +29,6 @@ var (
 	addr        string // the debugging server listen address
 	workingDir  string // the working directory for running the program
 	disableASLR bool   // whether disables ASLR
-	backend     string // backend selection
 
 	// checkGoVersion is true if the debugger should check the version of Go
 	// used to compile the executable and refuse to work on incompatible
@@ -107,7 +106,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 		Debugger: debugger.Config{
 			AttachPid:            attachPid,
 			WorkingDir:           workingDir,
-			Backend:              backend,
 			CoreFile:             coreFile,
 			Foreground:           headless,
 			Packages:             dlvArgs,

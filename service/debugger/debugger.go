@@ -99,9 +99,6 @@ type Config struct {
 	// CoreFile specifies the path to the core dump to open.
 	CoreFile string
 
-	// Backend specifies the debugger backend.
-	Backend string
-
 	// Foreground lets target process access stdin.
 	Foreground bool
 
@@ -148,13 +145,8 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		d.target = p
 
 	case d.config.CoreFile != "":
-		var p *proc.Target
-		var err error
-		switch d.config.Backend {
-		default:
-			log.Info("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
-			p, err = core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
-		}
+		log.Info("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
+		p, err := core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
 		if err != nil {
 			err = go11DecodeErrorCheck(err)
 			return nil, err
@@ -234,12 +226,7 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.Target, error)
 		launchFlags |= proc.LaunchDisableASLR
 	}
 
-	switch d.config.Backend {
-	case "native":
-		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories)
-	default:
-		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
-	}
+	return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories)
 }
 
 func (d *Debugger) recordingStart(stop func() error) {
@@ -262,14 +249,7 @@ func (d *Debugger) isRecording() bool {
 
 // Attach will attach to the process specified by 'pid'.
 func (d *Debugger) Attach(pid int, path string) (*proc.Target, error) {
-	switch d.config.Backend {
-	case "native":
-		return native.Attach(pid, d.config.DebugInfoDirectories)
-	case "default":
-		return native.Attach(pid, d.config.DebugInfoDirectories)
-	default:
-		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
-	}
+	return native.Attach(pid, d.config.DebugInfoDirectories)
 }
 
 // ProcessPid returns the PID of the process
@@ -1890,11 +1870,7 @@ func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
 	if d.config.CoreFile != "" {
 		out.Backend = "core"
 	} else {
-		if d.config.Backend == "default" {
-			out.Backend = "native"
-		} else {
-			out.Backend = d.config.Backend
-		}
+		out.Backend = "native"
 	}
 
 	if !d.isRecording() && !d.IsRunning() {

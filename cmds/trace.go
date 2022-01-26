@@ -101,7 +101,6 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 			Debugger: debugger.Config{
 				AttachPid:      traceAttachPid,
 				WorkingDir:     workingDir,
-				Backend:        backend,
 				CheckGoVersion: checkGoVersion,
 			},
 		})
