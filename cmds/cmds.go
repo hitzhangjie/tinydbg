@@ -26,15 +26,14 @@ var (
 	acceptMulti     bool // whether allows multiple clients to connect to the same server
 
 	// debugger settins
-	addr                        string   // the debugging server listen address
-	initFile                    string   // the path to initialization file
-	buildFlags                  string   // the flags passed during compiler invocation
-	workingDir                  string   // the working directory for running the program
-	tty                         string   // provide an alternate TTY for the program you wish to debug
-	disableASLR                 bool     // whether disables ASLR
-	backend                     string   // backend selection
-	redirects                   []string // redirect specifications for target process
-	allowNonTerminalInteractive bool
+	addr        string   // the debugging server listen address
+	initFile    string   // the path to initialization file
+	buildFlags  string   // the flags passed during compiler invocation
+	workingDir  string   // the working directory for running the program
+	tty         string   // provide an alternate TTY for the program you wish to debug
+	disableASLR bool     // whether disables ASLR
+	backend     string   // backend selection
+	redirects   []string // redirect specifications for target process
 
 	// checkGoVersion is true if the debugger should check the version of Go
 	// used to compile the executable and refuse to work on incompatible
@@ -81,7 +80,7 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 		acceptMulti = false
 	}
 
-	if !headless && !allowNonTerminalInteractive {
+	if !headless {
 		for _, f := range []struct {
 			name string
 			file *os.File
