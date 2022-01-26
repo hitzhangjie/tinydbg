@@ -17,7 +17,7 @@ import (
 )
 
 //go:generate go run ../../../_scripts/gen-starlark-bindings.go go ./starlark_mapping.go
-//go:generate go run ../../../_scripts/gen-starlark-bindings.go doc ../../../Documentation/cli/starlark.md
+//go:generate go run ../../../_scripts/gen-starlark-bindings.go doc ../../../_docs/cli/starlark.md
 
 const (
 	dlvCommandBuiltinName        = "dlv_command"
