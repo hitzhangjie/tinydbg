@@ -41,11 +41,6 @@ var (
 	// versions.
 	checkGoVersion bool
 
-	// dapClientAddr is dap subcommand's flag that specifies the address of a DAP client.
-	// If it is specified, the dap server starts a debug session by dialing to the client.
-	// The dap server will serve only for the debug session.
-	dapClientAddr string
-
 	// checkLocalConnUser is true if the debugger should check that local
 	// connections come from the same user that started the headless server
 	checkLocalConnUser bool
