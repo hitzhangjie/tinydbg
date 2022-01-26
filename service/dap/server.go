@@ -42,7 +42,6 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/internal/sameuser"
 )
 
 // Server implements a DAP server that can accept a single client for
@@ -455,13 +454,6 @@ func (s *Server) Run() {
 				s.config.triggerServerStop()
 			}
 			return
-		}
-		if s.config.CheckLocalConnUser {
-			if !sameuser.CanAccept(s.listener.Addr(), conn.LocalAddr(), conn.RemoteAddr()) {
-				log.Error("Error accepting client connection: Only connections from the same user that started this instance of Delve are allowed to connect. See --only-same-user.")
-				s.config.triggerServerStop()
-				return
-			}
 		}
 		s.runSession(conn)
 	}()

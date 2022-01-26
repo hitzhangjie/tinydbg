@@ -35,10 +35,6 @@ var (
 	// versions.
 	checkGoVersion bool
 
-	// checkLocalConnUser is true if the debugger should check that local
-	// connections come from the same user that started the headless server
-	checkLocalConnUser bool
-
 	// trace settings
 	traceAttachPid  int
 	traceExecFile   string
@@ -98,11 +94,10 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 
 	// Create and start a debugger server
 	server = rpccommon.NewServer(&service.Config{
-		Listener:           listener,
-		ProcessArgs:        processArgs,
-		AcceptMulti:        acceptMulti,
-		CheckLocalConnUser: checkLocalConnUser,
-		DisconnectChan:     disconnectChan,
+		Listener:       listener,
+		ProcessArgs:    processArgs,
+		AcceptMulti:    acceptMulti,
+		DisconnectChan: disconnectChan,
 		Debugger: debugger.Config{
 			AttachPid:            attachPid,
 			WorkingDir:           workingDir,

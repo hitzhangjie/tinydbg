@@ -21,7 +21,6 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/dap"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/internal/sameuser"
 	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
@@ -127,13 +126,6 @@ func (s *ServerImpl) Run() error {
 					return
 				default:
 					panic(err)
-				}
-			}
-
-			if s.config.CheckLocalConnUser {
-				if !sameuser.CanAccept(s.listener.Addr(), c.LocalAddr(), c.RemoteAddr()) {
-					c.Close()
-					continue
 				}
 			}
 
