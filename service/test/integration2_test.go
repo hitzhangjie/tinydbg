@@ -72,7 +72,7 @@ func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redir
 	server := rpccommon.NewServer(&service.Config{
 		Listener:    listener,
 		ProcessArgs: []string{fixture.Path},
-		Debugger: debugger.Config{
+		DebuggerConfig: debugger.Config{
 			Backend:        testBackend,
 			CheckGoVersion: true,
 			Packages:       []string{fixture.Source},
@@ -106,7 +106,7 @@ func TestRunWithInvalidPath(t *testing.T) {
 	server := rpccommon.NewServer(&service.Config{
 		Listener:    listener,
 		ProcessArgs: []string{"invalid_path"},
-		Debugger: debugger.Config{
+		DebuggerConfig: debugger.Config{
 			Backend:     testBackend,
 			ExecuteKind: debugger.ExecutingGeneratedFile,
 		},
@@ -1804,7 +1804,7 @@ func TestAcceptMulticlient(t *testing.T) {
 			ProcessArgs:    []string{protest.BuildFixture("testvariables2", 0).Path},
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
-			Debugger: debugger.Config{
+			DebuggerConfig: debugger.Config{
 				Backend:     testBackend,
 				ExecuteKind: debugger.ExecutingGeneratedTest,
 			},
@@ -1842,7 +1842,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 			ProcessArgs:    []string{protest.BuildFixture("http_server", protest.AllNonOptimized).Path},
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
-			Debugger: debugger.Config{
+			DebuggerConfig: debugger.Config{
 				Backend: "default",
 			},
 		})
@@ -2179,7 +2179,7 @@ func TestDetachLeaveRunning(t *testing.T) {
 
 	server := rpccommon.NewServer(&service.Config{
 		Listener: listener,
-		Debugger: debugger.Config{
+		DebuggerConfig: debugger.Config{
 			AttachPid:  cmd.Process.Pid,
 			WorkingDir: ".",
 			Backend:    testBackend,
@@ -2240,7 +2240,7 @@ func TestStopServerWithClosedListener(t *testing.T) {
 		CheckLocalConnUser: true,
 		DisconnectChan:     make(chan struct{}),
 		ProcessArgs:        []string{fixture.Path},
-		Debugger: debugger.Config{
+		DebuggerConfig: debugger.Config{
 			WorkingDir:  ".",
 			Backend:     "default",
 			Foreground:  false,

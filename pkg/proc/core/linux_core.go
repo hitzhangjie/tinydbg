@@ -47,7 +47,6 @@ const elfErrorBadMagicNumber = "bad magic number"
 func linuxThreadsFromNotes(p *process, notes []*note, machineType elf.Machine) proc.Thread {
 	var currentThread proc.Thread
 	var lastThreadAMD *linuxAMD64Thread
-	var lastThreadARM *linuxARM64Thread
 	for _, note := range notes {
 		switch note.Type {
 		case elf.NT_PRSTATUS:
@@ -58,19 +57,12 @@ func linuxThreadsFromNotes(p *process, notes []*note, machineType elf.Machine) p
 				if currentThread == nil {
 					currentThread = p.Threads[int(t.Pid)]
 				}
-			} else if machineType == _EM_AARCH64 {
-				t := note.Desc.(*linuxPrStatusARM64)
-				lastThreadARM = &linuxARM64Thread{linutil.ARM64Registers{Regs: &t.Reg}, t}
-				p.Threads[int(t.Pid)] = &thread{lastThreadARM, p, proc.CommonThread{}}
-				if currentThread == nil {
-					currentThread = p.Threads[int(t.Pid)]
-				}
+			} else {
+				panic(fmt.Sprintf("not supported machine type: %s", machineType))
 			}
 		case _NT_FPREGSET:
 			if machineType == _EM_AARCH64 {
-				if lastThreadARM != nil {
-					lastThreadARM.regs.Fpregs = note.Desc.(*linutil.ARM64PtraceFpRegs).Decode()
-				}
+				panic(fmt.Sprintf("not supported machine type: %s", machineType))
 			}
 		case _NT_X86_XSTATE:
 			if machineType == _EM_X86_64 {
@@ -175,11 +167,6 @@ type linuxAMD64Thread struct {
 	t    *linuxPrStatusAMD64
 }
 
-type linuxARM64Thread struct {
-	regs linutil.ARM64Registers
-	t    *linuxPrStatusARM64
-}
-
 func (t *linuxAMD64Thread) registers() (proc.Registers, error) {
 	var r linutil.AMD64Registers
 	r.Regs = t.regs.Regs
@@ -187,18 +174,7 @@ func (t *linuxAMD64Thread) registers() (proc.Registers, error) {
 	return &r, nil
 }
 
-func (t *linuxARM64Thread) registers() (proc.Registers, error) {
-	var r linutil.ARM64Registers
-	r.Regs = t.regs.Regs
-	r.Fpregs = t.regs.Fpregs
-	return &r, nil
-}
-
 func (t *linuxAMD64Thread) pid() int {
-	return int(t.t.Pid)
-}
-
-func (t *linuxARM64Thread) pid() int {
 	return int(t.t.Pid)
 }
 
@@ -282,10 +258,8 @@ func readNote(r io.ReadSeeker, machineType elf.Machine) (*note, error) {
 	case elf.NT_PRSTATUS:
 		if machineType == _EM_X86_64 {
 			note.Desc = &linuxPrStatusAMD64{}
-		} else if machineType == _EM_AARCH64 {
-			note.Desc = &linuxPrStatusARM64{}
 		} else {
-			return nil, fmt.Errorf("unsupported machine type")
+			return nil, fmt.Errorf("unsupported machine type: %s", machineType)
 		}
 		if err := binary.Read(descReader, binary.LittleEndian, note.Desc); err != nil {
 			return nil, fmt.Errorf("reading NT_PRSTATUS: %v", err)
@@ -324,12 +298,7 @@ func readNote(r io.ReadSeeker, machineType elf.Machine) (*note, error) {
 		note.Desc = desc
 	case _NT_FPREGSET:
 		if machineType == _EM_AARCH64 {
-			fpregs := &linutil.ARM64PtraceFpRegs{}
-			rdr := bytes.NewReader(desc[:_ARM_FP_HEADER_START])
-			if err := binary.Read(rdr, binary.LittleEndian, fpregs.Byte()); err != nil {
-				return nil, err
-			}
-			note.Desc = fpregs
+			panic(fmt.Sprintf("not supported machine type: %s", machineType))
 		}
 	}
 	if err := skipPadding(r, 4); err != nil {
@@ -429,19 +398,6 @@ type linuxPrStatusAMD64 struct {
 	Pid, Ppid, Pgrp, Sid         int32
 	Utime, Stime, CUtime, CStime linuxCoreTimeval
 	Reg                          linutil.AMD64PtraceRegs
-	Fpvalid                      int32
-}
-
-// LinuxPrStatusARM64 is a copy of the prstatus kernel struct.
-type linuxPrStatusARM64 struct {
-	Siginfo                      linuxSiginfo
-	Cursig                       uint16
-	_                            [2]uint8
-	Sigpend                      uint64
-	Sighold                      uint64
-	Pid, Ppid, Pgrp, Sid         int32
-	Utime, Stime, CUtime, CStime linuxCoreTimeval
-	Reg                          linutil.ARM64PtraceRegs
 	Fpvalid                      int32
 }
 

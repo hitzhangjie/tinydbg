@@ -232,7 +232,7 @@ func (c *RPCClient) GetBreakpointByName(name string) (*api.Breakpoint, error) {
 }
 
 // CreateBreakpoint will send a request to the RPC server to create a breakpoint.
-// Please refer to the documentation for `Debugger.CreateBreakpoint` for a description of how
+// Please refer to the documentation for `DebuggerConfig.CreateBreakpoint` for a description of how
 // the requested breakpoint parameters are interpreted and used:
 // https://pkg.go.dev/github.com/go-delve/delve/service/debugger#Debugger.CreateBreakpoint
 func (c *RPCClient) CreateBreakpoint(breakPoint *api.Breakpoint) (*api.Breakpoint, error) {

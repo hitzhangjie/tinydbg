@@ -27,10 +27,9 @@ func init() {
 	var smallStacksplit = opcodeSeq{uint64(x86asm.LEA), uint64(x86asm.CMP), uint64(x86asm.JBE)}
 	var bigStacksplit = opcodeSeq{uint64(x86asm.MOV), uint64(x86asm.CMP), uint64(x86asm.JE), uint64(x86asm.LEA), uint64(x86asm.SUB), uint64(x86asm.CMP), uint64(x86asm.JBE)}
 	var unixGetG = opcodeSeq{uint64(x86asm.MOV)}
-	var windowsGetG = opcodeSeq{uint64(x86asm.MOV), uint64(x86asm.MOV)}
 
 	prologuesAMD64 = make([]opcodeSeq, 0, 2*3)
-	for _, getG := range []opcodeSeq{unixGetG, windowsGetG} {
+	for _, getG := range []opcodeSeq{unixGetG} {
 		for _, stacksplit := range []opcodeSeq{tinyStacksplit, smallStacksplit, bigStacksplit} {
 			prologue := make(opcodeSeq, 0, len(getG)+len(stacksplit))
 			prologue = append(prologue, getG...)

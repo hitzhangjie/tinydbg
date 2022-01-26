@@ -66,7 +66,7 @@ type methodType struct {
 
 // NewServer creates a new RPCServer.
 func NewServer(config *service.Config) *ServerImpl {
-	if config.Debugger.Foreground {
+	if config.DebuggerConfig.Foreground {
 		// Print listener address
 		log.Info("listen address: %s", config.Listener.Addr())
 		log.Debug("API server pid = ", os.Getpid())
@@ -88,7 +88,8 @@ func (s *ServerImpl) Stop() error {
 	if s.debugger.IsRunning() {
 		s.debugger.Command(&api.DebuggerCommand{Name: api.Halt}, nil)
 	}
-	kill := s.config.Debugger.AttachPid == 0
+	// if tracee is launched by tracer, kill it
+	kill := s.config.DebuggerConfig.AttachPid == 0
 	return s.debugger.Detach(kill)
 }
 
@@ -98,7 +99,7 @@ func (s *ServerImpl) Stop() error {
 func (s *ServerImpl) Run() error {
 	var err error
 	// Create and start the debugger
-	config := s.config.Debugger
+	config := s.config.DebuggerConfig
 	if s.debugger, err = debugger.New(&config, s.config.ProcessArgs); err != nil {
 		return err
 	}

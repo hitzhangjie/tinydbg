@@ -98,7 +98,7 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 		server := rpccommon.NewServer(&service.Config{
 			Listener:    listener,
 			ProcessArgs: processArgs,
-			Debugger: debugger.Config{
+			DebuggerConfig: debugger.Config{
 				AttachPid:      traceAttachPid,
 				WorkingDir:     workingDir,
 				CheckGoVersion: checkGoVersion,

@@ -384,7 +384,7 @@ func (s *Session) Close() {
 	defer s.mu.Unlock()
 
 	if s.debugger != nil {
-		killProcess := s.config.Debugger.AttachPid == 0
+		killProcess := s.config.DebuggerConfig.AttachPid == 0
 		s.stopDebugSession(killProcess)
 	} else if s.noDebugProcess != nil {
 		s.stopNoDebugProcess()
@@ -468,7 +468,7 @@ func (s *Server) runSession(conn io.ReadWriteCloser) {
 
 // RunWithClient is similar to Run but works only with an already established
 // connection instead of waiting on the listener to accept a new client.
-// RunWithClient takes ownership of conn. Debugger won't be started
+// RunWithClient takes ownership of conn. DebuggerConfig won't be started
 // until a launch/attach request is received over the connection.
 func (s *Server) RunWithClient(conn net.Conn) {
 	if s.listener != nil {
@@ -971,7 +971,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		}
 		// Assign the non-empty core file path to debugger configuration. This will
 		// trigger a native core file replay instead of an rr trace replay
-		s.config.Debugger.CoreFile = args.CoreFilePath
+		s.config.DebuggerConfig.CoreFile = args.CoreFilePath
 	}
 
 	// Prepare the debug executable filename, building it if necessary
@@ -1033,7 +1033,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 			args.Cwd = "."
 		}
 	}
-	s.config.Debugger.WorkingDir = args.Cwd
+	s.config.DebuggerConfig.WorkingDir = args.Cwd
 
 	// Backend layers will interpret paths relative to server's working directory:
 	// reflect that before logging.
@@ -1044,7 +1044,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 
 	if args.NoDebug {
 		s.mu.Lock()
-		cmd, err := s.newNoDebugProcess(debugbinary, args.Args, s.config.Debugger.WorkingDir)
+		cmd, err := s.newNoDebugProcess(debugbinary, args.Args, s.config.DebuggerConfig.WorkingDir)
 		s.mu.Unlock()
 		if err != nil {
 			s.sendShowUserErrorResponse(request.Request, FailedToLaunch, "Failed to launch", err.Error())
@@ -1069,7 +1069,7 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 	func() {
 		s.mu.Lock()
 		defer s.mu.Unlock() // Make sure to unlock in case of panic that will become internal error
-		s.debugger, err = debugger.New(&s.config.Debugger, s.config.ProcessArgs)
+		s.debugger, err = debugger.New(&s.config.DebuggerConfig, s.config.ProcessArgs)
 	}()
 	if err != nil {
 		s.sendShowUserErrorResponse(request.Request, FailedToLaunch, "Failed to launch", err.Error())
@@ -1176,7 +1176,7 @@ func (s *Session) onDisconnectRequest(request *dap.DisconnectRequest) {
 		// In case of attach, we leave the program
 		// running by default, which can be
 		// overridden by an explicit request to terminate.
-		killProcess := s.config.Debugger.AttachPid == 0 || request.Arguments.TerminateDebuggee
+		killProcess := s.config.DebuggerConfig.AttachPid == 0 || request.Arguments.TerminateDebuggee
 		err = s.stopDebugSession(killProcess)
 	} else if s.noDebugProcess != nil {
 		s.stopNoDebugProcess()
@@ -1744,13 +1744,13 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 				"The 'processId' attribute is missing in debug configuration")
 			return
 		}
-		s.config.Debugger.AttachPid = args.ProcessID
+		s.config.DebuggerConfig.AttachPid = args.ProcessID
 		log.Debug("attaching to pid %d", args.ProcessID)
 		var err error
 		func() {
 			s.mu.Lock()
 			defer s.mu.Unlock() // Make sure to unlock in case of panic that will become internal error
-			s.debugger, err = debugger.New(&s.config.Debugger, nil)
+			s.debugger, err = debugger.New(&s.config.DebuggerConfig, nil)
 		}()
 		if err != nil {
 			s.sendShowUserErrorResponse(request.Request, FailedToAttach, "Failed to attach", err.Error())

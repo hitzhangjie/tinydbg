@@ -6227,7 +6227,7 @@ func TestBadAttachRequest(t *testing.T) {
 		// The exact message varies on different systems, so skip that check
 		checkFailedToAttach(client.ExpectVisibleErrorResponse(t)) // could not attach to pid 1
 
-		// This will make debugger.(*Debugger) panic, which we will catch as an internal error.
+		// This will make debugger.(*DebuggerConfig) panic, which we will catch as an internal error.
 		client.AttachRequest(map[string]interface{}{"mode": "local", "processId": -1})
 		er := client.ExpectInvisibleErrorResponse(t)
 		if er.RequestSeq != seqCnt {
@@ -6287,10 +6287,10 @@ func launchDebuggerWithTargetHalted(t *testing.T, fixture string) (*protest.Fixt
 	t.Helper()
 	fixbin := protest.BuildFixture(fixture, protest.AllNonOptimized)
 	cfg := service.Config{
-		ProcessArgs: []string{fixbin.Path},
-		Debugger:    debugger.Config{Backend: "default"},
+		ProcessArgs:    []string{fixbin.Path},
+		DebuggerConfig: debugger.Config{Backend: "default"},
 	}
-	dbg, err := debugger.New(&cfg.Debugger, cfg.ProcessArgs) // debugger halts process on entry
+	dbg, err := debugger.New(&cfg.DebuggerConfig, cfg.ProcessArgs) // debugger halts process on entry
 	if err != nil {
 		t.Fatal("failed to start debugger:", err)
 	}
@@ -6318,7 +6318,7 @@ func runTestWithDebugger(t *testing.T, dbg *debugger.Debugger, test func(c *dapt
 	test(client)
 
 	client.DisconnectRequest()
-	if server.config.Debugger.AttachPid == 0 { // launched target
+	if server.config.DebuggerConfig.AttachPid == 0 { // launched target
 		client.ExpectOutputEventDetachingKill(t)
 	} else { // attached to target
 		client.ExpectOutputEventDetachingNoKill(t)

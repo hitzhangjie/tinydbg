@@ -57,13 +57,26 @@ func (t *nativeThread) withDebugRegisters(f func(*amd64util.DebugRegisters) erro
 			if i == 4 || i == 5 {
 				continue
 			}
-			_, _, err = sys.Syscall6(sys.SYS_PTRACE, sys.PTRACE_PEEKUSR, uintptr(t.ID), uintptr(debugRegUserOffset+uintptr(i)*unsafe.Sizeof(debugregs[0])), uintptr(unsafe.Pointer(&debugregs[i])), 0, 0)
+			_, _, err = sys.Syscall6(
+				sys.SYS_PTRACE,
+				sys.PTRACE_PEEKUSR,
+				uintptr(t.ID),
+				uintptr(debugRegUserOffset+uintptr(i)*unsafe.Sizeof(debugregs[0])),
+				uintptr(unsafe.Pointer(&debugregs[i])),
+				0,
+				0)
 			if err != nil && err != syscall.Errno(0) {
 				return
 			}
 		}
 
-		drs := amd64util.NewDebugRegisters(&debugregs[0], &debugregs[1], &debugregs[2], &debugregs[3], &debugregs[6], &debugregs[7])
+		drs := amd64util.NewDebugRegisters(
+			&debugregs[0],
+			&debugregs[1],
+			&debugregs[2],
+			&debugregs[3],
+			&debugregs[6],
+			&debugregs[7])
 
 		err = f(drs)
 
@@ -73,7 +86,14 @@ func (t *nativeThread) withDebugRegisters(f func(*amd64util.DebugRegisters) erro
 					// Linux will return EIO for DR4 and DR5
 					continue
 				}
-				_, _, err = sys.Syscall6(sys.SYS_PTRACE, sys.PTRACE_POKEUSR, uintptr(t.ID), uintptr(debugRegUserOffset+uintptr(i)*unsafe.Sizeof(debugregs[0])), uintptr(debugregs[i]), 0, 0)
+				_, _, err = sys.Syscall6(
+					sys.SYS_PTRACE,
+					sys.PTRACE_POKEUSR,
+					uintptr(t.ID),
+					uintptr(debugRegUserOffset+uintptr(i)*unsafe.Sizeof(debugregs[0])),
+					uintptr(debugregs[i]),
+					0,
+					0)
 				if err != nil && err != syscall.Errno(0) {
 					return
 				}

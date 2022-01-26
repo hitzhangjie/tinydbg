@@ -152,7 +152,7 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 	server := rpccommon.NewServer(&service.Config{
 		Listener:    listener,
 		ProcessArgs: []string{test.BuildFixture(name, buildFlags).Path},
-		Debugger: debugger.Config{
+		DebuggerConfig: debugger.Config{
 			Backend: testBackend,
 		},
 	})

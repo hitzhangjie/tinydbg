@@ -70,7 +70,6 @@ func init() {
 	rootCommand.PersistentFlags().BoolVar(&disableASLR, "disable-aslr", false, "Disables address space randomization")
 }
 
-// 返回错误码给os.Exit(?)
 func execute(attachPid int, processArgs []string, coreFile string, kind debugger.ExecuteKind, dlvArgs []string) int {
 	conf, err := config.LoadConfig()
 	if err != nil {
@@ -79,7 +78,7 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 
 	if continueOnStart {
 		if !headless {
-			fmt.Fprint(os.Stderr, "Error: --continue only works with --headless; use an init file\n")
+			fmt.Fprint(os.Stderr, "Error: --continue only works with --headless\n")
 			return 1
 		}
 		if !acceptMulti {
@@ -93,6 +92,10 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 		// acceptMulti won't work in normal (non-headless) mode because we always
 		// call server.Stop after the terminal client exits.
 		acceptMulti = false
+	}
+
+	if workingDir == "" {
+		workingDir = "."
 	}
 
 	var listener net.Listener
@@ -110,21 +113,16 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 	}
 	defer listener.Close()
 
-	var server service.Server
-
 	disconnectChan := make(chan struct{})
 
-	if workingDir == "" {
-		workingDir = "."
-	}
-
 	// Create and start a debugger server
+	var server service.Server
 	server = rpccommon.NewServer(&service.Config{
 		Listener:       listener,
 		ProcessArgs:    processArgs,
 		AcceptMulti:    acceptMulti,
 		DisconnectChan: disconnectChan,
-		Debugger: debugger.Config{
+		DebuggerConfig: debugger.Config{
 			AttachPid:            attachPid,
 			WorkingDir:           workingDir,
 			CoreFile:             coreFile,

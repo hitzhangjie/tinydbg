@@ -6,16 +6,16 @@ import (
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
-// Config provides the configuration to start a Debugger and expose it with a
+// Config provides the configuration to start a DebuggerConfig and expose it with a
 // service.
 //
 // Only one of ProcessArgs or AttachPid should be specified. If ProcessArgs is
 // provided, a new process will be launched. Otherwise, the debugger will try
 // to attach to an existing process with AttachPid.
 type Config struct {
-	// Debugger configuration object, used to configure the underlying
+	// DebuggerConfig configuration object, used to configure the underlying
 	// debugger used by the server.
-	Debugger debugger.Config
+	DebuggerConfig debugger.Config
 
 	// Listener is used to serve requests.
 	Listener net.Listener

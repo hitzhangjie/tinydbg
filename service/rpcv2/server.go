@@ -86,7 +86,7 @@ type RestartOut struct {
 // Restart restarts program.
 func (s *RPCServer) Restart(arg RestartIn, cb service.RPCCallback) {
 	close(cb.SetupDoneChan())
-	if s.config.Debugger.AttachPid != 0 {
+	if s.config.DebuggerConfig.AttachPid != 0 {
 		cb.Return(nil, errors.New("cannot restart process Delve did not create"))
 		return
 	}
@@ -673,7 +673,7 @@ type AttachedToExistingProcessOut struct {
 
 // AttachedToExistingProcess returns whether we attached to a running process or not
 func (c *RPCServer) AttachedToExistingProcess(arg AttachedToExistingProcessIn, out *AttachedToExistingProcessOut) error {
-	if c.config.Debugger.AttachPid != 0 {
+	if c.config.DebuggerConfig.AttachPid != 0 {
 		out.Answer = true
 	}
 	return nil

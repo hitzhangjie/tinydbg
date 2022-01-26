@@ -284,6 +284,7 @@ func (dbp *nativeProcess) addThread(tid int, attach bool) (*nativeThread, error)
 		dbp.memthread = dbp.threads[tid]
 	}
 	for _, bp := range dbp.Breakpoints().M {
+		// bp.WatchType != 0, means this BP is a watchpoint, not a ordinary BP
 		if bp.WatchType != 0 {
 			err := dbp.threads[tid].writeHardwareBreakpoint(bp.Addr, bp.WatchType, bp.HWBreakIndex)
 			if err != nil {
@@ -478,6 +479,7 @@ func (dbp *nativeProcess) wait(pid, options int) (int, *sys.WaitStatus, error) {
 		wpid, err := sys.Wait4(pid, &s, sys.WALL|options, nil)
 		return wpid, &s, err
 	}
+
 	// If we call wait4/waitpid on a thread that is the leader of its group,
 	// with options == 0, while ptracing and the thread leader has exited leaving
 	// zombies of its own then waitpid hangs forever this is apparently intended
@@ -495,7 +497,7 @@ func (dbp *nativeProcess) wait(pid, options int) (int, *sys.WaitStatus, error) {
 			return 0, nil, err
 		}
 		if wpid != 0 {
-			return wpid, &s, err
+			return wpid, &s, nil
 		}
 		if status(pid, dbp.os.comm) == statusZombie {
 			return pid, nil, nil
