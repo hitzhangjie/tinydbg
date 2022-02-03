@@ -19,7 +19,6 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/dap"
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/rpcx"
 )
@@ -152,9 +151,7 @@ func (s *ServerImpl) serveConnectionDemux(c io.ReadWriteCloser) {
 		return
 	}
 	if b[0] == 'C' { // C is for DAP's Content-Length
-		log.Debug("serving DAP on new connection")
-		ds := dap.NewSession(conn, &dap.Config{Config: s.config, StopTriggered: s.stopChan}, s.debugger)
-		go ds.ServeDAPCodec()
+		panic("serving DAP on new connection...not supported")
 	} else {
 		log.Debug("serving JSON-RPC on new connection")
 		go s.serveJSONCodec(conn)
