@@ -22,8 +22,6 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc"
 	"github.com/hitzhangjie/dlv/pkg/proc/internal/ebpf"
 	"github.com/hitzhangjie/dlv/pkg/proc/linutil"
-
-	isatty "github.com/mattn/go-isatty"
 )
 
 // Process statuses
@@ -70,18 +68,6 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags) (*proc.Target, erro
 
 	foreground := flags&proc.LaunchForeground != 0
 
-	// todo: delete this
-	stdin, stdout, stderr, closefn, err := os.Stdin, os.Stdout, os.Stderr, func() {}, nil
-	if err != nil {
-		return nil, err
-	}
-
-	if stdin == nil || !isatty.IsTerminal(stdin.Fd()) {
-		// exec.(*Process).Start will fail if we try to send a process to
-		// foreground but we are not attached to a terminal.
-		foreground = false
-	}
-
 	dbp := newProcess(0)
 	defer func() {
 		if err != nil && dbp.pid != 0 {
@@ -100,9 +86,9 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags) (*proc.Target, erro
 
 		process = exec.Command(cmd[0])
 		process.Args = cmd
-		process.Stdin = stdin
-		process.Stdout = stdout
-		process.Stderr = stderr
+		process.Stdin = os.Stdin
+		process.Stdout = os.Stdout
+		process.Stderr = os.Stderr
 		process.SysProcAttr = &syscall.SysProcAttr{
 			Ptrace:     true,
 			Setpgid:    true,
@@ -119,7 +105,6 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags) (*proc.Target, erro
 		}
 		err = process.Start()
 	})
-	closefn()
 	if err != nil {
 		return nil, err
 	}
