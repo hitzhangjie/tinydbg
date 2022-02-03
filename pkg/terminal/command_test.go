@@ -3,15 +3,6 @@ package terminal
 import (
 	"flag"
 	"fmt"
-	"github.com/hitzhangjie/dlv/pkg/config"
-	"github.com/hitzhangjie/dlv/pkg/goversion"
-	"github.com/hitzhangjie/dlv/pkg/log"
-	"github.com/hitzhangjie/dlv/pkg/proc/test"
-	"github.com/hitzhangjie/dlv/service"
-	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcx"
 	"io/ioutil"
 	"net"
 	"os"
@@ -22,6 +13,16 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/hitzhangjie/dlv/pkg/config"
+	"github.com/hitzhangjie/dlv/pkg/goversion"
+	"github.com/hitzhangjie/dlv/pkg/log"
+	"github.com/hitzhangjie/dlv/pkg/proc/test"
+	"github.com/hitzhangjie/dlv/service"
+	"github.com/hitzhangjie/dlv/service/api"
+	"github.com/hitzhangjie/dlv/service/debugger"
+	"github.com/hitzhangjie/dlv/service/rpccommon"
+	"github.com/hitzhangjie/dlv/service/rpcx"
 )
 
 var testBackend, buildMode string
@@ -960,28 +961,18 @@ func TestPrintCastToInterface(t *testing.T) {
 
 func TestParseNewArgv(t *testing.T) {
 	testCases := []struct {
-		in       string
-		tgtargs  string
-		tgtredir string
-		tgterr   string
+		in      string
+		tgtargs string
+		tgterr  string
 	}{
-		{"-noargs", "", " |  | ", ""},
-		{"-noargs arg1", "", "", "too many arguments to restart"},
-		{"arg1 arg2", "arg1 | arg2", " |  | ", ""},
-		{"arg1 arg2 <input.txt", "arg1 | arg2", "input.txt |  | ", ""},
-		{"arg1 arg2 < input.txt", "arg1 | arg2", "input.txt |  | ", ""},
-		{"<input.txt", "", "input.txt |  | ", ""},
-		{"< input.txt", "", "input.txt |  | ", ""},
-		{"arg1 < input.txt > output.txt 2> error.txt", "arg1", "input.txt | output.txt | error.txt", ""},
-		{"< input.txt > output.txt 2> error.txt", "", "input.txt | output.txt | error.txt", ""},
-		{"arg1 <input.txt >output.txt 2>error.txt", "arg1", "input.txt | output.txt | error.txt", ""},
-		{"<input.txt >output.txt 2>error.txt", "", "input.txt | output.txt | error.txt", ""},
-		{"<input.txt <input2.txt", "", "", "redirect error: stdin redirected twice"},
+		{"-noargs", "", ""},
+		{"-noargs arg1", "", "too many arguments to restart"},
+		{"arg1 arg2", "arg1 | arg2", ""},
 	}
 
 	for _, tc := range testCases {
-		resetArgs, newArgv, newRedirects, err := parseNewArgv(tc.in)
-		t.Logf("%q -> %q %q %v\n", tc.in, newArgv, newRedirects, err)
+		resetArgs, newArgv, err := parseNewArgv(tc.in)
+		t.Logf("%q -> %q %v\n", tc.in, newArgv, err)
 		if tc.tgterr != "" {
 			if err == nil {
 				t.Errorf("Expected error %q, got no error", tc.tgterr)
@@ -996,10 +987,6 @@ func TestParseNewArgv(t *testing.T) {
 			argvstr := strings.Join(newArgv, " | ")
 			if argvstr != tc.tgtargs {
 				t.Errorf("Expected new arguments %q, got %q", tc.tgtargs, argvstr)
-			}
-			redirstr := strings.Join(newRedirects[:], " | ")
-			if redirstr != tc.tgtredir {
-				t.Errorf("Expected new redirects %q, got %q", tc.tgtredir, redirstr)
 			}
 		}
 	}

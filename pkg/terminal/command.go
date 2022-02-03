@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/cosiner/argv"
+
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/locspec"
 	"github.com/hitzhangjie/dlv/pkg/log"
@@ -794,7 +795,7 @@ func restartLive(t *Term, ctx callContext, args string) error {
 		return err
 	}
 
-	log.Info("Process restarted with PID", t.client.ProcessPid())
+	log.Info("Process restarted with PID: %d", t.client.ProcessPid())
 	return nil
 }
 
@@ -835,30 +836,6 @@ func parseNewArgv(args string) (resetArgs bool, newArgv []string, err error) {
 		return true, nil, nil
 	}
 	return true, w, nil
-}
-
-func parseOneRedirect(w []string, redirs *[3]string) ([]string, bool, error) {
-	prefixes := []string{"<", ">", "2>"}
-	names := []string{"stdin", "stdout", "stderr"}
-	if len(w) >= 2 {
-		for _, prefix := range prefixes {
-			if w[len(w)-2] == prefix {
-				w[len(w)-2] += w[len(w)-1]
-				w = w[:len(w)-1]
-				break
-			}
-		}
-	}
-	for i, prefix := range prefixes {
-		if strings.HasPrefix(w[len(w)-1], prefix) {
-			if redirs[i] != "" {
-				return nil, false, fmt.Errorf("redirect error: %s redirected twice", names[i])
-			}
-			redirs[i] = w[len(w)-1][len(prefix):]
-			return w[:len(w)-1], true, nil
-		}
-	}
-	return w, false, nil
 }
 
 func printcontextNoState(t *Term) {

@@ -376,7 +376,7 @@ func yesno(line *liner.State, question string) (bool, error) {
 func (t *Term) handleExit() (int, error) {
 	if t.historyFile != nil {
 		if _, err := t.line.WriteHistory(t.historyFile); err != nil {
-			log.Error("readline history error:", err)
+			log.Error("readline history error: %v", err)
 		}
 		if err := t.historyFile.Close(); err != nil {
 			log.Error("error closing history file: %s", err)
