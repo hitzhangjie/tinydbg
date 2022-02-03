@@ -2,7 +2,6 @@ package debugger
 
 import (
 	"bytes"
-	"debug/dwarf"
 	"debug/elf"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"go/token"
 	"os"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,33 +26,15 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 )
 
-var (
-	// ErrCanNotRestart is returned when the target cannot be restarted.
-	// This is returned for targets that have been attached to, or when
-	// debugging core files.
-	ErrCanNotRestart = errors.New("can not restart this target")
-
-	// ErrNotRecording is returned when StopRecording is called while the
-	// debugger is not recording the target.
-	ErrNotRecording = errors.New("debugger is not recording")
-
-	// ErrCoreDumpInProgress is returned when a core dump is already in progress.
-	ErrCoreDumpInProgress = errors.New("core dump in progress")
-
-	// ErrCoreDumpNotSupported is returned when core dumping is not supported
-	ErrCoreDumpNotSupported = errors.New("core dumping not supported")
-)
-
 // Debugger service.
 //
-// Debugger provides a higher level of
-// abstraction over proc.Process.
-// It handles converting from internal types to
-// the types expected by clients. It also handles
-// functionality needed by clients, but not needed in
-// lower lever packages such as proc.
+// Debugger provides a higher level of abstraction over proc.Process:
+// - It handles converting from internal types to the types expected by clients.
+// - It also handles functionality needed by clients, but not needed in lower
+//   lever packages such as proc.
 type Debugger struct {
 	config *Config
+
 	// arguments to launch a new process.
 	processArgs []string
 
@@ -68,54 +48,10 @@ type Debugger struct {
 	recordMutex   sync.Mutex
 
 	dumpState proc.DumpState
-	// Debugger keeps a map of disabled breakpoints
-	// so lower layers like proc doesn't need to deal
-	// with them
+
+	// Debugger keeps a map of disabled breakpoints so lower layers like proc
+	// doesn't need to deal with them.
 	disabledBreakpoints map[int]*api.Breakpoint
-}
-
-type ExecuteKind int
-
-const (
-	ExecutingExistingFile = ExecuteKind(iota)
-	ExecutingGeneratedFile
-	ExecutingGeneratedTest
-	ExecutingOther
-)
-
-// Config provides the configuration to start a Debugger.
-//
-// Only one of ProcessArgs or AttachPid should be specified. If ProcessArgs is
-// provided, a new process will be launched. Otherwise, the debugger will try
-// to attach to an existing process with AttachPid.
-type Config struct {
-	// WorkingDir is working directory of the new process. This field is used
-	// only when launching a new process.
-	WorkingDir string
-
-	// AttachPid is the PID of an existing process to which the debugger should
-	// attach.
-	AttachPid int
-
-	// CoreFile specifies the path to the core dump to open.
-	CoreFile string
-
-	// Foreground lets target process access stdin.
-	Foreground bool
-
-	// CheckGoVersion is true if the debugger should check the version of Go
-	// used to compile the executable and refuse to work on incompatible
-	// versions.
-	CheckGoVersion bool
-
-	// Packages contains the packages that we are debugging.
-	Packages []string
-
-	// ExecuteKind contains the kind of the executed program.
-	ExecuteKind ExecuteKind
-
-	// DisableASLR disables ASLR
-	DisableASLR bool
 }
 
 // New creates a new Debugger. ProcessArgs specify the commandline arguments for the
@@ -129,14 +65,9 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 	// Create the process by either attaching or launching.
 	switch {
 	case d.config.AttachPid > 0:
-		log.Info("attaching to pid %d", d.config.AttachPid)
-		path := ""
-		if len(d.processArgs) > 0 {
-			path = d.processArgs[0]
-		}
-		p, err := d.Attach(d.config.AttachPid, path)
+		log.Info("attaching to pid: %d", d.config.AttachPid)
+		p, err := d.Attach(d.config.AttachPid)
 		if err != nil {
-			err = go11DecodeErrorCheck(err)
 			return nil, attachErrorMessage(d.config.AttachPid, err)
 		}
 		d.target = p
@@ -145,7 +76,6 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		log.Info("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
 		p, err := core.OpenCore(d.config.CoreFile, d.processArgs[0])
 		if err != nil {
-			err = go11DecodeErrorCheck(err)
 			return nil, err
 		}
 		d.target = p
@@ -158,14 +88,9 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		log.Info("launching process with args: %v", d.processArgs)
 		p, err := d.Launch(d.processArgs, d.config.WorkingDir)
 		if err != nil {
-			if _, ok := err.(*proc.ErrUnsupportedArch); !ok {
-				err = go11DecodeErrorCheck(err)
-				err = fmt.Errorf("could not launch process: %s", err)
-			}
-			return nil, err
+			return nil, fmt.Errorf("could not launch process: %v", err)
 		}
 		if p != nil {
-			// if p == nil and err == nil then we are doing a recording, don't touch d.target
 			d.target = p
 		}
 		if err := d.checkGoVersion(); err != nil {
@@ -245,7 +170,7 @@ func (d *Debugger) isRecording() bool {
 }
 
 // Attach will attach to the process specified by 'pid'.
-func (d *Debugger) Attach(pid int, path string) (*proc.Target, error) {
+func (d *Debugger) Attach(pid int) (*proc.Target, error) {
 	return native.Attach(pid)
 }
 
@@ -2015,19 +1940,6 @@ func (d *Debugger) GetBufferedTracepoints() []api.TracepointResult {
 		}
 	}
 	return results
-}
-
-func go11DecodeErrorCheck(err error) error {
-	if _, isdecodeerr := err.(dwarf.DecodeError); !isdecodeerr {
-		return err
-	}
-
-	gover, ok := goversion.Installed()
-	if !ok || !gover.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 11, Rev: -1}) || goversion.VersionAfterOrEqual(runtime.Version(), 1, 11) {
-		return err
-	}
-
-	return fmt.Errorf("executables built by Go 1.11 or later need Delve built by Go 1.11 or later")
 }
 
 type breakpointsByLogicalID []*proc.Breakpoint

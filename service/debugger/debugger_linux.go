@@ -11,9 +11,8 @@ import (
 
 func attachErrorMessage(pid int, err error) error {
 	fallbackerr := fmt.Errorf("could not attach to pid %d: %s", pid, err)
-	if serr, ok := err.(syscall.Errno); ok {
-		switch serr {
-		case syscall.EPERM:
+	if errno, ok := err.(syscall.Errno); ok {
+		if errno == syscall.EPERM {
 			bs, err := ioutil.ReadFile("/proc/sys/kernel/yama/ptrace_scope")
 			if err == nil && len(bs) >= 1 && bs[0] != '0' {
 				// Yama documentation: https://www.kernel.org/doc/Documentation/security/Yama.txt

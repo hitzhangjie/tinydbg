@@ -115,14 +115,6 @@ var (
 	ErrNoDebugInfoFound = errors.New("could not open debug info")
 )
 
-var (
-	supportedLinuxArch = map[elf.Machine]bool{
-		elf.EM_X86_64:  true,
-		elf.EM_AARCH64: true,
-		elf.EM_386:     true,
-	}
-)
-
 // ErrFunctionNotFound is returned when failing to find the
 // function named 'FuncName' within the binary.
 type ErrFunctionNotFound struct {
@@ -377,35 +369,6 @@ func FirstPCAfterPrologue(p Process, fn *Function, sameline bool) (uint64, error
 // cpuArch is a stringer interface representing CPU architectures.
 type cpuArch interface {
 	String() string
-}
-
-// ErrUnsupportedArch is returned when attempting to debug a binary compiled for an unsupported architecture.
-type ErrUnsupportedArch struct {
-	os      string
-	cpuArch cpuArch
-}
-
-func (e *ErrUnsupportedArch) Error() string {
-	var supportArchs []cpuArch
-	switch e.os {
-	case "linux":
-		for linuxArch := range supportedLinuxArch {
-			supportArchs = append(supportArchs, linuxArch)
-		}
-	}
-
-	errStr := "unsupported architecture of " + e.os + "/" + e.cpuArch.String()
-	errStr += " - only"
-	for _, arch := range supportArchs {
-		errStr += " " + e.os + "/" + arch.String() + " "
-	}
-	if len(supportArchs) == 1 {
-		errStr += "is supported"
-	} else {
-		errStr += "are supported"
-	}
-
-	return errStr
 }
 
 type compileUnit struct {
@@ -1170,9 +1133,6 @@ func loadBinaryInfoElf(bi *BinaryInfo, image *Image, path string, addr uint64, w
 	elfFile, err := elf.NewFile(exe)
 	if err != nil {
 		return err
-	}
-	if !supportedLinuxArch[elfFile.Machine] {
-		return &ErrUnsupportedArch{os: "linux", cpuArch: elfFile.Machine}
 	}
 
 	if image.index == 0 {

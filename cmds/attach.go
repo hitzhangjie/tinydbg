@@ -13,7 +13,7 @@ import (
 
 // 'attach' subcommand.
 var attachCommand = &cobra.Command{
-	Use:   "attach pid [executable]",
+	Use:   "attach <pid>",
 	Short: "Attach to running process and begin debugging.",
 	Long: `Attach to an already running process and begin debugging it.
 
