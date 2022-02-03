@@ -98,7 +98,7 @@ func withTestProcessArgs(name string, t testing.TB, wd string, args []string, bu
 
 	switch testBackend {
 	case "native":
-		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{})
+		p, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0)
 	default:
 		t.Fatal("unknown backend")
 	}
@@ -1905,7 +1905,7 @@ func TestUnsupportedArch(t *testing.T) {
 
 	switch testBackend {
 	case "native":
-		p, err = native.Launch([]string{outfile}, ".", 0, []string{})
+		p, err = native.Launch([]string{outfile}, ".", 0)
 	default:
 		t.Skip("test not valid for this backend")
 	}
