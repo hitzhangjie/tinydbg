@@ -1877,52 +1877,6 @@ func TestStepParked(t *testing.T) {
 	})
 }
 
-func TestUnsupportedArch(t *testing.T) {
-	ver, _ := goversion.Parse(runtime.Version())
-	if ver.Major < 0 || !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 6, Rev: -1}) || ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 7, Rev: -1}) {
-		// cross compile (with -N?) works only on select versions of go
-		return
-	}
-
-	fixturesDir := protest.FindFixturesDir()
-	infile := filepath.Join(fixturesDir, "math.go")
-	outfile := filepath.Join(fixturesDir, "_math_debug_386")
-
-	cmd := exec.Command("go", "build", "-gcflags=-N -l", "-o", outfile, infile)
-	for _, v := range os.Environ() {
-		if !strings.HasPrefix(v, "GOARCH=") {
-			cmd.Env = append(cmd.Env, v)
-		}
-	}
-	cmd.Env = append(cmd.Env, "GOARCH=386")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("go build failed: %v: %v", err, string(out))
-	}
-	defer os.Remove(outfile)
-
-	var p *proc.Target
-
-	switch testBackend {
-	case "native":
-		p, err = native.Launch([]string{outfile}, ".", 0)
-	default:
-		t.Skip("test not valid for this backend")
-	}
-
-	if err == nil {
-		p.Detach(true)
-		t.Fatal("Launch is expected to fail, but succeeded")
-	}
-
-	if _, ok := err.(*proc.ErrUnsupportedArch); ok {
-		// all good
-		return
-	}
-
-	t.Fatal(err)
-}
-
 func TestTestvariables2Prologue(t *testing.T) {
 	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
 		addrEntry := p.BinInfo().LookupFunc["main.main"].Entry
@@ -4139,7 +4093,7 @@ func TestDump(t *testing.T) {
 		if state.ThreadsDone != state.ThreadsTotal || state.MemDone != state.MemTotal || !state.AllDone || state.Dumping || state.Canceled {
 			t.Fatalf("bad DumpState %#v", &state)
 		}
-		c, err := core.OpenCore(corePath, exePath, nil)
+		c, err := core.OpenCore(corePath, exePath)
 		assertNoError(err, t, "OpenCore()")
 		return c
 	}
