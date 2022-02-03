@@ -622,16 +622,16 @@ func (t *Term) formatGoroutine(g *api.Goroutine, fgl api.FormatGoroutineLoc) str
 	var locname string
 	var loc api.Location
 	switch fgl {
-	case api.FglRuntimeCurrent:
+	case api.FormatGLocRuntimeCurrent:
 		locname = "Runtime"
 		loc = g.CurrentLoc
-	case api.FglUserCurrent:
+	case api.FormatGLocUserCurrent:
 		locname = "User"
 		loc = g.UserCurrentLoc
-	case api.FglGo:
+	case api.FormatGLocGo:
 		locname = "Go"
 		loc = g.GoStatementLoc
-	case api.FglStart:
+	case api.FormatGLocStart:
 		locname = "Start"
 		loc = g.StartLoc
 	}

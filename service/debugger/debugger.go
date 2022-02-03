@@ -3,6 +3,7 @@ package debugger
 import (
 	"bytes"
 	"debug/dwarf"
+	"debug/elf"
 	"errors"
 	"fmt"
 	"go/parser"
@@ -2042,4 +2043,27 @@ func (v breakpointsByLogicalID) Less(i, j int) bool {
 		return v[i].Addr < v[j].Addr
 	}
 	return v[i].LogicalID() < v[j].LogicalID()
+}
+
+func verifyBinaryFormat(exePath string) error {
+	f, err := os.Open(exePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if (fi.Mode() & 0111) == 0 {
+		return api.ErrNotExecutable
+	}
+
+	// check that the binary format is what we expect for the host system
+	_, err = elf.NewFile(f)
+	if err != nil {
+		return api.ErrNotExecutable
+	}
+	return nil
 }

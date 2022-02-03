@@ -13,10 +13,10 @@ import (
 func TestDebugger_LaunchNoMain(t *testing.T) {
 	fixturesDir := protest.FindFixturesDir()
 	nomaindir := filepath.Join(fixturesDir, "nomaindir")
-	debugname := "debug"
-	exepath := filepath.Join(nomaindir, debugname)
+
+	exepath := filepath.Join(nomaindir, "debug")
 	defer os.Remove(exepath)
-	if err := gobuild.GoBuild(debugname, []string{nomaindir}); err != nil {
+	if err := gobuild.GoBuild(exepath, []string{nomaindir}); err != nil {
 		t.Fatalf("go build error %v", err)
 	}
 

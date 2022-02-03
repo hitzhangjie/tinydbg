@@ -16,10 +16,10 @@ const (
 type FormatGoroutineLoc int
 
 const (
-	FglRuntimeCurrent = FormatGoroutineLoc(iota)
-	FglUserCurrent
-	FglGo
-	FglStart
+	FormatGLocRuntimeCurrent = FormatGoroutineLoc(iota)
+	FormatGLocUserCurrent
+	FormatGLocGo
+	FormatGLocStart
 )
 
 const (
@@ -30,11 +30,12 @@ const (
 // The number of goroutines we're going to request on each RPC call
 const goroutineBatchSize = 10000
 
+// ParseGoroutineArgs parse goroutine's arguments
 func ParseGoroutineArgs(argstr string) ([]ListGoroutinesFilter, GoroutineGroupingOptions, FormatGoroutineLoc, PrintGoroutinesFlags, int, int, error) {
 	args := strings.Split(argstr, " ")
 	var filters []ListGoroutinesFilter
 	var group GoroutineGroupingOptions
-	var fgl = FglUserCurrent
+	var fgl = FormatGLocUserCurrent
 	var flags PrintGoroutinesFlags
 	var depth = 10
 	var batchSize = goroutineBatchSize
@@ -46,13 +47,13 @@ func ParseGoroutineArgs(argstr string) ([]ListGoroutinesFilter, GoroutineGroupin
 		arg := args[i]
 		switch arg {
 		case "-u":
-			fgl = FglUserCurrent
+			fgl = FormatGLocUserCurrent
 		case "-r":
-			fgl = FglRuntimeCurrent
+			fgl = FormatGLocRuntimeCurrent
 		case "-g":
-			fgl = FglGo
+			fgl = FormatGLocGo
 		case "-s":
-			fgl = FglStart
+			fgl = FormatGLocStart
 		case "-l":
 			flags |= PrintGoroutinesLabels
 		case "-t":
