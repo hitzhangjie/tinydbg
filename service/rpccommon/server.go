@@ -25,25 +25,19 @@ import (
 
 // server implements a JSON-RPC server.
 type server struct {
-	// config is all the information necessary to start the debugger and server.
-	config *service.Config
-	// listener is used to serve HTTP.
-	listener net.Listener
-	// stopChan is used to stop the listener goroutine.
-	stopChan chan struct{}
-	// debugger is the debugger service.
-	debugger *debugger.Debugger
-	// rpcServer is APIv2 server.
-	rpcServer *rpcv2.RPCServer
-	// maps of served methods
-	methodMaps map[string]*methodType
+	config     *service.Config        // all information necessary to start the debugger and server
+	listener   net.Listener           // serve HTTP
+	stopChan   chan struct{}          // stop the listener goroutine
+	debugger   *debugger.Debugger     // debugger service
+	rpcServer  *rpcv2.RPCServer       // APIv2 server
+	methodMaps map[string]*methodType // maps of served methods
 }
 
-// NewServer creates a new RPCServer.
+// NewServer creates a new server which serves debugging RPC requests.
 func NewServer(config *service.Config) *server {
 	if config.DebuggerConfig.Foreground {
 		log.Info("listen address: %s", config.Listener.Addr())
-		log.Debug("API server pid = ", os.Getpid())
+		log.Debug("API server pid = %d", os.Getpid())
 	}
 	return &server{
 		config:   config,
@@ -170,44 +164,44 @@ func suitableMethods(rcvr interface{}, methods map[string]*methodType) {
 		}
 		// Method needs three ins: (receive, *args, *reply) or (receiver, *args, *rpcCallback)
 		if mtype.NumIn() != 3 {
-			log.Warn("method", mname, "has wrong number of ins:", mtype.NumIn())
+			log.Warn("method %s has wrong number of ins: %d", mname, mtype.NumIn())
 			continue
 		}
 		// First arg need not be a pointer.
 		argType := mtype.In(1)
 		if !isExportedOrBuiltinType(argType) {
-			log.Warn(mname, "argument type not exported:", argType)
+			log.Warn("%s argument type not exported: %s", mname, argType)
 			continue
 		}
 
 		replyType := mtype.In(2)
-		synchronous := replyType.String() != "service.rpcCallback"
+		synchronous := replyType.String() != "service.RPCCallback"
 
 		if synchronous {
 			// Second arg must be a pointer.
 			if replyType.Kind() != reflect.Ptr {
-				log.Warn("method", mname, "reply type not a pointer:", replyType)
+				log.Warn("method %s reply type not a pointer: %s", mname, replyType)
 				continue
 			}
 			// Reply type must be exported.
 			if !isExportedOrBuiltinType(replyType) {
-				log.Warn("method", mname, "reply type not exported:", replyType)
+				log.Warn("method %s reply type not exported: %s", mname, replyType)
 				continue
 			}
 
 			// Method needs one out.
 			if mtype.NumOut() != 1 {
-				log.Warn("method", mname, "has wrong number of outs:", mtype.NumOut())
+				log.Warn("method %s has wrong number of outs: %d", mname, mtype.NumOut())
 				continue
 			}
 			// The return type of the method must be error.
 			if returnType := mtype.Out(0); returnType != typeOfError {
-				log.Warn("method", mname, "returns", returnType.String(), "not error")
+				log.Warn("method %s returns %s not error", mname, returnType)
 				continue
 			}
 		} else if mtype.NumOut() != 0 {
 			// Method needs zero outs.
-			log.Warn("method", mname, "has wrong number of outs:", mtype.NumOut())
+			log.Warn("method %s has wrong number of outs: %d", mname, mtype.NumOut())
 			continue
 		}
 		methods[sname+"."+mname] = &methodType{method: method, ArgType: argType, ReplyType: replyType, Synchronous: synchronous, Rcvr: rcvrv}
@@ -327,7 +321,7 @@ func (s *server) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *rpc.R
 	defer sending.Unlock()
 	err := codec.WriteResponse(resp, reply)
 	if err != nil {
-		log.Error("writing response:", err)
+		log.Error("writing response: %v", err)
 	}
 }
 
