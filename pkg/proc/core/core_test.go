@@ -223,7 +223,7 @@ func withCoreFile(t *testing.T, name, args string) *proc.Target {
 	}
 	corePath := cores[0]
 
-	p, err := OpenCore(corePath, fix.Path, []string{})
+	p, err := OpenCore(corePath, fix.Path)
 	if err != nil {
 		t.Errorf("OpenCore(%q) failed: %v", corePath, err)
 		pat, err := ioutil.ReadFile("/proc/sys/kernel/core_pattern")

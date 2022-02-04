@@ -972,18 +972,18 @@ func TestPackageRenames(t *testing.T) {
 		{"req", true, `interface {}(*net/http.Request) *{Method: "amethod", …`, "", "interface {}", nil},
 
 		// Package name that doesn't match import path
-		{"iface3", true, `interface {}(*github.com/go-delve/delve/_fixtures/internal/dir0/renamedpackage.SomeType) *{A: true}`, "", "interface {}", nil},
+		{"iface3", true, `interface {}(*github.com/hitzhangjie/dlv/_fixtures/internal/dir0/renamedpackage.SomeType) *{A: true}`, "", "interface {}", nil},
 
 		// Interfaces to anonymous types
-		{"dir0someType", true, "interface {}(*github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) *{X: 3}", "", "interface {}", nil},
-		{"dir1someType", true, "interface {}(github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType) {X: 1, Y: 2}", "", "interface {}", nil},
-		{"amap3", true, "interface {}(map[github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType]github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType) [{X: 4}: {X: 5, Y: 6}, ]", "", "interface {}", nil},
-		{"anarray", true, `interface {}([2]github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) [{X: 1},{X: 2}]`, "", "interface {}", nil},
-		{"achan", true, `interface {}(chan github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) chan github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType 0/0`, "", "interface {}", nil},
-		{"aslice", true, `interface {}([]github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) [{X: 3},{X: 4}]`, "", "interface {}", nil},
-		{"afunc", true, `interface {}(func(github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType, github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType)) main.main.func1`, "", "interface {}", nil},
-		{"astruct", true, `interface {}(*struct { A github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType; B github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType }) *{A: github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, B: github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType {X: 3}}`, "", "interface {}", nil},
-		{"iface2iface", true, `interface {}(*interface { AMethod(int) int; AnotherMethod(int) int }) **github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType {X: 4}`, "", "interface {}", nil},
+		{"dir0someType", true, "interface {}(*github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType) *{X: 3}", "", "interface {}", nil},
+		{"dir1someType", true, "interface {}(github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType) {X: 1, Y: 2}", "", "interface {}", nil},
+		{"amap3", true, "interface {}(map[github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType]github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType) [{X: 4}: {X: 5, Y: 6}, ]", "", "interface {}", nil},
+		{"anarray", true, `interface {}([2]github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType) [{X: 1},{X: 2}]`, "", "interface {}", nil},
+		{"achan", true, `interface {}(chan github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType) chan github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType 0/0`, "", "interface {}", nil},
+		{"aslice", true, `interface {}([]github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType) [{X: 3},{X: 4}]`, "", "interface {}", nil},
+		{"afunc", true, `interface {}(func(github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType, github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType)) main.main.func1`, "", "interface {}", nil},
+		{"astruct", true, `interface {}(*struct { A github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType; B github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType }) *{A: github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, B: github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType {X: 3}}`, "", "interface {}", nil},
+		{"iface2iface", true, `interface {}(*interface { AMethod(int) int; AnotherMethod(int) int }) **github.com/hitzhangjie/dlv/_fixtures/internal/dir0/pkg.SomeType {X: 4}`, "", "interface {}", nil},
 
 		{`"dir0/pkg".A`, false, "0", "", "int", nil},
 		{`"dir1/pkg".A`, false, "1", "", "int", nil},
@@ -1001,11 +1001,11 @@ func TestPackageRenames(t *testing.T) {
 
 	testcases1_8 := []varTest{
 		// before 1.9 embedded struct fields have fieldname == type
-		{"astruct2", true, `interface {}(*struct { github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType; X int }) *{github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType: github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, X: 10}`, "", "interface {}", nil},
+		{"astruct2", true, `interface {}(*struct { github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType; X int }) *{github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType: github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, X: 10}`, "", "interface {}", nil},
 	}
 
 	testcases1_9 := []varTest{
-		{"astruct2", true, `interface {}(*struct { github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType; X int }) *{SomeType: github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, X: 10}`, "", "interface {}", nil},
+		{"astruct2", true, `interface {}(*struct { github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType; X int }) *{SomeType: github.com/hitzhangjie/dlv/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, X: 10}`, "", "interface {}", nil},
 	}
 
 	testcases1_13 := []varTest{
@@ -1384,9 +1384,9 @@ func TestPluginVariables(t *testing.T) {
 		setFileBreakpoint(p, t, fixture, 41)
 		assertNoError(p.Continue(), t, "Continue 1")
 
-		bp := setFunctionBreakpoint(p, t, "github.com/go-delve/delve/_fixtures/plugin2.TypesTest")
+		bp := setFunctionBreakpoint(p, t, "github.com/hitzhangjie/dlv/_fixtures/plugin2.TypesTest")
 		t.Logf("bp.Addr = %#x", bp.Addr)
-		setFunctionBreakpoint(p, t, "github.com/go-delve/delve/_fixtures/plugin2.aIsNotNil")
+		setFunctionBreakpoint(p, t, "github.com/hitzhangjie/dlv/_fixtures/plugin2.aIsNotNil")
 
 		for _, image := range p.BinInfo().Images {
 			t.Logf("%#x %s\n", image.StaticBase, image.Path)
@@ -1402,7 +1402,7 @@ func TestPluginVariables(t *testing.T) {
 		var plugin2AFound, mainExeGlobalFound bool
 		for _, v := range allvars {
 			switch v.Name {
-			case "github.com/go-delve/delve/_fixtures/plugin2.A":
+			case "github.com/hitzhangjie/dlv/_fixtures/plugin2.A":
 				plugin2AFound = true
 			case "main.ExeGlobal":
 				mainExeGlobalFound = true
@@ -1418,12 +1418,12 @@ func TestPluginVariables(t *testing.T) {
 		// read interface variable, inside plugin code, with a concrete type defined in the executable
 		vs, err := evalVariable(p, "s", pnormalLoadConfig)
 		assertNoError(err, t, "Eval(s)")
-		assertVariable(t, vs, varTest{"s", true, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.Something(*main.asomething) *{n: 2}`, ``, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.Something`, nil})
+		assertVariable(t, vs, varTest{"s", true, `github.com/hitzhangjie/dlv/_fixtures/internal/pluginsupport.Something(*main.asomething) *{n: 2}`, ``, `github.com/hitzhangjie/dlv/_fixtures/internal/pluginsupport.Something`, nil})
 
 		// test that the concrete type -> interface{} conversion works across plugins (mostly tests proc.dwarfToRuntimeType)
 		assertNoError(setVariable(p, "plugin2.A", "main.ExeGlobal"), t, "setVariable(plugin2.A = main.ExeGlobal)")
 		assertNoError(p.Continue(), t, "Continue 3")
-		assertCurrentLocationFunction(p, t, "github.com/go-delve/delve/_fixtures/plugin2.aIsNotNil")
+		assertCurrentLocationFunction(p, t, "github.com/hitzhangjie/dlv/_fixtures/plugin2.aIsNotNil")
 		vstr, err := evalVariable(p, "str", pnormalLoadConfig)
 		assertNoError(err, t, "Eval(str)")
 		assertVariable(t, vstr, varTest{"str", true, `"success"`, ``, `string`, nil})
@@ -1435,7 +1435,7 @@ func TestPluginVariables(t *testing.T) {
 		// read interface variable, inside executable code, with a concrete type defined in a plugin
 		vb, err := evalVariable(p, "b", pnormalLoadConfig)
 		assertNoError(err, t, "Eval(b)")
-		assertVariable(t, vb, varTest{"b", true, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.SomethingElse(*github.com/go-delve/delve/_fixtures/plugin2.asomethingelse) *{x: 1, y: 4}`, ``, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.SomethingElse`, nil})
+		assertVariable(t, vb, varTest{"b", true, `github.com/hitzhangjie/dlv/_fixtures/internal/pluginsupport.SomethingElse(*github.com/hitzhangjie/dlv/_fixtures/plugin2.asomethingelse) *{x: 1, y: 4}`, ``, `github.com/hitzhangjie/dlv/_fixtures/internal/pluginsupport.SomethingElse`, nil})
 	})
 }
 

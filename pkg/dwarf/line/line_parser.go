@@ -310,7 +310,7 @@ func parseFileEntries5(info *DebugLineInfo, buf *bytes.Buffer) bool {
 			info.Lookup[entry.Path] = entry
 		}
 		if fileEntryFormReader.err != nil {
-			fmt.Fprint(os.Stderr, "error reading file entries table: %v\n", fileEntryFormReader.err)
+			fmt.Fprintf(os.Stderr, "error reading file entries table: %v\n", fileEntryFormReader.err)
 			return false
 		}
 	}

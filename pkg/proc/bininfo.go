@@ -69,7 +69,7 @@ type BinaryInfo struct {
 
 	// PackageMap maps package names to package paths, needed to lookup types inside DWARF info.
 	// On Go1.12 this mapping is determined by using the last element of a package path, for example:
-	//   github.com/go-delve/delve
+	//   github.com/hitzhangjie/dlv
 	// will map to 'delve' because it ends in '/delve'.
 	// Starting with Go1.13 debug_info will contain a special attribute
 	// (godwarf.AttrGoPackageName) containing the canonical package name for

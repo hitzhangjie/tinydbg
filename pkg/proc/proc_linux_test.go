@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/hitzhangjie/dlv/pkg/proc/native"
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 func TestLoadingExternalDebugInfo(t *testing.T) {
-	fixture := protest.BuildFixture("locationsprog", 0)
+	fixture := proctest.BuildFixture("locationsprog", 0)
 	defer os.Remove(fixture.Path)
 	stripAndCopyDebugInfo(fixture, t)
 	p, err := native.Launch(append([]string{fixture.Path}, ""), "", 0)
@@ -21,7 +21,7 @@ func TestLoadingExternalDebugInfo(t *testing.T) {
 	p.Detach(true)
 }
 
-func stripAndCopyDebugInfo(f protest.Fixture, t *testing.T) {
+func stripAndCopyDebugInfo(f proctest.Fixture, t *testing.T) {
 	name := filepath.Base(f.Path)
 	// Copy the debug information to an external file.
 	copyCmd := exec.Command("objcopy", "--only-keep-debug", name, name+".debug")

@@ -11,7 +11,7 @@ Type "help" followed by the name of a command for more information about it.`
 
 	break [name] <linespec>
 
-See $GOPATH/src/github.com/go-delve/delve/Documentation/cli/locspec.md for the syntax of linespec.
+See $GOPATH/src/github.com/hitzhangjie/dlv/Documentation/cli/locspec.md for the syntax of linespec.
 
 See also: "help on", "help cond" and "help clear"`
 
@@ -19,7 +19,7 @@ See also: "help on", "help cond" and "help clear"`
 
 	trace [name] <linespec>
 
-A tracepoint is a breakpoint that does not stop the execution of the program, instead when the tracepoint is hit a notification is displayed. See $GOPATH/src/github.com/go-delve/delve/Documentation/cli/locspec.md for the syntax of linespec.
+A tracepoint is a breakpoint that does not stop the execution of the program, instead when the tracepoint is hit a notification is displayed. See $GOPATH/src/github.com/hitzhangjie/dlv/Documentation/cli/locspec.md for the syntax of linespec.
 
 See also: "help on", "help cond" and "help clear"`
 
@@ -193,7 +193,7 @@ Specifying -a prints all physical breakpoint, including internal breakpoints.`
 
 	[goroutine <n>] [frame <m>] print [%format] <expression>
 
-See $GOPATH/src/github.com/go-delve/delve/Documentation/cli/expr.md for a description of supported expressions.
+See $GOPATH/src/github.com/hitzhangjie/dlv/Documentation/cli/expr.md for a description of supported expressions.
 
 The optional format argument is a format specifier, like the ones used by the fmt package. For example "print %x v" will print v as an hexadecimal number.`
 
@@ -205,7 +205,7 @@ The optional format argument is a format specifier, like the ones used by the fm
 
 	[goroutine <n>] [frame <m>] set <variable> = <value>
 
-See $GOPATH/src/github.com/go-delve/delve/Documentation/cli/expr.md for a description of supported expressions. Only numerical variables and pointers can be changed.`
+See $GOPATH/src/github.com/hitzhangjie/dlv/Documentation/cli/expr.md for a description of supported expressions. Only numerical variables and pointers can be changed.`
 
 	sourcesCmdHelpMsg = `Print list of source files.
 
@@ -248,7 +248,7 @@ If regex is specified only package variables with a name matching it will be ret
 
 	regs [-a]
 
-Argument -a shows more registers. Individual registers can also be displayed by 'print' and 'display'. See $GOPATH/src/github.com/go-delve/delve/Documentation/cli/expr.md.`
+Argument -a shows more registers. Individual registers can also be displayed by 'print' and 'display'. See $GOPATH/src/github.com/hitzhangjie/dlv/Documentation/cli/expr.md.`
 
 	exitCmdHelpMsg = `Exit the debugger.
 
@@ -315,7 +315,7 @@ Executes the specified command (print, args, locals) in the context of the n-th 
 
 	source <path>
 
-If path ends with the .star extension it will be interpreted as a starlark script. See $GOPATH/src/github.com/go-delve/delve/Documentation/cli/starlark.md for the syntax.
+If path ends with the .star extension it will be interpreted as a starlark script. See $GOPATH/src/github.com/hitzhangjie/dlv/Documentation/cli/starlark.md for the syntax.
 
 If path is a single '-' character an interactive starlark interpreter will start instead. Type 'exit' to exit.`
 

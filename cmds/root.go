@@ -2,6 +2,13 @@ package cmds
 
 import (
 	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/spf13/cobra"
+
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/log"
 	"github.com/hitzhangjie/dlv/pkg/terminal"
@@ -10,11 +17,6 @@ import (
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
 	"github.com/hitzhangjie/dlv/service/rpcv2"
-	"github.com/spf13/cobra"
-	"net"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
@@ -194,7 +196,7 @@ func connect(addr string, clientConn net.Conn, kind debugger.ExecuteKind) int {
 	}
 
 	// Create and start a terminal - attach to running instance
-	var client *rpcv2.RPCClient
+	var client service.Client
 	if clientConn != nil {
 		client = rpcv2.NewClientFromConn(clientConn)
 	} else {

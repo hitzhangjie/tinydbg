@@ -4272,7 +4272,7 @@ func TestVariablesWithExternalLinking(t *testing.T) {
 	// Tests that macOSDebugFrameBugWorkaround works.
 	// See:
 	//  https://github.com/golang/go/issues/25841
-	//  https://github.com/go-delve/delve/issues/2346
+	//  https://github.com/hitzhangjie/dlv/issues/2346
 	withTestProcessArgs("testvariables2", t, ".", []string{}, protest.BuildModeExternalLinker, func(p *proc.Target, fixture protest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue()")
 		str1Var := evalVariable(p, t, "str1")

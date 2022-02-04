@@ -6,9 +6,9 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 )
 
-// Client represents a debugger service client. All client methods are synchronous.
+// Client represents a client of a debugger service. All client methods are synchronous.
 type Client interface {
-	// Returns the pid of the process we are debugging.
+	// ProcessPid Returns the pid of the process we are debugging.
 	ProcessPid() int
 
 	// LastModified returns the time that the process' executable was modified.
@@ -31,7 +31,7 @@ type Client interface {
 	Continue() <-chan *api.DebuggerState
 	// Rewind resumes process execution backwards.
 	Rewind() <-chan *api.DebuggerState
-	// DirecitonCongruentContinue resumes process execution, if a reverse next, step or stepout operation is in progress it will resume execution backward.
+	// DirectionCongruentContinue resumes process execution, if a reverse next, step or stepout operation is in progress it will resume execution backward.
 	DirectionCongruentContinue() <-chan *api.DebuggerState
 	// Next continues to the next source line, not entering function calls.
 	Next() (*api.DebuggerState, error)
@@ -157,6 +157,9 @@ type Client interface {
 
 	// SetReturnValuesLoadConfig sets the load configuration for return values.
 	SetReturnValuesLoadConfig(*api.LoadConfig)
+
+	// FunctionReturnLocations return locations when function `fnName` returns
+	FunctionReturnLocations(fnName string) ([]uint64, error)
 
 	// IsMulticlien returns true if the headless instance is multiclient.
 	IsMulticlient() bool

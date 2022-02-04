@@ -1,10 +1,8 @@
 package main_test
 
 import (
-	"bufio"
 	"bytes"
 	"flag"
-	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -17,17 +15,13 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"golang.org/x/tools/go/packages"
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
-	"github.com/hitzhangjie/dlv/pkg/terminal"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
-var testBackend string
 var ldFlags string
 
 func init() {
@@ -35,15 +29,8 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	flag.StringVar(&testBackend, "backend", "", "selects backend")
 	flag.Parse()
-	if testBackend == "" {
-		testBackend = os.Getenv("PROCTEST")
-		if testBackend == "" {
-			testBackend = "native"
-		}
-	}
-	os.Exit(protest.RunTestsWithFixtures(m))
+	os.Exit(proctest.RunTestsWithFixtures(m))
 }
 
 func assertNoError(err error, t testing.TB, s string) {
@@ -75,117 +62,6 @@ func projectRoot() string {
 	return strings.TrimSuffix(string(val), "\n")
 }
 
-func TestBuild(t *testing.T) {
-	const listenAddr = "127.0.0.1:40573"
-	var err error
-
-	cmd := exec.Command("go", "run", "_scripts/make.go", "build")
-	cmd.Dir = projectRoot()
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("makefile error: %v\noutput %s\n", err, string(out))
-	}
-
-	dlvbin := filepath.Join(cmd.Dir, "dlv")
-	defer os.Remove(dlvbin)
-
-	fixtures := protest.FindFixturesDir()
-
-	buildtestdir := filepath.Join(fixtures, "buildtest")
-
-	cmd = exec.Command(dlvbin, "debug", "--headless=true", "--listen="+listenAddr, "--log", "--log-output=debugger,rpcv2")
-	cmd.Dir = buildtestdir
-	stderr, err := cmd.StderrPipe()
-	assertNoError(err, t, "stderr pipe")
-	defer stderr.Close()
-
-	assertNoError(cmd.Start(), t, "dlv debug")
-
-	scan := bufio.NewScanner(stderr)
-	// wait for the debugger to start
-	scan.Scan()
-	t.Log(scan.Text())
-	go func() {
-		for scan.Scan() {
-			t.Log(scan.Text())
-			// keep pipe empty
-		}
-	}()
-
-	client := rpcv2.NewClient(listenAddr)
-	state := <-client.Continue()
-
-	if !state.Exited {
-		t.Fatal("Program did not exit")
-	}
-
-	client.Detach(true)
-	cmd.Wait()
-}
-
-func testOutput(t *testing.T, dlvbin, output string, delveCmds []string) (stdout, stderr []byte) {
-	var stdoutBuf, stderrBuf bytes.Buffer
-	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
-
-	c := []string{dlvbin, "debug", "--allow-non-terminal-interactive=true"}
-	debugbin := filepath.Join(buildtestdir, "__debug_bin")
-	if output != "" {
-		c = append(c, "--output", output)
-		if filepath.IsAbs(output) {
-			debugbin = output
-		} else {
-			debugbin = filepath.Join(buildtestdir, output)
-		}
-	}
-	cmd := exec.Command(c[0], c[1:]...)
-	cmd.Dir = buildtestdir
-	stdin, err := cmd.StdinPipe()
-	assertNoError(err, t, "stdin pipe")
-	defer stdin.Close()
-
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
-
-	assertNoError(cmd.Start(), t, "dlv debug with output")
-
-	// Give delve some time to compile and write the binary.
-	foundIt := false
-	for wait := 0; wait < 30; wait++ {
-		_, err = os.Stat(debugbin)
-		if err == nil {
-			foundIt = true
-			break
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-	if !foundIt {
-		t.Errorf("running %q: file not created: %v", delveCmds, err)
-	}
-
-	for _, c := range delveCmds {
-		fmt.Fprintf(stdin, "%s\n", c)
-	}
-
-	// ignore "dlv debug" command error, it returns
-	// errors even after successful debug session.
-	cmd.Wait()
-	stdout, stderr = stdoutBuf.Bytes(), stderrBuf.Bytes()
-
-	_, err = os.Stat(debugbin)
-	if err == nil {
-		if !strings.Contains(err.Error(), "Access is denied") {
-			t.Errorf("running %q: file %v was not deleted\nstdout is %q, stderr is %q", delveCmds, debugbin, stdout, stderr)
-		}
-		return
-	}
-	if !os.IsNotExist(err) {
-		t.Errorf("running %q: %v\nstdout is %q, stderr is %q", delveCmds, err, stdout, stderr)
-		return
-	}
-	return
-}
-
 func getDlvBin(t *testing.T) (string, string) {
 	// In case this was set in the environment
 	// from getDlvBinEBPF lets clear it here so
@@ -206,248 +82,16 @@ func getDlvBinInternal(t *testing.T, goflags ...string) (string, string) {
 		t.Fatal(err)
 	}
 
-	dlvbin := filepath.Join(tmpdir, "dlv.exe")
+	dlvbin := filepath.Join(tmpdir, "dlv")
 	args := append([]string{"build", "-o", dlvbin}, goflags...)
-	args = append(args, "github.com/go-delve/delve/cmd/dlv")
+	args = append(args, "github.com/hitzhangjie/dlv")
 
 	out, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
-		t.Fatalf("go build -o %v github.com/go-delve/delve/cmd/dlv: %v\n%s", dlvbin, err, string(out))
+		t.Fatalf("go build -o %v github.com/hitzhangjie/dlv/cmd/dlv: %v\n%s", dlvbin, err, string(out))
 	}
 
 	return dlvbin, tmpdir
-}
-
-// TestOutput verifies that the debug executable is created in the correct path
-// and removed after exit.
-func TestOutput(t *testing.T) {
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	for _, output := range []string{"", "myownname", filepath.Join(tmpdir, "absolute.path")} {
-		testOutput(t, dlvbin, output, []string{"exit"})
-
-		const hello = "hello world!"
-		stdout, _ := testOutput(t, dlvbin, output, []string{"continue", "exit"})
-		if !strings.Contains(string(stdout), hello) {
-			t.Errorf("stdout %q should contain %q", stdout, hello)
-		}
-	}
-}
-
-// TestContinue verifies that the debugged executable starts immediately with --continue
-func TestContinue(t *testing.T) {
-	const listenAddr = "127.0.0.1:40573"
-
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
-	cmd := exec.Command(dlvbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", listenAddr)
-	cmd.Dir = buildtestdir
-	stdout, err := cmd.StdoutPipe()
-	assertNoError(err, t, "stdout pipe")
-	defer stdout.Close()
-
-	assertNoError(cmd.Start(), t, "start headless instance")
-
-	scan := bufio.NewScanner(stdout)
-	// wait for the debugger to start
-	for scan.Scan() {
-		t.Log(scan.Text())
-		if scan.Text() == "hello world!" {
-			break
-		}
-	}
-
-	// and detach from and kill the headless instance
-	client := rpcv2.NewClient(listenAddr)
-	if err := client.Detach(true); err != nil {
-		t.Fatalf("error detaching from headless instance: %v", err)
-	}
-	cmd.Wait()
-}
-
-// TestChildProcessExitWhenNoDebugInfo verifies that the child process exits when dlv launch the binary without debug info
-func TestChildProcessExitWhenNoDebugInfo(t *testing.T) {
-	if _, err := exec.LookPath("ps"); err != nil {
-		t.Skip("test skipped, `ps` not found")
-	}
-
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	fix := protest.BuildFixture("http_server", protest.LinkStrip)
-
-	// dlv exec the binary file and expect error.
-	if _, err := exec.Command(dlvbin, "exec", fix.Path).CombinedOutput(); err == nil {
-		t.Fatalf("Expected err when launching the binary without debug info, but got nil")
-	}
-
-	// search the running process named fix.Name
-	cmd := exec.Command("ps", "-aux")
-	stdout, err := cmd.StdoutPipe()
-	assertNoError(err, t, "stdout pipe")
-	defer stdout.Close()
-
-	assertNoError(cmd.Start(), t, "start `ps -aux`")
-
-	var foundFlag bool
-	scan := bufio.NewScanner(stdout)
-	for scan.Scan() {
-		t.Log(scan.Text())
-		if strings.Contains(scan.Text(), fix.Name) {
-			foundFlag = true
-			break
-		}
-	}
-	cmd.Wait()
-
-	if foundFlag {
-		t.Fatalf("Expected child process exited, but found it running")
-	}
-}
-
-// TestRedirect verifies that redirecting stdin works
-func TestRedirect(t *testing.T) {
-	const listenAddr = "127.0.0.1:40573"
-
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	catfixture := filepath.Join(protest.FindFixturesDir(), "cat.go")
-	cmd := exec.Command(dlvbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", listenAddr, "-r", catfixture, catfixture)
-	stdout, err := cmd.StdoutPipe()
-	assertNoError(err, t, "stdout pipe")
-	defer stdout.Close()
-
-	assertNoError(cmd.Start(), t, "start headless instance")
-
-	scan := bufio.NewScanner(stdout)
-	// wait for the debugger to start
-	for scan.Scan() {
-		t.Log(scan.Text())
-		if scan.Text() == "read \"}\"" {
-			break
-		}
-	}
-
-	// and detach from and kill the headless instance
-	client := rpcv2.NewClient(listenAddr)
-	_ = client.Detach(true)
-	cmd.Wait()
-}
-
-const checkAutogenDocLongOutput = false
-
-func checkAutogenDoc(t *testing.T, filename, gencommand string, generated []byte) {
-	saved := slurpFile(t, filepath.Join(projectRoot(), filename))
-
-	saved = bytes.ReplaceAll(saved, []byte("\r\n"), []byte{'\n'})
-	generated = bytes.ReplaceAll(generated, []byte("\r\n"), []byte{'\n'})
-
-	if len(saved) != len(generated) {
-		if checkAutogenDocLongOutput {
-			t.Logf("generated %q saved %q\n", generated, saved)
-		}
-		diffMaybe(t, filename, generated)
-		t.Fatalf("%s: needs to be regenerated; run %s", filename, gencommand)
-	}
-
-	for i := range saved {
-		if saved[i] != generated[i] {
-			if checkAutogenDocLongOutput {
-				t.Logf("generated %q saved %q\n", generated, saved)
-			}
-			diffMaybe(t, filename, generated)
-			t.Fatalf("%s: needs to be regenerated; run %s", filename, gencommand)
-		}
-	}
-}
-
-func slurpFile(t *testing.T, filename string) []byte {
-	saved, err := ioutil.ReadFile(filename)
-	if err != nil {
-		t.Fatalf("Could not read %s: %v", filename, err)
-	}
-	return saved
-}
-
-func diffMaybe(t *testing.T, filename string, generated []byte) {
-	_, err := exec.LookPath("diff")
-	if err != nil {
-		return
-	}
-	cmd := exec.Command("diff", filename, "-")
-	cmd.Dir = projectRoot()
-	stdin, _ := cmd.StdinPipe()
-	go func() {
-		stdin.Write(generated)
-		stdin.Close()
-	}()
-	out, _ := cmd.CombinedOutput()
-	t.Logf("diff:\n%s", string(out))
-}
-
-// TestGeneratedDoc tests that the autogenerated documentation has been
-// updated.
-func TestGeneratedDoc(t *testing.T) {
-	// Checks gen-cli-docs.go
-	var generatedBuf bytes.Buffer
-	commands := terminal.DebugCommands(nil)
-	commands.WriteMarkdown(&generatedBuf)
-	checkAutogenDoc(t, "Documentation/cli/README.md", "_scripts/gen-cli-docs.go", generatedBuf.Bytes())
-
-	// Checks gen-usage-docs.go
-	tempDir, err := ioutil.TempDir(os.TempDir(), "test-gen-doc")
-	assertNoError(err, t, "TempDir")
-	defer protest.SafeRemoveAll(tempDir)
-	cmd := exec.Command("go", "run", "_scripts/gen-usage-docs.go", tempDir)
-	cmd.Dir = projectRoot()
-	err = cmd.Run()
-	assertNoError(err, t, "go run _scripts/gen-usage-docs.go")
-	entries, err := ioutil.ReadDir(tempDir)
-	assertNoError(err, t, "ReadDir")
-	for _, doc := range entries {
-		docFilename := "Documentation/usage/" + doc.Name()
-		checkAutogenDoc(t, docFilename, "_scripts/gen-usage-docs.go", slurpFile(t, tempDir+"/"+doc.Name()))
-	}
-
-	runScript := func(args ...string) []byte {
-		a := []string{"run"}
-		a = append(a, args...)
-		cmd := exec.Command("go", a...)
-		cmd.Dir = projectRoot()
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("could not run script %v: %v (output: %q)", args, err, string(out))
-		}
-		return out
-	}
-
-	checkAutogenDoc(t, "pkg/terminal/starbind/starlark_mapping.go", "'go generate' inside pkg/terminal/starbind", runScript("_scripts/gen-starlark-bindings.go", "go", "-"))
-	checkAutogenDoc(t, "Documentation/cli/starlark.md", "'go generate' inside pkg/terminal/starbind", runScript("_scripts/gen-starlark-bindings.go", "doc/dummy", "Documentation/cli/starlark.md"))
-	checkAutogenDoc(t, "Documentation/backend_test_health.md", "go run _scripts/gen-backend_test_health.go", runScript("_scripts/gen-backend_test_health.go", "-"))
-	checkAutogenDoc(t, "_scripts/rtype-out.txt", "go run _scripts/rtype.go report _scripts/rtype-out.txt", runScript("_scripts/rtype.go", "report"))
-
-	runScript("_scripts/rtype.go", "check")
-}
-
-func TestExitInInit(t *testing.T) {
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
-	exitInit := filepath.Join(protest.FindFixturesDir(), "exit.init")
-	cmd := exec.Command(dlvbin, "--init", exitInit, "debug")
-	cmd.Dir = buildtestdir
-	out, err := cmd.CombinedOutput()
-	t.Logf("%q %v\n", string(out), err)
-	// dlv will exit anyway because stdin is not a tty but it will print the
-	// prompt once if the init file didn't call exit successfully.
-	if strings.Contains(string(out), "(dlv)") {
-		t.Fatal("init did not cause dlv to exit")
-	}
 }
 
 func getMethods(pkg *types.Package, typename string) map[string]*types.Func {
@@ -525,7 +169,7 @@ func TestTypecheckRPC(t *testing.T) {
 		Mode: packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedName | packages.NeedCompiledGoFiles | packages.NeedTypes,
 		Fset: fset,
 	}
-	pkgs, err := packages.Load(cfg, "github.com/go-delve/delve/service/rpcv2")
+	pkgs, err := packages.Load(cfg, "github.com/hitzhangjie/dlv/service/rpcv2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -533,7 +177,7 @@ func TestTypecheckRPC(t *testing.T) {
 	var serverMethods map[string]*types.Func
 	var info *types.Info
 	packages.Visit(pkgs, func(pkg *packages.Package) bool {
-		if pkg.PkgPath != "github.com/go-delve/delve/service/rpcv2" {
+		if pkg.PkgPath != "github.com/hitzhangjie/dlv/service/rpcv2" {
 			return true
 		}
 		t.Logf("package found: %v", pkg.PkgPath)
@@ -541,7 +185,7 @@ func TestTypecheckRPC(t *testing.T) {
 		info = pkg.TypesInfo
 		for i := range pkg.Syntax {
 			t.Logf("file %q", pkg.CompiledGoFiles[i])
-			if strings.HasSuffix(pkg.CompiledGoFiles[i], string(os.PathSeparator)+"client.go") {
+			if strings.HasSuffix(pkg.CompiledGoFiles[i], "client.go") {
 				clientAst = pkg.Syntax[i]
 				break
 			}
@@ -552,7 +196,7 @@ func TestTypecheckRPC(t *testing.T) {
 	errcount := 0
 
 	for _, decl := range clientAst.Decls {
-		fndecl := publicMethodOf(decl, "RPCClient")
+		fndecl := publicMethodOf(decl, "rpcClient")
 		if fndecl == nil {
 			continue
 		}
@@ -631,31 +275,6 @@ func TestTypecheckRPC(t *testing.T) {
 	}
 }
 
-func TestTrace(t *testing.T) {
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	expected := []byte("> goroutine(1): main.foo(99, 9801) => (9900)\n")
-
-	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(tmpdir, "__debug"), filepath.Join(fixtures, "issue573.go"), "foo")
-	rdr, err := cmd.StderrPipe()
-	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
-
-	cmd.Dir = filepath.Join(fixtures, "buildtest")
-
-	assertNoError(cmd.Start(), t, "running trace")
-
-	output, err := ioutil.ReadAll(rdr)
-	assertNoError(err, t, "ReadAll")
-
-	if !bytes.Contains(output, expected) {
-		t.Fatalf("expected:\n%s\ngot:\n%s", string(expected), string(output))
-	}
-	cmd.Wait()
-}
-
 func TestTracePid(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		bs, _ := ioutil.ReadFile("/proc/sys/kernel/yama/ptrace_scope")
@@ -671,7 +290,7 @@ func TestTracePid(t *testing.T) {
 	expected := []byte("goroutine(1): main.A() => ()\n")
 
 	// make process run
-	fix := protest.BuildFixture("issue2023", 0)
+	fix := proctest.BuildFixture("issue2023", 0)
 	targetCmd := exec.Command(fix.Path)
 	assertNoError(targetCmd.Start(), t, "execute issue2023")
 
@@ -698,56 +317,6 @@ func TestTracePid(t *testing.T) {
 	cmd.Wait()
 }
 
-func TestTraceBreakpointExists(t *testing.T) {
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	fixtures := protest.FindFixturesDir()
-	// We always set breakpoints on some runtime functions at startup, so this would return with
-	// a breakpoints exists error.
-	// TODO: Perhaps we shouldn't be setting these default breakpoints in trace mode, however.
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(tmpdir, "__debug"), filepath.Join(fixtures, "issue573.go"), "runtime.*")
-	rdr, err := cmd.StderrPipe()
-	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
-
-	cmd.Dir = filepath.Join(fixtures, "buildtest")
-
-	assertNoError(cmd.Start(), t, "running trace")
-
-	defer cmd.Wait()
-
-	output, err := ioutil.ReadAll(rdr)
-	assertNoError(err, t, "ReadAll")
-
-	if bytes.Contains(output, []byte("Breakpoint exists")) {
-		t.Fatal("Breakpoint exists errors should be ignored")
-	}
-}
-
-func TestTracePrintStack(t *testing.T) {
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(tmpdir, "__debug"), "--stack", "2", filepath.Join(fixtures, "issue573.go"), "foo")
-	rdr, err := cmd.StderrPipe()
-	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
-
-	cmd.Dir = filepath.Join(fixtures, "buildtest")
-	assertNoError(cmd.Start(), t, "running trace")
-
-	defer cmd.Wait()
-
-	output, err := ioutil.ReadAll(rdr)
-	assertNoError(err, t, "ReadAll")
-
-	if !bytes.Contains(output, []byte("Stack:")) && !bytes.Contains(output, []byte("main.main")) {
-		t.Fatal("stacktrace not printed")
-	}
-}
-
 func TestTraceEBPF(t *testing.T) {
 	if os.Getenv("CI") == "true" {
 		t.Skip("cannot run test in CI, requires kernel compiled with btf support")
@@ -771,7 +340,7 @@ func TestTraceEBPF(t *testing.T) {
 
 	expected := []byte("> (1) main.foo(99, 9801)\n=> \"9900\"")
 
-	fixtures := protest.FindFixturesDir()
+	fixtures := proctest.FindFixturesDir()
 	cmd := exec.Command(dlvbin, "trace", "--ebpf", "--output", filepath.Join(tmpdir, "__debug"), filepath.Join(fixtures, "issue573.go"), "foo")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -786,65 +355,4 @@ func TestTraceEBPF(t *testing.T) {
 		t.Fatalf("expected:\n%s\ngot:\n%s", string(expected), string(output))
 	}
 	cmd.Wait()
-}
-
-func TestDlvTestChdir(t *testing.T) {
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "--allow-non-terminal-interactive=true", "test", filepath.Join(fixtures, "buildtest"), "--", "-test.v")
-	cmd.Stdin = strings.NewReader("continue\nexit\n")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("error executing Delve: %v", err)
-	}
-	t.Logf("output: %q", out)
-
-	p, _ := filepath.Abs(filepath.Join(fixtures, "buildtest"))
-	tgt := "current directory: " + p
-	if !strings.Contains(string(out), tgt) {
-		t.Errorf("output did not contain expected string %q", tgt)
-	}
-}
-
-func TestVersion(t *testing.T) {
-	dlvbin, tmpdir := getDlvBin(t)
-	defer os.RemoveAll(tmpdir)
-
-	got, err := exec.Command(dlvbin, "version", "-v").CombinedOutput()
-	if err != nil {
-		t.Fatalf("error executing `dlv version`: %v\n%s\n", err, got)
-	}
-	want1 := []byte("mod\tgithub.com/go-delve/delve")
-	want2 := []byte("dep\tgithub.com/google/go-dap")
-	if !bytes.Contains(got, want1) || !bytes.Contains(got, want2) {
-		t.Errorf("got %s\nwant %v and %v in the output", got, want1, want2)
-	}
-}
-
-func TestStaticcheck(t *testing.T) {
-	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 18) {
-		// TODO(aarzilli): remove this before version 1.8.0 is released
-		t.Skip("staticcheck does not currently support Go 1.18")
-	}
-	_, err := exec.LookPath("staticcheck")
-	if err != nil {
-		t.Skip("staticcheck not installed")
-	}
-	// default checks minus SA1019 which complains about deprecated identifiers, which change between versions of Go.
-	args := []string{"-tests=false", "-checks=all,-SA1019,-ST1000,-ST1003,-ST1016,-S1021,-ST1023", "github.com/go-delve/delve/..."}
-	// * SA1019 is disabled because new deprecations get added on every version
-	//   of Go making the output of staticcheck inconsistent depending on the
-	//   version of Go used to run it.
-	// * ST1000,ST1003,ST1016 are disabled in the default
-	//   staticcheck configuration
-	// * S1021 "Merge variable declaration and assignment" is disabled because
-	//   where we don't do this it is a deliberate style choice.
-	// * ST1023 "Redundant type in variable declaration" same as S1021.
-	cmd := exec.Command("staticcheck", args...)
-	cmd.Dir = projectRoot()
-	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
-	out, _ := cmd.CombinedOutput()
-	checkAutogenDoc(t, "_scripts/staticcheck-out.txt", fmt.Sprintf("staticcheck %s > _scripts/staticcheck-out.txt", strings.Join(args, " ")), out)
 }

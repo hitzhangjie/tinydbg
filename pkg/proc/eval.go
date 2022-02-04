@@ -310,7 +310,7 @@ func (scope *EvalScope) Locals(flags localsFlags) ([]*Variable, error) {
 			}
 			v.Name = name[1:]
 			v.Flags |= VariableEscaped
-			// See https://github.com/go-delve/delve/issues/2049 for details
+			// See https://github.com/hitzhangjie/dlv/issues/2049 for details
 			if locationExpr != nil {
 				locationExpr.isEscaped = true
 				v.LocationExpr = locationExpr

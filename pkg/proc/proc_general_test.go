@@ -96,7 +96,7 @@ func TestDwarfVersion(t *testing.T) {
 	// Tests that we correctly read the version of compilation units
 	fixture := protest.BuildFixture("math", 0)
 	bi := NewBinaryInfo(runtime.GOOS, runtime.GOARCH)
-	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0, nil), t, "LoadBinaryInfo")
+	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0), t, "LoadBinaryInfo")
 	for _, cu := range bi.Images[0].compileUnits {
 		if cu.Version != 4 {
 			t.Errorf("compile unit %q at %#x has bad version %d", cu.name, cu.entry.Offset, cu.Version)
@@ -111,7 +111,7 @@ func TestRegabiFlagSentinel(t *testing.T) {
 	}
 	fixture := protest.BuildFixture("math", 0)
 	bi := NewBinaryInfo(runtime.GOOS, runtime.GOARCH)
-	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0, nil), t, "LoadBinaryInfo")
+	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0), t, "LoadBinaryInfo")
 	if !bi.regabi {
 		t.Errorf("regabi flag not set %s GOEXPERIMENT=%s", runtime.Version(), os.Getenv("GOEXPERIMENT"))
 	}
@@ -121,20 +121,20 @@ func TestGenericFunctionParser(t *testing.T) {
 	// Normal parsing
 
 	var testCases = []struct{ name, pkg, rcv, base string }{
-		{"github.com/go-delve/delve.afunc", "github.com/go-delve/delve", "", "afunc"},
-		{"github.com/go-delve/delve..afunc", "github.com/go-delve/delve", "", "afunc"}, // malformed
-		{"github.com/go-delve/delve.afunc[some/[thing].el se]", "github.com/go-delve/delve", "", "afunc[some/[thing].el se]"},
-		{"github.com/go-delve/delve.Receiver.afunc", "github.com/go-delve/delve", "Receiver", "afunc"},
-		{"github.com/go-delve/delve.(*Receiver).afunc", "github.com/go-delve/delve", "(*Receiver)", "afunc"},
-		{"github.com/go-delve/delve.Receiver.afunc[some/[thing].el se]", "github.com/go-delve/delve", "Receiver", "afunc[some/[thing].el se]"},       // malformed
-		{"github.com/go-delve/delve.(*Receiver).afunc[some/[thing].el se]", "github.com/go-delve/delve", "(*Receiver)", "afunc[some/[thing].el se]"}, // malformed
-		{"github.com/go-delve/delve.Receiver[some/[thing].el se].afunc", "github.com/go-delve/delve", "Receiver[some/[thing].el se]", "afunc"},
-		{"github.com/go-delve/delve.(*Receiver[some/[thing].el se]).afunc", "github.com/go-delve/delve", "(*Receiver[some/[thing].el se])", "afunc"},
+		{"github.com/hitzhangjie/dlv.afunc", "github.com/hitzhangjie/dlv", "", "afunc"},
+		{"github.com/hitzhangjie/dlv..afunc", "github.com/hitzhangjie/dlv", "", "afunc"}, // malformed
+		{"github.com/hitzhangjie/dlv.afunc[some/[thing].el se]", "github.com/hitzhangjie/dlv", "", "afunc[some/[thing].el se]"},
+		{"github.com/hitzhangjie/dlv.Receiver.afunc", "github.com/hitzhangjie/dlv", "Receiver", "afunc"},
+		{"github.com/hitzhangjie/dlv.(*Receiver).afunc", "github.com/hitzhangjie/dlv", "(*Receiver)", "afunc"},
+		{"github.com/hitzhangjie/dlv.Receiver.afunc[some/[thing].el se]", "github.com/hitzhangjie/dlv", "Receiver", "afunc[some/[thing].el se]"},       // malformed
+		{"github.com/hitzhangjie/dlv.(*Receiver).afunc[some/[thing].el se]", "github.com/hitzhangjie/dlv", "(*Receiver)", "afunc[some/[thing].el se]"}, // malformed
+		{"github.com/hitzhangjie/dlv.Receiver[some/[thing].el se].afunc", "github.com/hitzhangjie/dlv", "Receiver[some/[thing].el se]", "afunc"},
+		{"github.com/hitzhangjie/dlv.(*Receiver[some/[thing].el se]).afunc", "github.com/hitzhangjie/dlv", "(*Receiver[some/[thing].el se])", "afunc"},
 
-		{"github.com/go-delve/delve.afunc[.some/[thing].el se]", "github.com/go-delve/delve", "", "afunc[.some/[thing].el se]"},
-		{"github.com/go-delve/delve.Receiver.afunc[.some/[thing].el se]", "github.com/go-delve/delve", "Receiver", "afunc[.some/[thing].el se]"}, // malformed
-		{"github.com/go-delve/delve.Receiver[.some/[thing].el se].afunc", "github.com/go-delve/delve", "Receiver[.some/[thing].el se]", "afunc"},
-		{"github.com/go-delve/delve.(*Receiver[.some/[thing].el se]).afunc", "github.com/go-delve/delve", "(*Receiver[.some/[thing].el se])", "afunc"},
+		{"github.com/hitzhangjie/dlv.afunc[.some/[thing].el se]", "github.com/hitzhangjie/dlv", "", "afunc[.some/[thing].el se]"},
+		{"github.com/hitzhangjie/dlv.Receiver.afunc[.some/[thing].el se]", "github.com/hitzhangjie/dlv", "Receiver", "afunc[.some/[thing].el se]"}, // malformed
+		{"github.com/hitzhangjie/dlv.Receiver[.some/[thing].el se].afunc", "github.com/hitzhangjie/dlv", "Receiver[.some/[thing].el se]", "afunc"},
+		{"github.com/hitzhangjie/dlv.(*Receiver[.some/[thing].el se]).afunc", "github.com/hitzhangjie/dlv", "(*Receiver[.some/[thing].el se])", "afunc"},
 	}
 
 	for _, tc := range testCases {

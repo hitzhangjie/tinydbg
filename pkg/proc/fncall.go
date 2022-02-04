@@ -652,7 +652,7 @@ func funcCallArgs(fn *Function, bi *BinaryInfo, includeRet bool) (argFrameSize i
 		// each argument plus the total bytes of register arguments.
 		// This is derived from worst-case alignment padding of up to
 		// (pointer-word-bytes - 1) per argument passed in registers.
-		// See: https://github.com/go-delve/delve/pull/2451#discussion_r665761531
+		// See: https://github.com/hitzhangjie/dlv/pull/2451#discussion_r665761531
 		// TODO: Make this generic for other platforms.
 		argFrameSize = alignAddr(argFrameSize, 8)
 		argFrameSize += maxRegArgBytes
