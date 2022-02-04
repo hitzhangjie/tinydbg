@@ -15,7 +15,7 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcx"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 // 'trace' subcommand.
@@ -108,7 +108,7 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		client := rpcx.NewClientFromConn(clientConn)
+		client := rpcv2.NewClientFromConn(clientConn)
 		funcs, err := client.ListFunctions(regexp)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

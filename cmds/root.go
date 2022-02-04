@@ -9,7 +9,7 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
 	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcx"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 	"github.com/spf13/cobra"
 	"net"
 	"os"
@@ -150,7 +150,7 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 	var status int
 	if headless {
 		if continueOnStart {
-			client := rpcx.NewClient(listener.Addr().String())
+			client := rpcv2.NewClient(listener.Addr().String())
 			client.Disconnect(true) // true = continue after disconnect
 		}
 		waitForDisconnectSignal(disconnectChan)
@@ -194,11 +194,11 @@ func connect(addr string, clientConn net.Conn, kind debugger.ExecuteKind) int {
 	}
 
 	// Create and start a terminal - attach to running instance
-	var client *rpcx.RPCClient
+	var client *rpcv2.RPCClient
 	if clientConn != nil {
-		client = rpcx.NewClientFromConn(clientConn)
+		client = rpcv2.NewClientFromConn(clientConn)
 	} else {
-		client = rpcx.NewClient(addr)
+		client = rpcv2.NewClient(addr)
 	}
 	if client.IsMulticlient() {
 		state, _ := client.GetStateNonBlocking()

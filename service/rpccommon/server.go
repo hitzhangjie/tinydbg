@@ -20,12 +20,11 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpcx"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
-// ServerImpl implements a JSON-RPC server that can switch between two
-// versions of the API.
-type ServerImpl struct {
+// server implements a JSON-RPC server.
+type server struct {
 	// config is all the information necessary to start the debugger and server.
 	config *service.Config
 	// listener is used to serve HTTP.
@@ -35,67 +34,28 @@ type ServerImpl struct {
 	// debugger is the debugger service.
 	debugger *debugger.Debugger
 	// rpcServer is APIv2 server.
-	rpcServer *rpcx.RPCServer
-	// maps of served methods, one for each supported API.
-	methodMaps []map[string]*methodType
-}
-
-type RPCCallback struct {
-	s         *ServerImpl
-	sending   *sync.Mutex
-	codec     rpc.ServerCodec
-	req       rpc.Request
-	setupDone chan struct{}
-}
-
-var _ service.RPCCallback = &RPCCallback{}
-
-// RPCServer implements the RPC method calls common to all versions of the API.
-type RPCServer struct {
-	s *ServerImpl
-}
-
-type methodType struct {
-	method      reflect.Method
-	Rcvr        reflect.Value
-	ArgType     reflect.Type
-	ReplyType   reflect.Type
-	Synchronous bool
+	rpcServer *rpcv2.RPCServer
+	// maps of served methods
+	methodMaps map[string]*methodType
 }
 
 // NewServer creates a new RPCServer.
-func NewServer(config *service.Config) *ServerImpl {
+func NewServer(config *service.Config) *server {
 	if config.DebuggerConfig.Foreground {
-		// Print listener address
 		log.Info("listen address: %s", config.Listener.Addr())
 		log.Debug("API server pid = ", os.Getpid())
 	}
-	return &ServerImpl{
+	return &server{
 		config:   config,
 		listener: config.Listener,
 		stopChan: make(chan struct{}),
 	}
 }
 
-// Stop stops the JSON-RPC server.
-func (s *ServerImpl) Stop() error {
-	log.Debug("stopping")
-	close(s.stopChan)
-	if s.config.AcceptMulti {
-		s.listener.Close()
-	}
-	if s.debugger.IsRunning() {
-		s.debugger.Command(&api.DebuggerCommand{Name: api.Halt}, nil)
-	}
-	// if tracee is launched by tracer, kill it
-	kill := s.config.DebuggerConfig.AttachPid == 0
-	return s.debugger.Detach(kill)
-}
-
 // Run starts a debugger and exposes it with an HTTP server. The debugger
 // itself can be stopped with the `detach` API. Run blocks until the HTTP
 // server stops.
-func (s *ServerImpl) Run() error {
+func (s *server) Run() error {
 	var err error
 	// Create and start the debugger
 	config := s.config.DebuggerConfig
@@ -103,17 +63,10 @@ func (s *ServerImpl) Run() error {
 		return err
 	}
 
-	s.rpcServer = rpcx.NewServer(s.config, s.debugger)
+	s.rpcServer = rpcv2.NewServer(s.config, s.debugger)
 
-	rpcServer := &RPCServer{s}
-
-	s.methodMaps = make([]map[string]*methodType, 2)
-
-	s.methodMaps[0] = map[string]*methodType{}
-	s.methodMaps[1] = map[string]*methodType{}
-	suitableMethods(rpcServer, s.methodMaps[0])
-	suitableMethods(s.rpcServer, s.methodMaps[1])
-	suitableMethods(rpcServer, s.methodMaps[1])
+	s.methodMaps = make(map[string]*methodType)
+	suitableMethods(s.rpcServer, s.methodMaps)
 
 	go func() {
 		defer s.listener.Close()
@@ -138,12 +91,22 @@ func (s *ServerImpl) Run() error {
 	return nil
 }
 
-type bufReadWriteCloser struct {
-	*bufio.Reader
-	io.WriteCloser
+// Stop stops the JSON-RPC server.
+func (s *server) Stop() error {
+	log.Debug("stopping")
+	close(s.stopChan)
+	if s.config.AcceptMulti {
+		s.listener.Close()
+	}
+	if s.debugger.IsRunning() {
+		s.debugger.Command(&api.DebuggerCommand{Name: api.Halt}, nil)
+	}
+	// if tracee is launched by tracer, kill it
+	kill := s.config.DebuggerConfig.AttachPid == 0
+	return s.debugger.Detach(kill)
 }
 
-func (s *ServerImpl) serveConnectionDemux(c io.ReadWriteCloser) {
+func (s *server) serveConnectionDemux(c io.ReadWriteCloser) {
 	conn := &bufReadWriteCloser{bufio.NewReader(c), c}
 	b, err := conn.Peek(1)
 	if err != nil {
@@ -156,6 +119,11 @@ func (s *ServerImpl) serveConnectionDemux(c io.ReadWriteCloser) {
 		log.Debug("serving JSON-RPC on new connection")
 		go s.serveJSONCodec(conn)
 	}
+}
+
+type bufReadWriteCloser struct {
+	*bufio.Reader
+	io.WriteCloser
 }
 
 // Precompute the reflect type for error.  Can't use error directly
@@ -189,7 +157,7 @@ func suitableMethods(rcvr interface{}, methods map[string]*methodType) {
 	rcvrv := reflect.ValueOf(rcvr)
 	sname := reflect.Indirect(rcvrv).Type().Name()
 	if sname == "" {
-		log.Debug("rpcx.Register: no service name for type %s", typ)
+		log.Debug("rpcv2.Register: no service name for type %s", typ)
 		return
 	}
 	for m := 0; m < typ.NumMethod(); m++ {
@@ -200,7 +168,7 @@ func suitableMethods(rcvr interface{}, methods map[string]*methodType) {
 		if method.PkgPath != "" {
 			continue
 		}
-		// Method needs three ins: (receive, *args, *reply) or (receiver, *args, *RPCCallback)
+		// Method needs three ins: (receive, *args, *reply) or (receiver, *args, *rpcCallback)
 		if mtype.NumIn() != 3 {
 			log.Warn("method", mname, "has wrong number of ins:", mtype.NumIn())
 			continue
@@ -213,7 +181,7 @@ func suitableMethods(rcvr interface{}, methods map[string]*methodType) {
 		}
 
 		replyType := mtype.In(2)
-		synchronous := replyType.String() != "service.RPCCallback"
+		synchronous := replyType.String() != "service.rpcCallback"
 
 		if synchronous {
 			// Second arg must be a pointer.
@@ -246,7 +214,7 @@ func suitableMethods(rcvr interface{}, methods map[string]*methodType) {
 	}
 }
 
-func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
+func (s *server) serveJSONCodec(conn io.ReadWriteCloser) {
 	defer func() {
 		if !s.config.AcceptMulti && s.config.DisconnectChan != nil {
 			close(s.config.DisconnectChan)
@@ -262,14 +230,14 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 		err := codec.ReadRequestHeader(&req)
 		if err != nil {
 			if err != io.EOF {
-				log.Error("rpcx:", err)
+				log.Error("rpcv2: %v", err)
 			}
 			break
 		}
 
-		mtype, ok := s.methodMaps[1][req.ServiceMethod]
+		mtype, ok := s.methodMaps[req.ServiceMethod]
 		if !ok {
-			log.Error("rpcx: can't find method %s", req.ServiceMethod)
+			log.Error("rpcv2: can't find method: %s", req.ServiceMethod)
 			s.sendResponse(sending, &req, &rpc.Response{}, nil, codec, fmt.Sprintf("unknown method: %s", req.ServiceMethod))
 			continue
 		}
@@ -328,16 +296,16 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 			log.Debug("(async %d) <- %s(%T%s)", req.Seq, req.ServiceMethod, argv.Interface(), argvbytes)
 
 			function := mtype.method.Func
-			ctl := &RPCCallback{s, sending, codec, req, make(chan struct{})}
+			callback := &rpcCallback{s, sending, codec, req, make(chan struct{})}
 			go func() {
 				defer func() {
-					if ierr := recover(); ierr != nil {
-						ctl.Return(nil, newInternalError(ierr, 2))
+					if err := recover(); err != nil {
+						callback.Return(nil, newInternalError(err, 2))
 					}
 				}()
-				function.Call([]reflect.Value{mtype.Rcvr, argv, reflect.ValueOf(ctl)})
+				function.Call([]reflect.Value{mtype.Rcvr, argv, reflect.ValueOf(callback)})
 			}()
-			<-ctl.setupDone
+			<-callback.setupDone
 		}
 	}
 	codec.Close()
@@ -348,7 +316,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 // contains an error when it is used.
 var invalidRequest = struct{}{}
 
-func (s *ServerImpl) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *rpc.Response, reply interface{}, codec rpc.ServerCodec, errmsg string) {
+func (s *server) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *rpc.Response, reply interface{}, codec rpc.ServerCodec, errmsg string) {
 	resp.ServiceMethod = req.ServiceMethod
 	if errmsg != "" {
 		resp.Error = errmsg
@@ -361,28 +329,6 @@ func (s *ServerImpl) sendResponse(sending *sync.Mutex, req *rpc.Request, resp *r
 	if err != nil {
 		log.Error("writing response:", err)
 	}
-}
-
-func (cb *RPCCallback) Return(out interface{}, err error) {
-	select {
-	case <-cb.setupDone:
-		// already closed
-	default:
-		close(cb.setupDone)
-	}
-	errmsg := ""
-	if err != nil {
-		errmsg = err.Error()
-	}
-	var resp rpc.Response
-	outbytes, _ := json.Marshal(out)
-	log.Debug("(async %d) -> %T%s error: %q", cb.req.Seq, out, outbytes, errmsg)
-
-	cb.s.sendResponse(cb.sending, &cb.req, &resp, out, cb.codec, errmsg)
-}
-
-func (cb *RPCCallback) SetupDoneChan() chan struct{} {
-	return cb.setupDone
 }
 
 type internalError struct {

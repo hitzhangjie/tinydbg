@@ -33,7 +33,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/terminal/colorize"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/rpcx"
+	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 const optimizedFunctionWarning = "Warning: debugging optimized function"
@@ -1347,7 +1347,7 @@ func setBreakpoint(t *Term, ctx callContext, tracepoint bool, argstr string) ([]
 			continue
 		}
 		// todo why we launch the same RPC in a for-loop? maybe the result is different each call?
-		addrs, err := t.client.(*rpcx.RPCClient).FunctionReturnLocations(locs[0].Function.Name())
+		addrs, err := t.client.(*rpcv2.RPCClient).FunctionReturnLocations(locs[0].Function.Name())
 		if err != nil {
 			return nil, err
 		}
