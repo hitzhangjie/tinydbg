@@ -10,7 +10,7 @@ import (
 
 	"github.com/hitzhangjie/dlv/pkg/proc"
 	"github.com/hitzhangjie/dlv/pkg/proc/native"
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 type errIssue419 struct {
@@ -26,11 +26,11 @@ func TestSignalDeath(t *testing.T) {
 	if testBackend != "native" || runtime.GOOS != "linux" {
 		t.Skip("skipped on non-linux non-native backends")
 	}
-	var buildFlags protest.BuildFlags
+	var buildFlags proctest.BuildFlags
 	if buildMode == "pie" {
-		buildFlags |= protest.BuildModePIE
+		buildFlags |= proctest.BuildModePIE
 	}
-	fixture := protest.BuildFixture("loopprog", buildFlags)
+	fixture := proctest.BuildFixture("loopprog", buildFlags)
 	cmd := exec.Command(fixture.Path)
 	stdout, err := cmd.StdoutPipe()
 	assertNoError(err, t, "StdoutPipe")

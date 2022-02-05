@@ -7,7 +7,7 @@ import (
 	"testing"
 	"unsafe"
 
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 func ptrSizeByRuntimeArch() int {
@@ -94,7 +94,7 @@ func assertNoError(err error, t testing.TB, s string) {
 
 func TestDwarfVersion(t *testing.T) {
 	// Tests that we correctly read the version of compilation units
-	fixture := protest.BuildFixture("math", 0)
+	fixture := proctest.BuildFixture("math", 0)
 	bi := NewBinaryInfo(runtime.GOOS, runtime.GOARCH)
 	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0), t, "LoadBinaryInfo")
 	for _, cu := range bi.Images[0].compileUnits {
@@ -106,10 +106,10 @@ func TestDwarfVersion(t *testing.T) {
 
 func TestRegabiFlagSentinel(t *testing.T) {
 	// Detect if the regabi flag in the producer string gets removed
-	if !protest.RegabiSupported() {
+	if !proctest.RegabiSupported() {
 		t.Skip("irrelevant before Go 1.17 or on non-amd64 architectures")
 	}
-	fixture := protest.BuildFixture("math", 0)
+	fixture := proctest.BuildFixture("math", 0)
 	bi := NewBinaryInfo(runtime.GOOS, runtime.GOARCH)
 	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0), t, "LoadBinaryInfo")
 	if !bi.regabi {

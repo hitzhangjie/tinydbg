@@ -15,7 +15,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc/native"
 	"github.com/hitzhangjie/dlv/service/api"
 
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 var pnormalLoadConfig = proc.LoadConfig{
@@ -109,15 +109,15 @@ func setVariable(p *proc.Target, symbol, value string) error {
 	return scope.SetVariable(symbol, value)
 }
 
-func withTestProcess(name string, t *testing.T, fn func(p *proc.Target, fixture protest.Fixture)) {
+func withTestProcess(name string, t *testing.T, fn func(p *proc.Target, fixture proctest.Fixture)) {
 	withTestProcessArgs(name, t, ".", []string{}, 0, fn)
 }
 
-func withTestProcessArgs(name string, t *testing.T, wd string, args []string, buildFlags protest.BuildFlags, fn func(p *proc.Target, fixture protest.Fixture)) {
+func withTestProcessArgs(name string, t *testing.T, wd string, args []string, buildFlags proctest.BuildFlags, fn func(p *proc.Target, fixture proctest.Fixture)) {
 	if buildMode == "pie" {
-		buildFlags |= protest.BuildModePIE
+		buildFlags |= proctest.BuildModePIE
 	}
-	fixture := protest.BuildFixture(name, buildFlags)
+	fixture := proctest.BuildFixture(name, buildFlags)
 	var p *proc.Target
 	var err error
 	switch testBackend {
@@ -182,8 +182,8 @@ func TestVariableEvaluation(t *testing.T) {
 		{"NonExistent", true, "", "", "", fmt.Errorf("could not find symbol value for NonExistent")},
 	}
 
-	protest.AllowRecording(t)
-	withTestProcess("testvariables", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
 
@@ -241,7 +241,7 @@ func TestSetVariable(t *testing.T) {
 		{"s3", "[]int", "[]int len: 3, cap: 3, [3,4,5]", "arr1[:]", "[]int len: 4, cap: 4, [0,1,2,3]"},
 	}
 
-	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue()")
 
 		for _, tc := range testcases {
@@ -309,8 +309,8 @@ func TestVariableEvaluationShort(t *testing.T) {
 		{"NonExistent", true, "", "", "", fmt.Errorf("could not find symbol value for NonExistent")},
 	}
 
-	protest.AllowRecording(t)
-	withTestProcess("testvariables", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
 
@@ -365,8 +365,8 @@ func TestMultilineVariableEvaluation(t *testing.T) {
 		Nest: *(*main.Nest)(…`, "", "main.Nest", nil},
 	}
 
-	protest.AllowRecording(t)
-	withTestProcess("testvariables", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
 
@@ -441,8 +441,8 @@ func TestLocalVariables(t *testing.T) {
 				{"baz", true, "\"bazburzum\"", "", "string", nil}}},
 	}
 
-	protest.AllowRecording(t)
-	withTestProcess("testvariables", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
 
@@ -469,8 +469,8 @@ func TestLocalVariables(t *testing.T) {
 }
 
 func TestEmbeddedStruct(t *testing.T) {
-	protest.AllowRecording(t)
-	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		testcases := []varTest{
 			{"b.val", true, "-314", "-314", "int", nil},
 			{"b.A.val", true, "-314", "-314", "int", nil},
@@ -525,7 +525,7 @@ func TestEmbeddedStruct(t *testing.T) {
 }
 
 func TestComplexSetting(t *testing.T) {
-	withTestProcess("testvariables", t, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
 
@@ -826,8 +826,8 @@ func TestEvalExpression(t *testing.T) {
 		}
 	}
 
-	protest.AllowRecording(t)
-	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		for _, tc := range testcases {
 			variable, err := evalVariable(p, tc.name, pnormalLoadConfig)
@@ -854,8 +854,8 @@ func TestEvalExpression(t *testing.T) {
 }
 
 func TestEvalAddrAndCast(t *testing.T) {
-	protest.AllowRecording(t)
-	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		c1addr, err := evalVariable(p, "&c1", pnormalLoadConfig)
 		assertNoError(err, t, "EvalExpression(&c1)")
@@ -881,8 +881,8 @@ func TestEvalAddrAndCast(t *testing.T) {
 }
 
 func TestMapEvaluation(t *testing.T) {
-	protest.AllowRecording(t)
-	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		m1v, err := evalVariable(p, "m1", pnormalLoadConfig)
 		assertNoError(err, t, "EvalVariable()")
@@ -923,8 +923,8 @@ func TestMapEvaluation(t *testing.T) {
 }
 
 func TestUnsafePointer(t *testing.T) {
-	protest.AllowRecording(t)
-	withTestProcess("testvariables2", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		up1v, err := evalVariable(p, "up1", pnormalLoadConfig)
 		assertNoError(err, t, "EvalVariable(up1)")
@@ -1017,8 +1017,8 @@ func TestPackageRenames(t *testing.T) {
 		return
 	}
 
-	protest.AllowRecording(t)
-	withTestProcess("pkgrenames", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("pkgrenames", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		testPackageRenamesHelper(t, p, testcases)
 
@@ -1058,7 +1058,7 @@ func TestConstants(t *testing.T) {
 		// Not supported on 1.9 or earlier
 		t.Skip("constants added in go 1.10")
 	}
-	withTestProcess("consts", t, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcess("consts", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue")
 		for _, testcase := range testcases {
 			variable, err := evalVariable(p, testcase.name, pnormalLoadConfig)
@@ -1093,7 +1093,7 @@ type testCaseCallFunction struct {
 }
 
 func TestCallFunction(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 
 	var testcases = []testCaseCallFunction{
 		// Basic function call injection tests
@@ -1212,7 +1212,7 @@ func TestCallFunction(t *testing.T) {
 		{`issue2698.String()`, []string{`:string:"1 2 3 4"`}, nil},
 	}
 
-	withTestProcessArgs("fncall", t, ".", nil, protest.AllNonOptimized, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcessArgs("fncall", t, ".", nil, proctest.AllNonOptimized, func(p *proc.Target, fixture proctest.Fixture) {
 		testCallFunctionSetBreakpoint(t, p, fixture)
 
 		assertNoError(p.Continue(), t, "Continue()")
@@ -1254,7 +1254,7 @@ func TestCallFunction(t *testing.T) {
 	})
 }
 
-func testCallFunctionSetBreakpoint(t *testing.T, p *proc.Target, fixture protest.Fixture) {
+func testCallFunctionSetBreakpoint(t *testing.T, p *proc.Target, fixture proctest.Fixture) {
 	buf, err := ioutil.ReadFile(fixture.Source)
 	assertNoError(err, t, "ReadFile")
 	for i, line := range strings.Split(string(buf), "\n") {
@@ -1339,7 +1339,7 @@ func testCallFunction(t *testing.T, p *proc.Target, tc testCaseCallFunction) {
 	}
 }
 
-func setFileBreakpoint(p *proc.Target, t *testing.T, fixture protest.Fixture, lineno int) *proc.Breakpoint {
+func setFileBreakpoint(p *proc.Target, t *testing.T, fixture proctest.Fixture, lineno int) *proc.Breakpoint {
 	_, f, l, _ := runtime.Caller(1)
 	f = filepath.Base(f)
 
@@ -1378,9 +1378,9 @@ func assertCurrentLocationFunction(p *proc.Target, t *testing.T, fnname string) 
 }
 
 func TestPluginVariables(t *testing.T) {
-	pluginFixtures := protest.WithPlugins(t, protest.AllNonOptimized, "plugin1/", "plugin2/")
+	pluginFixtures := proctest.WithPlugins(t, proctest.AllNonOptimized, "plugin1/", "plugin2/")
 
-	withTestProcessArgs("plugintest2", t, ".", []string{pluginFixtures[0].Path, pluginFixtures[1].Path}, protest.AllNonOptimized, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcessArgs("plugintest2", t, ".", []string{pluginFixtures[0].Path, pluginFixtures[1].Path}, proctest.AllNonOptimized, func(p *proc.Target, fixture proctest.Fixture) {
 		setFileBreakpoint(p, t, fixture, 41)
 		assertNoError(p.Continue(), t, "Continue 1")
 
@@ -1440,7 +1440,7 @@ func TestPluginVariables(t *testing.T) {
 }
 
 func TestCgoEval(t *testing.T) {
-	protest.MustHaveCgo(t)
+	proctest.MustHaveCgo(t)
 
 	testcases := []varTest{
 		{"s", true, `"a string"`, `"a string"`, "*char", nil},
@@ -1456,8 +1456,8 @@ func TestCgoEval(t *testing.T) {
 		{"v_align_check[90]", false, "align_check {a: 90, b: 90}", "align_check {a: 90, b: 90}", "align_check", nil},
 	}
 
-	protest.AllowRecording(t)
-	withTestProcess("testvariablescgo/", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("testvariablescgo/", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		for _, tc := range testcases {
 			variable, err := evalVariable(p, tc.name, pnormalLoadConfig)
@@ -1504,7 +1504,7 @@ func TestEvalExpressionGenerics(t *testing.T) {
 		},
 	}
 
-	withTestProcess("testvariables_generic", t, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcess("testvariables_generic", t, func(p *proc.Target, fixture proctest.Fixture) {
 		for i, tcs := range testcases {
 			assertNoError(p.Continue(), t, fmt.Sprintf("Continue() returned an error (%d)", i))
 			for _, tc := range tcs {

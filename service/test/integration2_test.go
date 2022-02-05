@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 	"github.com/hitzhangjie/dlv/service/debugger"
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
@@ -42,27 +42,27 @@ func TestMain(m *testing.M) {
 	var logOutput string
 	flag.StringVar(&logOutput, "log-output", "", "configures log output")
 	flag.Parse()
-	protest.DefaultTestBackend(&testBackend)
+	proctest.DefaultTestBackend(&testBackend)
 	if buildMode != "" && buildMode != "pie" {
 		fmt.Fprintf(os.Stderr, "unknown build mode %q", buildMode)
 		os.Exit(1)
 	}
-	os.Exit(protest.RunTestsWithFixtures(m))
+	os.Exit(proctest.RunTestsWithFixtures(m))
 }
 
 func withTestClient2(name string, t *testing.T, fn func(c service.Client)) {
-	withTestClient2Extended(name, t, 0, [3]string{}, func(c service.Client, fixture protest.Fixture) {
+	withTestClient2Extended(name, t, 0, [3]string{}, func(c service.Client, fixture proctest.Fixture) {
 		fn(c)
 	})
 }
 
-func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redirects [3]string) (clientConn net.Conn, fixture protest.Fixture) {
+func startServer(name string, buildFlags proctest.BuildFlags, t *testing.T, redirects [3]string) (clientConn net.Conn, fixture proctest.Fixture) {
 	listener, clientConn := service.ListenerPipe()
 	defer listener.Close()
 	if buildMode == "pie" {
-		buildFlags |= protest.BuildModePIE
+		buildFlags |= proctest.BuildModePIE
 	}
-	fixture = protest.BuildFixture(name, buildFlags)
+	fixture = proctest.BuildFixture(name, buildFlags)
 	for i := range redirects {
 		if redirects[i] != "" {
 			redirects[i] = filepath.Join(fixture.BuildDir, redirects[i])
@@ -83,7 +83,7 @@ func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redir
 	return clientConn, fixture
 }
 
-func withTestClient2Extended(name string, t *testing.T, buildFlags protest.BuildFlags, redirects [3]string, fn func(c service.Client, fixture protest.Fixture)) {
+func withTestClient2Extended(name string, t *testing.T, buildFlags proctest.BuildFlags, redirects [3]string, fn func(c service.Client, fixture proctest.Fixture)) {
 	clientConn, fixture := startServer(name, buildFlags, t, redirects)
 	client := rpcv2.NewClientFromConn(clientConn)
 	defer func() {
@@ -132,7 +132,7 @@ func TestRestart_afterExit(t *testing.T) {
 }
 
 func TestRestart_breakpointPreservation(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: 1, Name: "firstbreakpoint", Tracepoint: true})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -212,7 +212,7 @@ func TestRestart_rebuild(t *testing.T) {
 	// In the original fixture file the env var tested for is SOMEVAR.
 	os.Setenv("SOMEVAR", "bah")
 
-	withTestClient2Extended("testenv", t, 0, [3]string{}, func(c service.Client, f protest.Fixture) {
+	withTestClient2Extended("testenv", t, 0, [3]string{}, func(c service.Client, f proctest.Fixture) {
 		<-c.Continue()
 
 		var1, err := c.EvalVariable(api.EvalScope{GoroutineID: -1}, "x", normalLoadConfig)
@@ -255,7 +255,7 @@ func TestRestart_rebuild(t *testing.T) {
 }
 
 func TestClientServer_exit(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		state, err := c.GetState()
 		if err != nil {
@@ -279,7 +279,7 @@ func TestClientServer_exit(t *testing.T) {
 }
 
 func TestClientServer_step(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.helloworld", Line: -1})
 		if err != nil {
@@ -303,7 +303,7 @@ func TestClientServer_step(t *testing.T) {
 }
 
 func TestClientServer_stepout(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.helloworld", Line: -1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -321,7 +321,7 @@ func TestClientServer_stepout(t *testing.T) {
 }
 
 func testnext2(testcases []nextTest, initialLocation string, t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: initialLocation, Line: -1})
 		if err != nil {
@@ -413,7 +413,7 @@ func TestNextFunctionReturn(t *testing.T) {
 }
 
 func TestClientServer_breakpointInMainThread(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testprog", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.helloworld", Line: 1})
 		if err != nil {
@@ -435,7 +435,7 @@ func TestClientServer_breakpointInMainThread(t *testing.T) {
 }
 
 func TestClientServer_breakpointInSeparateGoroutine(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testthreads", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.anotherthread", Line: 1})
 		if err != nil {
@@ -598,7 +598,7 @@ func TestClientServer_toggleAmendedBreakpoint(t *testing.T) {
 }
 
 func TestClientServer_switchThread(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		// With invalid thread id
 		_, err := c.SwitchThread(-1)
@@ -642,7 +642,7 @@ func TestClientServer_switchThread(t *testing.T) {
 }
 
 func TestClientServer_infoLocals(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		fp := testProgPath(t, "testnextprog")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 24})
@@ -664,7 +664,7 @@ func TestClientServer_infoLocals(t *testing.T) {
 }
 
 func TestClientServer_infoArgs(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		fp := testProgPath(t, "testnextprog")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 47})
@@ -708,7 +708,7 @@ func TestClientServer_infoArgs(t *testing.T) {
 }
 
 func TestClientServer_traceContinue(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("integrationprog", t, func(c service.Client) {
 		fp := testProgPath(t, "integrationprog")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 15, Tracepoint: true, Goroutine: true, Stacktrace: 5, Variables: []string{"i"}})
@@ -766,7 +766,7 @@ func TestClientServer_traceContinue(t *testing.T) {
 }
 
 func TestClientServer_traceContinue2(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("integrationprog", t, func(c service.Client) {
 		bp1, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: 1, Tracepoint: true})
 		if err != nil {
@@ -886,7 +886,7 @@ func TestClientServer_FindLocations(t *testing.T) {
 		findLocationHelper(t, c, "main.stacktraceme", false, 1, stacktracemeAddr)
 	})
 
-	withTestClient2Extended("locationsUpperCase", t, 0, [3]string{}, func(c service.Client, fixture protest.Fixture) {
+	withTestClient2Extended("locationsUpperCase", t, 0, [3]string{}, func(c service.Client, fixture proctest.Fixture) {
 		// Upper case
 		findLocationHelper(t, c, "locationsUpperCase.go:6", false, 1, 0)
 
@@ -1056,7 +1056,7 @@ func TestClientServer_SetVariable(t *testing.T) {
 }
 
 func TestClientServer_FullStacktrace(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 
 	lenient := false
 	withTestClient2("goroutinestackprog", t, func(c service.Client) {
@@ -1264,7 +1264,7 @@ func TestDisasm(t *testing.T) {
 
 func TestNegativeStackDepthBug(t *testing.T) {
 	// After the target process has terminated should return an error but not crash
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: -1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -1277,7 +1277,7 @@ func TestNegativeStackDepthBug(t *testing.T) {
 }
 
 func TestClientServer_CondBreakpoint(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("parallel_next", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: 1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -1365,7 +1365,7 @@ func TestSkipPrologue2(t *testing.T) {
 }
 
 func TestTypesCommand(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testvariables2", t, func(c service.Client) {
 		state := <-c.Continue()
 		assertNoError(state.Err, t, "Continue()")
@@ -1462,8 +1462,8 @@ func TestClientServer_FpRegisters(t *testing.T) {
 		{"XMM12", "…[ZMM12hl] 0x3ff66666666666663ff4cccccccccccd"},
 		{"XMM12", "…[ZMM12hh] 0x3ff66666666666663ff4cccccccccccd"},
 	}
-	protest.AllowRecording(t)
-	withTestClient2Extended("fputest/", t, 0, [3]string{}, func(c service.Client, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestClient2Extended("fputest/", t, 0, [3]string{}, func(c service.Client, fixture proctest.Fixture) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: filepath.Join(fixture.BuildDir, "fputest.go"), Line: 25})
 		assertNoError(err, t, "CreateBreakpoint")
 
@@ -1543,7 +1543,7 @@ func TestClientServer_FpRegisters(t *testing.T) {
 }
 
 func TestClientServer_RestartBreakpointPosition(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	if buildMode == "pie" {
 		t.Skip("not meaningful in PIE mode")
 	}
@@ -1576,7 +1576,7 @@ func TestClientServer_SelectedGoroutineLoc(t *testing.T) {
 	// CurrentLocation of SelectedGoroutine should reflect what's happening on
 	// the thread running the goroutine, not the position the goroutine was in
 	// the last time it was parked.
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: -11})
 		assertNoError(err, t, "CreateBreakpoint")
@@ -1597,7 +1597,7 @@ func TestClientServer_SelectedGoroutineLoc(t *testing.T) {
 }
 
 func TestClientServer_collectBreakpointInfoOnNext(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{
 			Addr:       findLocationHelper(t, c, "testnextprog.go:23", false, 1, 0)[0],
@@ -1631,7 +1631,7 @@ func TestClientServer_collectBreakpointInfoOnNext(t *testing.T) {
 }
 
 func TestClientServer_collectBreakpointInfoError(t *testing.T) {
-	protest.AllowRecording(t)
+	proctest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{
 			Addr:       findLocationHelper(t, c, "testnextprog.go:23", false, 1, 0)[0],
@@ -1757,7 +1757,7 @@ func TestAcceptMulticlient(t *testing.T) {
 		disconnectChan := make(chan struct{})
 		server := rpccommon.NewServer(&service.Config{
 			Listener:       listener,
-			ProcessArgs:    []string{protest.BuildFixture("testvariables2", 0).Path},
+			ProcessArgs:    []string{proctest.BuildFixture("testvariables2", 0).Path},
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
 			DebuggerConfig: debugger.Config{
@@ -1794,7 +1794,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 		defer listener.Close()
 		server := rpccommon.NewServer(&service.Config{
 			Listener:       listener,
-			ProcessArgs:    []string{protest.BuildFixture("http_server", protest.AllNonOptimized).Path},
+			ProcessArgs:    []string{proctest.BuildFixture("http_server", proctest.AllNonOptimized).Path},
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
 			DebuggerConfig: debugger.Config{},
@@ -2000,7 +2000,7 @@ func TestClearLogicalBreakpoint(t *testing.T) {
 	// Clearing a logical breakpoint should clear all associated physical
 	// breakpoints.
 	// Issue #1955.
-	withTestClient2Extended("testinline", t, protest.EnableInlining, [3]string{}, func(c service.Client, fixture protest.Fixture) {
+	withTestClient2Extended("testinline", t, proctest.EnableInlining, [3]string{}, func(c service.Client, fixture proctest.Fixture) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.inlineThis"})
 		assertNoError(err, t, "CreateBreakpoint()")
 		t.Logf("breakpoint set at %#v", bp.Addrs)
@@ -2025,8 +2025,8 @@ func TestRedirects(t *testing.T) {
 		infile  = "redirect-input.txt"
 		outfile = "redirect-output.txt"
 	)
-	protest.AllowRecording(t)
-	withTestClient2Extended("redirect", t, 0, [3]string{infile, outfile, ""}, func(c service.Client, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestClient2Extended("redirect", t, 0, [3]string{infile, outfile, ""}, func(c service.Client, fixture proctest.Fixture) {
 		outpath := filepath.Join(fixture.BuildDir, outfile)
 		<-c.Continue()
 		buf, err := ioutil.ReadFile(outpath)
@@ -2056,11 +2056,11 @@ func TestRedirects(t *testing.T) {
 func TestDetachLeaveRunning(t *testing.T) {
 	listener, clientConn := service.ListenerPipe()
 	defer listener.Close()
-	var buildFlags protest.BuildFlags
+	var buildFlags proctest.BuildFlags
 	if buildMode == "pie" {
-		buildFlags |= protest.BuildModePIE
+		buildFlags |= proctest.BuildModePIE
 	}
-	fixture := protest.BuildFixture("testnextnethttp", buildFlags)
+	fixture := proctest.BuildFixture("testnextnethttp", buildFlags)
 
 	cmd := exec.Command(fixture.Path)
 	cmd.Stdout = os.Stdout
@@ -2137,7 +2137,7 @@ func TestStopServerWithClosedListener(t *testing.T) {
 	}
 	listener, err := net.Listen("tcp", "localhost:0")
 	assertNoError(err, t, "listener")
-	fixture := protest.BuildFixture("math", 0)
+	fixture := proctest.BuildFixture("math", 0)
 	server := rpccommon.NewServer(&service.Config{
 		Listener:           listener,
 		AcceptMulti:        false,

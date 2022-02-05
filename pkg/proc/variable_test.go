@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/hitzhangjie/dlv/pkg/proc"
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 func TestGoroutineCreationLocation(t *testing.T) {
-	protest.AllowRecording(t)
-	withTestProcess("goroutinestackprog", t, func(p *proc.Target, fixture protest.Fixture) {
+	proctest.AllowRecording(t)
+	withTestProcess("goroutinestackprog", t, func(p *proc.Target, fixture proctest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.agoroutine")
 		assertNoError(p.Continue(), t, "Continue()")
 

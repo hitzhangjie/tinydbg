@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/hitzhangjie/dlv/pkg/gobuild"
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 	"github.com/hitzhangjie/dlv/service/api"
 )
 
 func TestDebugger_LaunchNoMain(t *testing.T) {
-	fixturesDir := protest.FindFixturesDir()
+	fixturesDir := proctest.FindFixturesDir()
 	nomaindir := filepath.Join(fixturesDir, "nomaindir")
 
 	exepath := filepath.Join(nomaindir, "debug")

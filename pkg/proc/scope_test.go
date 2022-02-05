@@ -15,7 +15,7 @@ import (
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/pkg/proc"
-	protest "github.com/hitzhangjie/dlv/pkg/proc/test"
+	proctest "github.com/hitzhangjie/dlv/pkg/proc/test"
 )
 
 func TestScopeWithEscapedVariable(t *testing.T) {
@@ -23,7 +23,7 @@ func TestScopeWithEscapedVariable(t *testing.T) {
 		return
 	}
 
-	withTestProcess("scopeescapevareval", t, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcess("scopeescapevareval", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue")
 
 		// On the breakpoint there are two 'a' variables in scope, the one that
@@ -67,12 +67,12 @@ func TestScope(t *testing.T) {
 		return
 	}
 
-	fixturesDir := protest.FindFixturesDir()
+	fixturesDir := proctest.FindFixturesDir()
 	scopetestPath := filepath.Join(fixturesDir, "scopetest.go")
 
 	scopeChecks := getScopeChecks(scopetestPath, t)
 
-	withTestProcess("scopetest", t, func(p *proc.Target, fixture protest.Fixture) {
+	withTestProcess("scopetest", t, func(p *proc.Target, fixture proctest.Fixture) {
 		for i := range scopeChecks {
 			setFileBreakpoint(p, t, fixture.Source, scopeChecks[i].line)
 		}
