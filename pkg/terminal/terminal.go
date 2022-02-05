@@ -103,7 +103,7 @@ func New(client service.Client, conf *config.Config) *Term {
 	}
 
 	if strings.ToLower(os.Getenv("TERM")) != "dumb" {
-		t.stdout = getColorableWriter()
+		t.stdout = os.Stdout
 		t.colorEscapes = make(map[colorize.Style]string)
 		t.colorEscapes[colorize.NormalStyle] = terminalResetEscapeCode
 		wd := func(s string, defaultCode int) string {
