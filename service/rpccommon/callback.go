@@ -18,6 +18,7 @@ type rpcCallback struct {
 	setupDone chan struct{}
 }
 
+// Ensures rpcCallback satisfies the service.RPCCallback interface
 var _ service.RPCCallback = &rpcCallback{}
 
 func (cb *rpcCallback) Return(out interface{}, err error) {
