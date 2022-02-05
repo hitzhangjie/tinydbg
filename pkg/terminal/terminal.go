@@ -25,7 +25,6 @@ import (
 )
 
 const (
-	historyFile                 string = ".dbg_history"
 	terminalHighlightEscapeCode string = "\033[%2dm"
 	terminalResetEscapeCode     string = "\033[0m"
 )
@@ -59,8 +58,6 @@ type Term struct {
 	stdout       io.Writer
 	displays     []displayEntry
 	colorEscapes map[colorize.Style]string
-
-	historyFile *os.File
 
 	starlarkEnv *starbind.Env
 
@@ -243,19 +240,6 @@ func (t *Term) Run() (int, error) {
 		return
 	})
 
-	fullHistoryFile, err := config.GetConfigFilePath(historyFile)
-	if err != nil {
-		log.Error("Unable to load history file: %v.", err)
-	}
-
-	t.historyFile, err = os.OpenFile(fullHistoryFile, os.O_RDWR|os.O_CREATE, 0600)
-	if err != nil {
-		log.Error("Unable to open history file: %v. History will not be saved for this session.", err)
-	}
-	if _, err := t.line.ReadHistory(t.historyFile); err != nil {
-		log.Error("Unable to read history file: %v", err)
-	}
-
 	log.Info("Type 'help' for list of commands.")
 
 	var lastCmd string
@@ -374,15 +358,6 @@ func yesno(line *liner.State, question string) (bool, error) {
 }
 
 func (t *Term) handleExit() (int, error) {
-	if t.historyFile != nil {
-		if _, err := t.line.WriteHistory(t.historyFile); err != nil {
-			log.Error("readline history error: %v", err)
-		}
-		if err := t.historyFile.Close(); err != nil {
-			log.Error("error closing history file: %s", err)
-		}
-	}
-
 	t.quittingMutex.Lock()
 	quitting := t.quitting
 	t.quittingMutex.Unlock()
