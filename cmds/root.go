@@ -41,6 +41,9 @@ var (
 	traceTestBinary bool
 	traceStackDepth int
 	traceUseEBPF    bool
+
+	// logging level
+	verbose bool
 )
 
 // New returns an initialized command tree.
@@ -61,6 +64,11 @@ The goal of this tool is to provide a simple yet powerful interface for debuggin
 Pass flags to the program you are debugging using "--",  for example:
 "dlv exec ./hello -- server --config conf/config.toml"`,
 	DisableAutoGenTag: true,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if verbose {
+			log.SetFlags(log.LVerbose)
+		}
+	},
 }
 
 func init() {
@@ -70,6 +78,7 @@ func init() {
 	rootCommand.PersistentFlags().StringVar(&workingDir, "wd", "", "Working directory for running the program.")
 	rootCommand.PersistentFlags().BoolVarP(&checkGoVersion, "check-go-version", "", true, "Exits if the version of Go in use is not compatible (too old or too new) with the version of Delve.")
 	rootCommand.PersistentFlags().BoolVar(&disableASLR, "disable-aslr", false, "Disables address space randomization")
+	rootCommand.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose logging message")
 }
 
 func execute(attachPid int, processArgs []string, coreFile string, kind debugger.ExecuteKind, dlvArgs []string) int {

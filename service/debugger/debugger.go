@@ -492,7 +492,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint) (*api.Breakpoin
 	if err != nil {
 		return nil, err
 	}
-	log.Info("created breakpoint: %#v", createdBp)
+	log.Debug("breakpoint created: %#v", createdBp)
 	return createdBp, nil
 }
 
