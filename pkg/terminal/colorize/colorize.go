@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"unicode"
 )
 
 // Print prints to out a syntax highlighted version of the text read from
@@ -76,8 +77,6 @@ func Print(out io.Writer, path string, reader io.Reader, startLine, endLine, arr
 		toks = append(toks, colorTok{tok, int(start), int(end)})
 	}
 
-	emit(token.PACKAGE, f.Package, token.NoPos)
-
 	for _, cgrp := range f.Comments {
 		for _, cmnt := range cgrp.List {
 			emit(token.COMMENT, cmnt.Pos(), cmnt.End())
@@ -90,6 +89,25 @@ func Print(out io.Writer, path string, reader io.Reader, startLine, endLine, arr
 		}
 
 		switch n := n.(type) {
+		case *ast.File:
+			emit(token.PACKAGE, f.Package, token.NoPos)
+			return true
+		case *ast.FuncType:
+			if n.Func == token.NoPos {
+				// this implies `node` is a method of interface
+				var end token.Pos
+				var start token.Pos
+				end = n.Params.Pos() - 1
+				for i := end - 1; i >= 0; i-- {
+					if unicode.IsSpace(rune(buf[i])) {
+						start = i + 1
+						break
+					}
+				}
+				emit(token.FUNC, start, end)
+				return true
+			}
+			emit(token.FUNC, n.Pos(), n.End())
 		case *ast.BasicLit:
 			emit(n.Kind, n.Pos(), n.End())
 			return true
@@ -124,7 +142,7 @@ func Print(out io.Writer, path string, reader io.Reader, startLine, endLine, arr
 			emit(tokval.Interface().(token.Token), tokposval.Interface().(token.Pos), token.NoPos)
 		}
 
-		for _, kwname := range []string{"Case", "Begin", "Defer", "Pacakge", "For", "Func", "Go", "Interface", "Map", "Return", "Select", "Struct", "Switch"} {
+		for _, kwname := range []string{"Case", "Begin", "Defer", "Package", "For", "Func", "Go", "Interface", "Map", "Return", "Select", "Struct", "Switch"} {
 			kwposval := nval.FieldByName(kwname)
 			if kwposval != (reflect.Value{}) {
 				kwpos, ok := kwposval.Interface().(token.Pos)
