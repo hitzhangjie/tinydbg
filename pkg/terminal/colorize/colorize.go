@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
-	"unicode"
 )
 
 // Print prints to out a syntax highlighted version of the text read from
@@ -93,17 +92,10 @@ func Print(out io.Writer, path string, reader io.Reader, startLine, endLine, arr
 			emit(token.PACKAGE, f.Package, token.NoPos)
 			return true
 		case *ast.FuncType:
-			// this implies `node` is a method of interface
-			var end token.Pos
-			var start token.Pos
-			end = n.Params.Pos()
-			for i := end - 1; i >= 0; i-- {
-				if unicode.IsSpace(rune(buf[i])) {
-					start = i + 1
-					break
-				}
+			if n.Pos() == token.NoPos {
+				return true
 			}
-			emit(token.FUNC, start, end)
+			emit(token.FUNC, n.Pos(), token.NoPos)
 			return true
 		case *ast.BasicLit:
 			emit(n.Kind, n.Pos(), n.End())
