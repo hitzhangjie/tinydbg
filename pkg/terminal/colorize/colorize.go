@@ -93,21 +93,18 @@ func Print(out io.Writer, path string, reader io.Reader, startLine, endLine, arr
 			emit(token.PACKAGE, f.Package, token.NoPos)
 			return true
 		case *ast.FuncType:
-			if n.Func == token.NoPos {
-				// this implies `node` is a method of interface
-				var end token.Pos
-				var start token.Pos
-				end = n.Params.Pos() - 1
-				for i := end - 1; i >= 0; i-- {
-					if unicode.IsSpace(rune(buf[i])) {
-						start = i + 1
-						break
-					}
+			// this implies `node` is a method of interface
+			var end token.Pos
+			var start token.Pos
+			end = n.Params.Pos()
+			for i := end - 1; i >= 0; i-- {
+				if unicode.IsSpace(rune(buf[i])) {
+					start = i + 1
+					break
 				}
-				emit(token.FUNC, start, end)
-				return true
 			}
-			emit(token.FUNC, n.Pos(), n.End())
+			emit(token.FUNC, start, end)
+			return true
 		case *ast.BasicLit:
 			emit(n.Kind, n.Pos(), n.End())
 			return true
