@@ -57,7 +57,7 @@ func writeDefaultConfig(f *os.File) error {
 # Uncomment the following line and set your preferred ANSI color for source
 # line numbers in the (list) command. The default is 34 (dark blue). See
 # https://en.wikipedia.org/wiki/ANSI_escape_code#3/4_bit
-# source-list-line-color: "\x1b[34m"
+source-list-line-color: "\x1b[34m" # blue
 
 # Uncomment the following lines to change the colors used by syntax highlighting.
 # source-list-keyword-color: "\x1b[0m"
@@ -65,6 +65,11 @@ func writeDefaultConfig(f *os.File) error {
 # source-list-number-color: "\x1b[0m"
 # source-list-comment-color: "\x1b[95m"
 # source-list-arrow-color: "\x1b[93m"
+source-list-keyword-color: "\x1b[31m" # red
+source-list-string-color: "\x1b[37m"  # white
+source-list-number-color: "\x1b[34m"  # blue
+source-list-comment-color: "\x1b[32m" # green
+source-list-arrow-color: "\x1b[36m"   # cyan
 
 # Uncomment to change the number of lines printed above and below cursor when
 # listing source code.
