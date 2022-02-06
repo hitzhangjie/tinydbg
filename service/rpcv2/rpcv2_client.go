@@ -17,8 +17,7 @@ var _ service.Client = &rpcClient{}
 
 // rpcClient is a RPC service.Client.
 type rpcClient struct {
-	client *rpc.Client
-
+	client        *rpc.Client
 	retValLoadCfg *api.LoadConfig
 }
 
@@ -28,16 +27,12 @@ func NewClient(addr string) *rpcClient {
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
-	return newFromRPCClient(client)
-}
-
-func newFromRPCClient(client *rpc.Client) *rpcClient {
 	return &rpcClient{client: client}
 }
 
 // NewClientFromConn creates a new rpcClient from the given connection.
 func NewClientFromConn(conn net.Conn) *rpcClient {
-	return newFromRPCClient(jsonrpc.NewClient(conn))
+	return &rpcClient{client: jsonrpc.NewClient(conn)}
 }
 
 func (c *rpcClient) ProcessPid() int {
@@ -513,6 +508,7 @@ func (c *rpcClient) CoreDumpCancel() error {
 	return c.call("DumpCancel", DumpCancelIn{}, out)
 }
 
+// call sends any RPC request to debugger service
 func (c *rpcClient) call(method string, args, reply interface{}) error {
 	return c.client.Call("RPCServer."+method, args, reply)
 }

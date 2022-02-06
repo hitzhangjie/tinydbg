@@ -246,6 +246,8 @@ func (d *Debugger) Detach(kill bool) error {
 
 func (d *Debugger) detach(kill bool) error {
 	if d.config.AttachPid == 0 {
+		// tracee process is started by debugger, not an existing process,
+		// so we should kill it when detaching.
 		kill = true
 	}
 	return d.target.Detach(kill)

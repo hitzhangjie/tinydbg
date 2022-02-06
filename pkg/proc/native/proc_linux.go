@@ -196,6 +196,8 @@ func (dbp *nativeProcess) kill() error {
 	if !dbp.threads[dbp.pid].Stopped() {
 		return errors.New("process must be stopped in order to kill it")
 	}
+	// send SIGKILL to the every process in the same process group whose pgid is -dbp.pid,
+	// see `man 2 kill`.
 	if err := sys.Kill(-dbp.pid, sys.SIGKILL); err != nil {
 		return errors.New("could not deliver signal " + err.Error())
 	}
@@ -212,7 +214,7 @@ func (dbp *nativeProcess) kill() error {
 		}
 		if wpid == dbp.pid && status != nil && status.Signaled() && status.Signal() == sys.SIGKILL {
 			dbp.postExit()
-			return err
+			return nil
 		}
 	}
 }

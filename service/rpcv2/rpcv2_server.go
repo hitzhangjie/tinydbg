@@ -13,14 +13,16 @@ import (
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
 
-// RPCServer rpc server of the debugger instance.
+// RPCServer RPC server serves the RPC reqeust from RPC client.
+//
+// RPCService will interact with the inner debugger service to control and query
+// the states of the tracee, then responds the RPC client.
 type RPCServer struct {
-	// config is all the information necessary to start the debugger and server.
-	config *service.Config
-	// debugger is a debugger service.
-	debugger *debugger.Debugger
+	config   *service.Config    // all the information necessary to start the debugger and server.
+	debugger *debugger.Debugger // the debugger service
 }
 
+// NewServer returns a new RPC server.
 func NewServer(config *service.Config, debugger *debugger.Debugger) *RPCServer {
 	return &RPCServer{config, debugger}
 }
