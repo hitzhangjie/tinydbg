@@ -55,18 +55,18 @@ const (
 	ansiBrWhite   = 97
 )
 
-func validColorizeCode(code int) string {
+func colorizeCode(code int) string {
 	return fmt.Sprintf(terminalHighlightEscapeCode, code)
 }
 
 var colors = map[colorize.Style]string{
-	colorize.KeywordStyle: validColorizeCode(ansiYellow),
-	colorize.ArrowStyle:   validColorizeCode(ansiBlue),
-	colorize.CommentStyle: validColorizeCode(ansiGreen),
-	colorize.LineNoStyle:  validColorizeCode(ansiBrWhite),
-	colorize.NormalStyle:  validColorizeCode(ansiBrWhite),
-	colorize.NumberStyle:  validColorizeCode(ansiBrCyan),
-	colorize.StringStyle:  validColorizeCode(ansiBrBlue),
+	colorize.KeywordStyle: colorizeCode(ansiYellow),
+	colorize.ArrowStyle:   colorizeCode(ansiBlue),
+	colorize.CommentStyle: colorizeCode(ansiGreen),
+	colorize.LineNoStyle:  colorizeCode(ansiBrWhite),
+	colorize.NormalStyle:  colorizeCode(ansiBrWhite),
+	colorize.NumberStyle:  colorizeCode(ansiBrCyan),
+	colorize.StringStyle:  colorizeCode(ansiBrBlue),
 }
 
 func TestPrint(t *testing.T) {
@@ -74,5 +74,5 @@ func TestPrint(t *testing.T) {
 		return []byte(src), nil
 	})
 	defer p.Reset()
-	colorize.Print(os.Stdout, "main.go", bytes.NewBufferString(src), 1, 18, 20, colors)
+	colorize.Print(os.Stdout, "main.go", bytes.NewBufferString(src), 1, 30, 10, colors)
 }
