@@ -1,4 +1,4 @@
-package rpcv2
+package service
 
 import (
 	"errors"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
 	"github.com/hitzhangjie/dlv/pkg/proc"
-	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
 )
@@ -18,12 +17,12 @@ import (
 // RPCService will interact with the inner debugger service to control and query
 // the states of the tracee, then responds the RPC client.
 type RPCServer struct {
-	config   *service.Config    // all the information necessary to start the debugger and server.
+	config   *Config            // all the information necessary to start the debugger and server.
 	debugger *debugger.Debugger // the debugger service
 }
 
-// NewServer returns a new RPC server.
-func NewServer(config *service.Config, debugger *debugger.Debugger) *RPCServer {
+// NewRPCServer returns a new RPC server.
+func NewRPCServer(config *Config, debugger *debugger.Debugger) *RPCServer {
 	return &RPCServer{config, debugger}
 }
 
@@ -45,7 +44,7 @@ func (s *RPCServer) Detach(arg DetachIn, out *DetachOut) error {
 }
 
 // Restart restarts program.
-func (s *RPCServer) Restart(arg RestartIn, cb service.RPCCallback) {
+func (s *RPCServer) Restart(arg RestartIn, cb RPCCallback) {
 	close(cb.SetupDoneChan())
 	if s.config.DebuggerConfig.AttachPid != 0 {
 		cb.Return(nil, errors.New("cannot restart process Delve did not create"))
@@ -58,7 +57,7 @@ func (s *RPCServer) Restart(arg RestartIn, cb service.RPCCallback) {
 }
 
 // State returns the current debugger's state.
-func (s *RPCServer) State(arg StateIn, cb service.RPCCallback) {
+func (s *RPCServer) State(arg StateIn, cb RPCCallback) {
 	close(cb.SetupDoneChan())
 	var out StateOut
 	st, err := s.debugger.State(arg.NonBlocking)
@@ -71,7 +70,7 @@ func (s *RPCServer) State(arg StateIn, cb service.RPCCallback) {
 }
 
 // Command interrupts, continues and steps through the program.
-func (s *RPCServer) Command(command api.DebuggerCommand, cb service.RPCCallback) {
+func (s *RPCServer) Command(command api.DebuggerCommand, cb RPCCallback) {
 	st, err := s.debugger.Command(&command, cb.SetupDoneChan())
 	if err != nil {
 		cb.Return(nil, err)
@@ -558,7 +557,7 @@ func (s *RPCServer) ExamineMemory(arg ExamineMemoryIn, out *ExaminedMemoryOut) e
 	return nil
 }
 
-func (s *RPCServer) StopRecording(arg StopRecordingIn, cb service.RPCCallback) {
+func (s *RPCServer) StopRecording(arg StopRecordingIn, cb RPCCallback) {
 	close(cb.SetupDoneChan())
 	var out StopRecordingOut
 	err := s.debugger.StopRecording()

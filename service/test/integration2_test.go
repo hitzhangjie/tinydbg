@@ -22,8 +22,6 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
-	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 var normalLoadConfig = api.LoadConfig{
@@ -68,7 +66,7 @@ func startServer(name string, buildFlags proctest.BuildFlags, t *testing.T, redi
 			redirects[i] = filepath.Join(fixture.BuildDir, redirects[i])
 		}
 	}
-	server := rpccommon.NewServer(&service.Config{
+	server := service.NewServer(&service.Config{
 		Listener:    listener,
 		ProcessArgs: []string{fixture.Path},
 		DebuggerConfig: debugger.Config{
@@ -85,7 +83,7 @@ func startServer(name string, buildFlags proctest.BuildFlags, t *testing.T, redi
 
 func withTestClient2Extended(name string, t *testing.T, buildFlags proctest.BuildFlags, redirects [3]string, fn func(c service.Client, fixture proctest.Fixture)) {
 	clientConn, fixture := startServer(name, buildFlags, t, redirects)
-	client := rpcv2.NewClientFromConn(clientConn)
+	client := service.NewClientFromConn(clientConn)
 	defer func() {
 		client.Detach(true)
 	}()
@@ -99,7 +97,7 @@ func TestRunWithInvalidPath(t *testing.T) {
 		t.Fatalf("couldn't start listener: %s\n", err)
 	}
 	defer listener.Close()
-	server := rpccommon.NewServer(&service.Config{
+	server := service.NewServer(&service.Config{
 		Listener:    listener,
 		ProcessArgs: []string{"invalid_path"},
 		DebuggerConfig: debugger.Config{
@@ -1755,7 +1753,7 @@ func TestAcceptMulticlient(t *testing.T) {
 		defer close(serverDone)
 		defer listener.Close()
 		disconnectChan := make(chan struct{})
-		server := rpccommon.NewServer(&service.Config{
+		server := service.NewServer(&service.Config{
 			Listener:       listener,
 			ProcessArgs:    []string{proctest.BuildFixture("testvariables2", 0).Path},
 			AcceptMulti:    true,
@@ -1770,10 +1768,10 @@ func TestAcceptMulticlient(t *testing.T) {
 		<-disconnectChan
 		server.Stop()
 	}()
-	client1 := rpcv2.NewClient(listener.Addr().String())
+	client1 := service.NewClient(listener.Addr().String())
 	client1.Disconnect(false)
 
-	client2 := rpcv2.NewClient(listener.Addr().String())
+	client2 := service.NewClient(listener.Addr().String())
 	state := <-client2.Continue()
 	if state.CurrentThread.Function.Name() != "main.main" {
 		t.Fatalf("bad state after continue: %v\n", state)
@@ -1792,7 +1790,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 	go func() {
 		defer close(serverStopped)
 		defer listener.Close()
-		server := rpccommon.NewServer(&service.Config{
+		server := service.NewServer(&service.Config{
 			Listener:       listener,
 			ProcessArgs:    []string{proctest.BuildFixture("http_server", proctest.AllNonOptimized).Path},
 			AcceptMulti:    true,
@@ -1806,7 +1804,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 		server.Stop()
 	}()
 
-	client := rpcv2.NewClient(listener.Addr().String())
+	client := service.NewClient(listener.Addr().String())
 	client.Disconnect(true /*continue*/)
 	time.Sleep(10 * time.Millisecond) // give server time to start running
 	close(disconnectChan)             // stop the server
@@ -1956,8 +1954,8 @@ type brokenRPCClient struct {
 
 func (c *brokenRPCClient) Detach(kill bool) error {
 	defer c.client.Close()
-	out := new(rpcv2.DetachOut)
-	return c.call("Detach", rpcv2.DetachIn{Kill: kill}, out)
+	out := new(service.DetachOut)
+	return c.call("Detach", service.DetachIn{Kill: kill}, out)
 }
 
 func (c *brokenRPCClient) call(method string, args, reply interface{}) error {
@@ -2082,7 +2080,7 @@ func TestDetachLeaveRunning(t *testing.T) {
 		}
 	}
 
-	server := rpccommon.NewServer(&service.Config{
+	server := service.NewServer(&service.Config{
 		Listener: listener,
 		DebuggerConfig: debugger.Config{
 			AttachPid:  cmd.Process.Pid,
@@ -2093,7 +2091,7 @@ func TestDetachLeaveRunning(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := rpcv2.NewClientFromConn(clientConn)
+	client := service.NewClientFromConn(clientConn)
 	defer server.Stop()
 	assertNoError(client.Detach(false), t, "Detach")
 }
@@ -2138,7 +2136,7 @@ func TestStopServerWithClosedListener(t *testing.T) {
 	listener, err := net.Listen("tcp", "localhost:0")
 	assertNoError(err, t, "listener")
 	fixture := proctest.BuildFixture("math", 0)
-	server := rpccommon.NewServer(&service.Config{
+	server := service.NewServer(&service.Config{
 		Listener:           listener,
 		AcceptMulti:        false,
 		CheckLocalConnUser: true,

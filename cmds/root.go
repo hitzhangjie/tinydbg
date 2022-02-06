@@ -15,8 +15,6 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 var (
@@ -125,7 +123,7 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 
 	// Create and start a debugger server
 	var server service.Server
-	server = rpccommon.NewServer(&service.Config{
+	server = service.NewServer(&service.Config{
 		Listener:       listener,
 		ProcessArgs:    processArgs,
 		AcceptMulti:    acceptMulti,
@@ -161,7 +159,7 @@ func execute(attachPid int, processArgs []string, coreFile string, kind debugger
 	var status int
 	if headless {
 		if continueOnStart {
-			client := rpcv2.NewClient(listener.Addr().String())
+			client := service.NewClient(listener.Addr().String())
 			client.Disconnect(true) // true = continue after disconnect
 		}
 		waitForDisconnectSignal(disconnectChan)
@@ -207,9 +205,9 @@ func connect(addr string, clientConn net.Conn, kind debugger.ExecuteKind) int {
 	// Create and start a terminal - attach to running instance
 	var client service.Client
 	if clientConn != nil {
-		client = rpcv2.NewClientFromConn(clientConn)
+		client = service.NewClientFromConn(clientConn)
 	} else {
-		client = rpcv2.NewClient(addr)
+		client = service.NewClient(addr)
 	}
 	if client.IsMulticlient() {
 		state, _ := client.GetStateNonBlocking()

@@ -169,7 +169,7 @@ func TestTypecheckRPC(t *testing.T) {
 		Mode: packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedName | packages.NeedCompiledGoFiles | packages.NeedTypes,
 		Fset: fset,
 	}
-	pkgs, err := packages.Load(cfg, "github.com/hitzhangjie/dlv/service/rpcv2")
+	pkgs, err := packages.Load(cfg, "github.com/hitzhangjie/dlv/service")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestTypecheckRPC(t *testing.T) {
 	var serverMethods map[string]*types.Func
 	var info *types.Info
 	packages.Visit(pkgs, func(pkg *packages.Package) bool {
-		if pkg.PkgPath != "github.com/hitzhangjie/dlv/service/rpcv2" {
+		if pkg.PkgPath != "github.com/hitzhangjie/dlv/service" {
 			return true
 		}
 		t.Logf("package found: %v", pkg.PkgPath)
@@ -196,7 +196,7 @@ func TestTypecheckRPC(t *testing.T) {
 	errcount := 0
 
 	for _, decl := range clientAst.Decls {
-		fndecl := publicMethodOf(decl, "rpcClient")
+		fndecl := publicMethodOf(decl, "RPCClient")
 		if fndecl == nil {
 			continue
 		}

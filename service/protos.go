@@ -1,4 +1,4 @@
-package rpcv2
+package service
 
 import (
 	"time"
@@ -47,6 +47,7 @@ type RestartIn struct {
 	NewArgs []string
 
 	// When Rerecord is set the target will be rerecorded
+	// TODO we don't use `rr` as backend, so no recording is supported, we should remove this
 	Rerecord bool
 
 	// When Rebuild is set the process will be build again

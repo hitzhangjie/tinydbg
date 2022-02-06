@@ -14,8 +14,6 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 // 'trace' subcommand.
@@ -95,7 +93,7 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 		}
 
 		// Create and start a debug server
-		server := rpccommon.NewServer(&service.Config{
+		server := service.NewServer(&service.Config{
 			Listener:    listener,
 			ProcessArgs: processArgs,
 			DebuggerConfig: debugger.Config{
@@ -108,7 +106,7 @@ func traceCmdRun(cmd *cobra.Command, args []string) {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		client := rpcv2.NewClientFromConn(clientConn)
+		client := service.NewClientFromConn(clientConn)
 		funcs, err := client.ListFunctions(regexp)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

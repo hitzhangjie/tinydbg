@@ -21,8 +21,6 @@ import (
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
 	"github.com/hitzhangjie/dlv/service/debugger"
-	"github.com/hitzhangjie/dlv/service/rpccommon"
-	"github.com/hitzhangjie/dlv/service/rpcv2"
 )
 
 var testBackend, buildMode string
@@ -147,7 +145,7 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 	if buildMode == "pie" {
 		buildFlags |= test.BuildModePIE
 	}
-	server := rpccommon.NewServer(&service.Config{
+	server := service.NewServer(&service.Config{
 		Listener:       listener,
 		ProcessArgs:    []string{test.BuildFixture(name, buildFlags).Path},
 		DebuggerConfig: debugger.Config{},
@@ -155,7 +153,7 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 	if err := server.Run(); err != nil {
 		t.Fatal(err)
 	}
-	client := rpcv2.NewClient(listener.Addr().String())
+	client := service.NewClient(listener.Addr().String())
 	defer func() {
 		client.Detach(true)
 	}()
