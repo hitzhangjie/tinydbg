@@ -420,8 +420,8 @@ type BreakpointInfo struct {
 	Locals     []Variable   `json:"locals,omitempty"`
 }
 
-// EvalScope is the scope a command should
-// be evaluated in. Describes the goroutine and frame number.
+// EvalScope is the scope a command should be evaluated in.
+// It describes the goroutine and frame number.
 type EvalScope struct {
 	GoroutineID  int
 	Frame        int

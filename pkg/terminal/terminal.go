@@ -67,22 +67,18 @@ func New(client service.Client, conf *config.Config) *Term {
 	}
 
 	t := &Term{
-		client: client,
-		conf:   conf,
-		prompt: "(dlv) ",
-		line:   liner.NewLiner(),
-		cmds:   cmds,
-		stdout: os.Stdout,
-	}
-
-	if strings.ToLower(os.Getenv("TERM")) != "dumb" {
-		t.stdout = os.Stdout
-		t.colorEscapes = buildColorEscapes(conf)
+		client:       client,
+		conf:         conf,
+		prompt:       "(dlv) ",
+		line:         liner.NewLiner(),
+		cmds:         cmds,
+		stdout:       os.Stdout,
+		colorEscapes: buildColorEscapes(conf),
 	}
 
 	if client != nil {
-		lcfg := t.loadConfig()
-		client.SetReturnValuesLoadConfig(&lcfg)
+		cfg := t.loadConfig()
+		client.SetReturnValuesLoadConfig(&cfg)
 	}
 
 	t.starlarkEnv = starbind.New(starlarkContext{t})

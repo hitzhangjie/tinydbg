@@ -37,13 +37,14 @@ import (
 
 const optimizedFunctionWarning = "Warning: debugging optimized function"
 
+// TODO what does cmdPrefix do?
 type cmdPrefix int
 
 const (
-	noPrefix = cmdPrefix(0)
-	onPrefix = cmdPrefix(1 << iota)
-	deferredPrefix
-	revPrefix
+	noPrefix       = cmdPrefix(0)
+	onPrefix       = cmdPrefix(1 << iota) // TODO what's this?
+	deferredPrefix                        // deferred?
+	revPrefix                             // reverse?
 )
 
 type callContext struct {
@@ -68,9 +69,9 @@ type cmdfunc func(t *Term, ctx callContext, args string) error
 
 // command debugging command
 type command struct {
-	aliases         []string // command aliases, like `h` for `help`
-	builtinAliases  []string
-	group           commandGroup
+	aliases         []string     // command aliases, like `h` for `help`
+	builtinAliases  []string     // TODO what does this do?
+	group           commandGroup // TODO cobra supports this! why do this mannually?
 	allowedPrefixes cmdPrefix
 	helpMsg         string
 	cmdFn           cmdfunc

@@ -10,12 +10,14 @@ type starlarkContext struct {
 	term *Term
 }
 
+// Ensures starlarkContext statisfies the starbind.Context interface
 var _ starbind.Context = starlarkContext{}
 
 func (ctx starlarkContext) Client() service.Client {
 	return ctx.term.client
 }
 
+// TODO cobra supports this, why do this mannualy?
 func (ctx starlarkContext) RegisterCommand(name, helpMsg string, fn func(args string) error) {
 	cmdfn := func(t *Term, ctx callContext, args string) error {
 		return fn(args)

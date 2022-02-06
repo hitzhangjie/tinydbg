@@ -428,9 +428,11 @@ func (c *RPCServer) AttachedToExistingProcess(arg AttachedToExistingProcessIn, o
 //  * *<address> returns the location corresponding to the specified address
 //
 // NOTE: this function does not actually set breakpoints.
-func (c *RPCServer) FindLocation(arg FindLocationIn, out *FindLocationOut) error {
-	var err error
-	out.Locations, err = c.debugger.FindLocation(arg.Scope.GoroutineID, arg.Scope.Frame, arg.Scope.DeferredCall, arg.Loc, arg.IncludeNonExecutableLines, arg.SubstitutePathRules)
+func (c *RPCServer) FindLocation(arg FindLocationIn, out *FindLocationOut) (err error) {
+	goid := arg.Scope.GoroutineID
+	frame := arg.Scope.Frame
+	deferred := arg.Scope.DeferredCall
+	out.Locations, err = c.debugger.FindLocation(goid, frame, deferred, arg.Loc, arg.IncludeNonExecutableLines, arg.SubstitutePathRules)
 	return err
 }
 

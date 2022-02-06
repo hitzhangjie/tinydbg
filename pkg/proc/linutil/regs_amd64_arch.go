@@ -13,7 +13,7 @@ import (
 // backend and core/linux backends, on AMD64.
 type AMD64Registers struct {
 	Regs     *AMD64PtraceRegs
-	Fpregs   []proc.Register
+	Fpregs   []proc.Register // floating point registers
 	Fpregset *amd64util.AMD64Xstate
 
 	loadFpRegs func(*AMD64Registers) error

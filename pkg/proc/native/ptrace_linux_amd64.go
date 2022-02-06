@@ -9,8 +9,8 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc/amd64util"
 )
 
-// ptraceGetRegset returns floating point registers of the specified thread
-// using PTRACE.
+// ptraceGetRegset returns floating point registers of the specified thread using PTRACE.
+//
 // See amd64_linux_fetch_inferior_registers in gdb/amd64-linux-nat.c.html
 // and amd64_supply_xsave in gdb/amd64-tdep.c.html
 // and Section 13.1 (and following) of Intel® 64 and IA-32 Architectures Software Developer’s Manual, Volume 1: Basic Architecture
