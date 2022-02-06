@@ -24,30 +24,6 @@ import (
 	"github.com/hitzhangjie/dlv/service/api"
 )
 
-const (
-	terminalHighlightEscapeCode string = "\033[%2dm"
-	terminalResetEscapeCode     string = "\033[0m"
-)
-
-const (
-	ansiBlack     = 30
-	ansiRed       = 31
-	ansiGreen     = 32
-	ansiYellow    = 33
-	ansiBlue      = 34
-	ansiMagenta   = 35
-	ansiCyan      = 36
-	ansiWhite     = 37
-	ansiBrBlack   = 90
-	ansiBrRed     = 91
-	ansiBrGreen   = 92
-	ansiBrYellow  = 93
-	ansiBrBlue    = 94
-	ansiBrMagenta = 95
-	ansiBrCyan    = 96
-	ansiBrWhite   = 97
-)
-
 // Term represents the terminal running dlv.
 type Term struct {
 	client       service.Client
@@ -101,30 +77,7 @@ func New(client service.Client, conf *config.Config) *Term {
 
 	if strings.ToLower(os.Getenv("TERM")) != "dumb" {
 		t.stdout = os.Stdout
-		t.colorEscapes = make(map[colorize.Style]string)
-		t.colorEscapes[colorize.NormalStyle] = terminalResetEscapeCode
-		wd := func(s string, defaultCode int) string {
-			if s == "" {
-				return fmt.Sprintf(terminalHighlightEscapeCode, defaultCode)
-			}
-			return s
-		}
-		t.colorEscapes[colorize.KeywordStyle] = conf.SourceListKeywordColor
-		t.colorEscapes[colorize.StringStyle] = wd(conf.SourceListStringColor, ansiGreen)
-		t.colorEscapes[colorize.NumberStyle] = conf.SourceListNumberColor
-		t.colorEscapes[colorize.CommentStyle] = wd(conf.SourceListCommentColor, ansiBrMagenta)
-		t.colorEscapes[colorize.ArrowStyle] = wd(conf.SourceListArrowColor, ansiYellow)
-		switch x := conf.SourceListLineColor.(type) {
-		case string:
-			t.colorEscapes[colorize.LineNoStyle] = x
-		case int:
-			if (x > ansiWhite && x < ansiBrBlack) || x < ansiBlack || x > ansiBrWhite {
-				x = ansiBlue
-			}
-			t.colorEscapes[colorize.LineNoStyle] = fmt.Sprintf(terminalHighlightEscapeCode, x)
-		case nil:
-			t.colorEscapes[colorize.LineNoStyle] = fmt.Sprintf(terminalHighlightEscapeCode, ansiBlue)
-		}
+		t.colorEscapes = buildColorEscapes(conf)
 	}
 
 	if client != nil {
