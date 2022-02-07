@@ -240,16 +240,6 @@ func testName(t testing.TB) string {
 	return "unknown"
 }
 
-// AllowRecording allows the calling test to be used with a recording of the
-// fixture.
-func AllowRecording(t testing.TB) {
-	recordingAllowedMu.Lock()
-	defer recordingAllowedMu.Unlock()
-	name := testName(t)
-	t.Logf("enabling recording for %s", name)
-	recordingAllowed[name] = true
-}
-
 // SafeRemoveAll removes dir and its contents but only as long as dir does
 // not contain directories.
 func SafeRemoveAll(dir string) {
@@ -273,19 +263,6 @@ func SafeRemoveAll(dir string) {
 		}
 	}
 	os.Remove(dir)
-}
-
-// DefaultTestBackend changes the value of testBackend to be the default
-// test backend for the OS, if testBackend isn't already set.
-func DefaultTestBackend(testBackend *string) {
-	if *testBackend != "" {
-		return
-	}
-	*testBackend = os.Getenv("PROCTEST")
-	if *testBackend != "" {
-		return
-	}
-	*testBackend = "native"
 }
 
 // WithPlugins builds the fixtures in plugins as plugins and returns them.

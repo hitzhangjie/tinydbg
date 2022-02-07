@@ -15,10 +15,6 @@ import (
 )
 
 var (
-	// ErrNotRecorded is returned when an action is requested that is
-	// only possible on recorded (traced) programs.
-	ErrNotRecorded = errors.New("not a recording")
-
 	// ErrNoRuntimeAllG is returned when the runtime.allg list could
 	// not be found.
 	ErrNoRuntimeAllG = errors.New("could not find goroutine array")
@@ -547,28 +543,3 @@ func (t *Target) dwrapUnwrap(fn *Function) *Function {
 	}
 	return fn
 }
-
-type dummyRecordingManipulation struct {
-}
-
-// Recorded always returns false for the native proc backend.
-func (*dummyRecordingManipulation) Recorded() (bool, string) { return false, "" }
-
-// When will always return an empty string and nil, not supported on native proc backend.
-func (*dummyRecordingManipulation) When() (string, error) { return "", nil }
-
-// Checkpoint will always return an error on the native proc backend,
-// only supported for recorded traces.
-func (*dummyRecordingManipulation) Checkpoint(string) (int, error) { return -1, ErrNotRecorded }
-
-// Checkpoints will always return an error on the native proc backend,
-// only supported for recorded traces.
-func (*dummyRecordingManipulation) Checkpoints() ([]Checkpoint, error) { return nil, ErrNotRecorded }
-
-// ClearCheckpoint will always return an error on the native proc backend,
-// only supported in recorded traces.
-func (*dummyRecordingManipulation) ClearCheckpoint(int) error { return ErrNotRecorded }
-
-// Restart will always return an error in the native proc backend, only for
-// recorded traces.
-func (*dummyRecordingManipulation) Restart(string) (Thread, error) { return nil, ErrNotRecorded }

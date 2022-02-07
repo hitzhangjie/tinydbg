@@ -43,12 +43,6 @@ See also: "help print".`
 
 	restartCmdHelpMsg = `Restart process.
 
-For recorded targets the command takes the following forms:
-
-	restart							resets to the start of the recording
-	restart [checkpoint]			resets the recording to the given checkpoint
-	restart -r [newargv...]			re-records the target process
-
 For live targets the command takes the following forms:
 
 	restart [newargv...] 			restarts the process

@@ -1,19 +1,21 @@
 package main
 
-import "runtime"
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
-func f() {
+func ff() {
 	runtime.Breakpoint()
 }
 
-func g() int {
+func gg() int {
 	runtime.Breakpoint()
 	return 3
 }
 
 func main() {
-	f()
-	n := g() + 1
+	ff()
+	n := gg() + 1
 	fmt.Println(n)
 }
