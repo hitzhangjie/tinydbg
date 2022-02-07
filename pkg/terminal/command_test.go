@@ -31,7 +31,6 @@ func TestMain(m *testing.M) {
 	var logConf string
 	flag.StringVar(&logConf, "log", "", "configures logging")
 	flag.Parse()
-	test.DefaultTestBackend(&testBackend)
 	if buildMode != "" && buildMode != "pie" {
 		log.Error("unknown build mode %q", buildMode)
 		os.Exit(1)
@@ -238,7 +237,6 @@ func TestExecuteFile(t *testing.T) {
 }
 
 func TestTrace(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("issue573", t, func(term *FakeTerminal) {
 		term.MustExec("trace foo")
 		out, _ := term.Exec("continue")
@@ -254,7 +252,6 @@ func TestTrace(t *testing.T) {
 }
 
 func TestTraceWithName(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("issue573", t, func(term *FakeTerminal) {
 		term.MustExec("trace foobar foo")
 		out, _ := term.Exec("continue")
@@ -270,7 +267,6 @@ func TestTraceWithName(t *testing.T) {
 }
 
 func TestTraceOnNonFunctionEntry(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("issue573", t, func(term *FakeTerminal) {
 		term.MustExec("trace foobar issue573.go:19")
 		out, _ := term.Exec("continue")
@@ -299,7 +295,6 @@ func TestExitStatus(t *testing.T) {
 func TestScopePrefix(t *testing.T) {
 	const goroutinesLinePrefix = "  Goroutine "
 	const goroutinesCurLinePrefix = "* Goroutine "
-	test.AllowRecording(t)
 
 	lenient := 0
 
@@ -447,7 +442,6 @@ func TestScopePrefix(t *testing.T) {
 
 func TestOnPrefix(t *testing.T) {
 	const prefix = "\ti: "
-	test.AllowRecording(t)
 	lenient := false
 
 	withTestTerminal("goroutinestackprog", t, func(term *FakeTerminal) {
@@ -494,7 +488,6 @@ func TestOnPrefix(t *testing.T) {
 }
 
 func TestNoVars(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("locationsUpperCase", t, func(term *FakeTerminal) {
 		term.MustExec("b main.main")
 		term.MustExec("continue")
@@ -506,7 +499,6 @@ func TestNoVars(t *testing.T) {
 
 func TestOnPrefixLocals(t *testing.T) {
 	const prefix = "\ti: "
-	test.AllowRecording(t)
 	withTestTerminal("goroutinestackprog", t, func(term *FakeTerminal) {
 		term.MustExec("b agobp main.agoroutine")
 		term.MustExec("on agobp args -v")
@@ -619,7 +611,6 @@ func TestListCmd(t *testing.T) {
 }
 
 func TestNextWithCount(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("nextcond", t, func(term *FakeTerminal) {
 		term.MustExec("break main.main")
 		listIsAt(t, term, "continue", 8, -1, -1)
@@ -955,39 +946,6 @@ func TestPrintCastToInterface(t *testing.T) {
 		out := term.MustExec(`p (*"interface {}")(uintptr(&iface2))`)
 		t.Logf("%q", out)
 	})
-}
-
-func TestParseNewArgv(t *testing.T) {
-	testCases := []struct {
-		in      string
-		tgtargs string
-		tgterr  string
-	}{
-		{"-noargs", "", ""},
-		{"-noargs arg1", "", "too many arguments to restart"},
-		{"arg1 arg2", "arg1 | arg2", ""},
-	}
-
-	for _, tc := range testCases {
-		resetArgs, newArgv, err := parseNewArgv(tc.in)
-		t.Logf("%q -> %q %v\n", tc.in, newArgv, err)
-		if tc.tgterr != "" {
-			if err == nil {
-				t.Errorf("Expected error %q, got no error", tc.tgterr)
-			} else if errstr := err.Error(); errstr != tc.tgterr {
-				t.Errorf("Expected error %q, got error %q", tc.tgterr, errstr)
-			}
-		} else {
-			if !resetArgs {
-				t.Errorf("parse error, resetArgs is false")
-				continue
-			}
-			argvstr := strings.Join(newArgv, " | ")
-			if argvstr != tc.tgtargs {
-				t.Errorf("Expected new arguments %q, got %q", tc.tgtargs, argvstr)
-			}
-		}
-	}
 }
 
 func TestContinueUntil(t *testing.T) {

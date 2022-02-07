@@ -242,7 +242,7 @@ func (d *Debugger) detach(kill bool) error {
 // If the target process is a recording it will restart it from the given
 // position. If pos starts with 'c' it's a checkpoint ID, otherwise it's an
 // event number. If resetArgs is true, newArgs will replace the process args.
-func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
+func (d *Debugger) Restart(rebuild bool) ([]api.DiscardedBreakpoint, error) {
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
 
@@ -260,9 +260,7 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 	if err := d.detach(true); err != nil {
 		return nil, err
 	}
-	if resetArgs {
-		d.processArgs = append([]string{d.processArgs[0]}, newArgs...)
-	}
+
 	var p *proc.Target
 	var err error
 

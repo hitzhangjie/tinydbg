@@ -41,15 +41,7 @@ Note that writes that do not change the value of the watched memory address migh
 
 See also: "help print".`
 
-	restartCmdHelpMsg = `Restart process.
-
-For live targets the command takes the following forms:
-
-	restart [newargv...] 			restarts the process
-
-If newargv is omitted the process is restarted (or re-recorded) with the same argument vector.
-If -noargs is specified instead, the argument vector is cleared.
-`
+	restartCmdHelpMsg = "Restart process."
 	rebuildCmdHelpMsg = "Rebuild the target executable and restarts it. It does not work if the executable was not built by delve."
 
 	continueCmdHelpMsg = `Run until breakpoint or program termination.

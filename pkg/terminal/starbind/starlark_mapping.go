@@ -4,11 +4,9 @@ package starbind
 
 import (
 	"fmt"
-
-	"go.starlark.net/starlark"
-
 	"github.com/hitzhangjie/dlv/service"
 	"github.com/hitzhangjie/dlv/service/api"
+	"go.starlark.net/starlark"
 )
 
 func (env *Env) starlarkPredeclare() starlark.StringDict {
@@ -114,36 +112,6 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		}
 		return env.interfaceToStarlarkValue(rpcRet), nil
 	})
-	r["checkpoint"] = starlark.NewBuiltin("checkpoint", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		if err := isCancelled(thread); err != nil {
-			return starlark.None, decorateError(thread, err)
-		}
-		var rpcArgs service.CheckpointIn
-		var rpcRet service.CheckpointOut
-		if len(args) > 0 && args[0] != starlark.None {
-			err := unmarshalStarlarkValue(args[0], &rpcArgs.Where, "Where")
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		for _, kv := range kwargs {
-			var err error
-			switch kv[0].(starlark.String) {
-			case "Where":
-				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Where, "Where")
-			default:
-				err = fmt.Errorf("unknown argument %q", kv[0])
-			}
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		err := env.ctx.Client().CallAPI("Checkpoint", &rpcArgs, &rpcRet)
-		if err != nil {
-			return starlark.None, err
-		}
-		return env.interfaceToStarlarkValue(rpcRet), nil
-	})
 	r["clear_breakpoint"] = starlark.NewBuiltin("clear_breakpoint", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
@@ -177,36 +145,6 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 			}
 		}
 		err := env.ctx.Client().CallAPI("ClearBreakpoint", &rpcArgs, &rpcRet)
-		if err != nil {
-			return starlark.None, err
-		}
-		return env.interfaceToStarlarkValue(rpcRet), nil
-	})
-	r["clear_checkpoint"] = starlark.NewBuiltin("clear_checkpoint", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		if err := isCancelled(thread); err != nil {
-			return starlark.None, decorateError(thread, err)
-		}
-		var rpcArgs service.ClearCheckpointIn
-		var rpcRet service.ClearCheckpointOut
-		if len(args) > 0 && args[0] != starlark.None {
-			err := unmarshalStarlarkValue(args[0], &rpcArgs.ID, "ID")
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		for _, kv := range kwargs {
-			var err error
-			switch kv[0].(starlark.String) {
-			case "ID":
-				err = unmarshalStarlarkValue(kv[1], &rpcArgs.ID, "ID")
-			default:
-				err = fmt.Errorf("unknown argument %q", kv[0])
-			}
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		err := env.ctx.Client().CallAPI("ClearCheckpoint", &rpcArgs, &rpcRet)
 		if err != nil {
 			return starlark.None, err
 		}
@@ -860,18 +798,6 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		}
 		return env.interfaceToStarlarkValue(rpcRet), nil
 	})
-	r["checkpoints"] = starlark.NewBuiltin("checkpoints", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		if err := isCancelled(thread); err != nil {
-			return starlark.None, decorateError(thread, err)
-		}
-		var rpcArgs service.ListCheckpointsIn
-		var rpcRet service.ListCheckpointsOut
-		err := env.ctx.Client().CallAPI("ListCheckpoints", &rpcArgs, &rpcRet)
-		if err != nil {
-			return starlark.None, err
-		}
-		return env.interfaceToStarlarkValue(rpcRet), nil
-	})
 	r["dynamic_libraries"] = starlark.NewBuiltin("dynamic_libraries", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
@@ -1255,18 +1181,6 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		}
 		return env.interfaceToStarlarkValue(rpcRet), nil
 	})
-	r["recorded"] = starlark.NewBuiltin("recorded", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		if err := isCancelled(thread); err != nil {
-			return starlark.None, decorateError(thread, err)
-		}
-		var rpcArgs service.RecordedIn
-		var rpcRet service.RecordedOut
-		err := env.ctx.Client().CallAPI("Recorded", &rpcArgs, &rpcRet)
-		if err != nil {
-			return starlark.None, err
-		}
-		return env.interfaceToStarlarkValue(rpcRet), nil
-	})
 	r["restart"] = starlark.NewBuiltin("restart", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
@@ -1274,31 +1188,7 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		var rpcArgs service.RestartIn
 		var rpcRet service.RestartOut
 		if len(args) > 0 && args[0] != starlark.None {
-			err := unmarshalStarlarkValue(args[0], &rpcArgs.Position, "Position")
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		if len(args) > 1 && args[1] != starlark.None {
-			err := unmarshalStarlarkValue(args[1], &rpcArgs.ResetArgs, "ResetArgs")
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		if len(args) > 2 && args[2] != starlark.None {
-			err := unmarshalStarlarkValue(args[2], &rpcArgs.NewArgs, "NewArgs")
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		if len(args) > 3 && args[3] != starlark.None {
-			err := unmarshalStarlarkValue(args[3], &rpcArgs.Rerecord, "Rerecord")
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		if len(args) > 4 && args[4] != starlark.None {
-			err := unmarshalStarlarkValue(args[4], &rpcArgs.Rebuild, "Rebuild")
+			err := unmarshalStarlarkValue(args[0], &rpcArgs.Rebuild, "Rebuild")
 			if err != nil {
 				return starlark.None, decorateError(thread, err)
 			}
@@ -1306,14 +1196,6 @@ func (env *Env) starlarkPredeclare() starlark.StringDict {
 		for _, kv := range kwargs {
 			var err error
 			switch kv[0].(starlark.String) {
-			case "Position":
-				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Position, "Position")
-			case "ResetArgs":
-				err = unmarshalStarlarkValue(kv[1], &rpcArgs.ResetArgs, "ResetArgs")
-			case "NewArgs":
-				err = unmarshalStarlarkValue(kv[1], &rpcArgs.NewArgs, "NewArgs")
-			case "Rerecord":
-				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Rerecord, "Rerecord")
 			case "Rebuild":
 				err = unmarshalStarlarkValue(kv[1], &rpcArgs.Rebuild, "Rebuild")
 			default:

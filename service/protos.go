@@ -36,20 +36,6 @@ type DetachOut struct {
 // rpc Restart
 
 type RestartIn struct {
-	// Position to restart from, if it starts with 'c' it's a checkpoint ID,
-	// otherwise it's an event number. Only valid for recorded targets.
-	Position string
-
-	// ResetArgs tell whether NewArgs and NewRedirects should take effect.
-	ResetArgs bool
-	// NewArgs are arguments to launch a new process.  They replace only the
-	// argv[1] and later. Argv[0] cannot be changed.
-	NewArgs []string
-
-	// When Rerecord is set the target will be rerecorded
-	// TODO we don't use `rr` as backend, so no recording is supported, we should remove this
-	Rerecord bool
-
 	// When Rebuild is set the process will be build again
 	Rebuild bool
 }

@@ -24,8 +24,6 @@ type Client interface {
 
 	// Restarts program. Set true if you want to rebuild the process we are debugging.
 	Restart(rebuild bool) ([]api.DiscardedBreakpoint, error)
-	// Restarts program from the specified position.
-	RestartFrom(rerecord bool, pos string, resetArgs bool, newArgs []string, rebuild bool) ([]api.DiscardedBreakpoint, error)
 
 	// GetState returns the current debugger state.
 	GetState() (*api.DebuggerState, error)
@@ -227,13 +225,7 @@ func (c *RPCClient) Detach(kill bool) error {
 
 func (c *RPCClient) Restart(rebuild bool) ([]api.DiscardedBreakpoint, error) {
 	out := new(RestartOut)
-	err := c.call("Restart", RestartIn{"", false, nil, false, rebuild}, out)
-	return out.DiscardedBreakpoints, err
-}
-
-func (c *RPCClient) RestartFrom(rerecord bool, pos string, resetArgs bool, newArgs []string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
-	out := new(RestartOut)
-	err := c.call("Restart", RestartIn{pos, resetArgs, newArgs, rerecord, rebuild}, out)
+	err := c.call("Restart", RestartIn{rebuild}, out)
 	return out.DiscardedBreakpoints, err
 }
 

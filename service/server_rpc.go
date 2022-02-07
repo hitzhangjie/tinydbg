@@ -52,7 +52,7 @@ func (s *RPCServer) Restart(arg RestartIn, cb RPCCallback) {
 	}
 	var out RestartOut
 	var err error
-	out.DiscardedBreakpoints, err = s.debugger.Restart(arg.Rerecord, arg.Position, arg.ResetArgs, arg.NewArgs, arg.Rebuild)
+	out.DiscardedBreakpoints, err = s.debugger.Restart(arg.Rebuild)
 	cb.Return(out, err)
 }
 

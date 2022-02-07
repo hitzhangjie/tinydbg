@@ -25,8 +25,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cosiner/argv"
-
 	"github.com/hitzhangjie/dlv/pkg/config"
 	"github.com/hitzhangjie/dlv/pkg/locspec"
 	"github.com/hitzhangjie/dlv/pkg/log"
@@ -709,13 +707,12 @@ func writeGoroutineLabels(w io.Writer, g *api.Goroutine, prefix string) {
 }
 
 func restart(t *Term, ctx callContext, args string) error {
-	resetArgs, newArgv, err := parseNewArgv(args)
+	discarded, err := t.client.Restart(false)
 	if err != nil {
 		return err
 	}
-
-	if err := restartIntl(t, false, "", resetArgs, newArgv); err != nil {
-		return err
+	for i := range discarded {
+		log.Info("Discarded %s at %s: %v", formatBreakpointName(discarded[i].Breakpoint, false), t.formatBreakpointLocation(discarded[i].Breakpoint), discarded[i].Reason)
 	}
 
 	log.Info("Process restarted with PID: %d", t.client.ProcessPid())
@@ -729,45 +726,6 @@ func parseOptionalCount(arg string) (int64, error) {
 		return 1, nil
 	}
 	return strconv.ParseInt(arg, 0, 64)
-}
-
-func restartIntl(t *Term, rerecord bool, restartPos string, resetArgs bool, newArgv []string) error {
-	discarded, err := t.client.RestartFrom(rerecord, restartPos, resetArgs, newArgv, false)
-	if err != nil {
-		return err
-	}
-	for i := range discarded {
-		log.Info("Discarded %s at %s: %v", formatBreakpointName(discarded[i].Breakpoint, false), t.formatBreakpointLocation(discarded[i].Breakpoint), discarded[i].Reason)
-	}
-	return nil
-}
-
-func parseNewArgv(args string) (resetArgs bool, newArgv []string, err error) {
-	if args == "" {
-		return false, nil, nil
-	}
-	v, err := argv.Argv(args,
-		func(s string) (string, error) {
-			return "", fmt.Errorf("Backtick not supported in '%s'", s)
-		},
-		nil)
-	if err != nil {
-		return false, nil, err
-	}
-	if len(v) != 1 {
-		return false, nil, fmt.Errorf("illegal commandline '%s'", args)
-	}
-	w := v[0]
-	if len(w) == 0 {
-		return false, nil, nil
-	}
-	if w[0] == "-noargs" {
-		if len(w) > 1 {
-			return false, nil, fmt.Errorf("too many arguments to restart")
-		}
-		return true, nil, nil
-	}
-	return true, w, nil
 }
 
 func printcontextNoState(t *Term) {
