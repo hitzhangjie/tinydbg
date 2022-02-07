@@ -117,10 +117,6 @@ func (d *Debugger) canRestart() bool {
 }
 
 func (d *Debugger) checkGoVersion() error {
-	if d.isRecording() {
-		// do not do anything if we are still recording
-		return nil
-	}
 	producer := d.target.BinInfo().Producer()
 	if producer == "" {
 		return nil
@@ -155,18 +151,6 @@ func (d *Debugger) recordingStart(stop func() error) {
 	d.recordMutex.Lock()
 	d.stopRecording = stop
 	d.recordMutex.Unlock()
-}
-
-func (d *Debugger) recordingDone() {
-	d.recordMutex.Lock()
-	d.stopRecording = nil
-	d.recordMutex.Unlock()
-}
-
-func (d *Debugger) isRecording() bool {
-	d.recordMutex.Lock()
-	defer d.recordMutex.Unlock()
-	return d.stopRecording != nil
 }
 
 // Attach will attach to the process specified by 'pid'.
@@ -253,8 +237,8 @@ func (d *Debugger) detach(kill bool) error {
 	return d.target.Detach(kill)
 }
 
-// Restart will restart the target process, first killing
-// and then exec'ing it again.
+// Restart will restart the target process, first killing and then exec'ing it again.
+//
 // If the target process is a recording it will restart it from the given
 // position. If pos starts with 'c' it's a checkpoint ID, otherwise it's an
 // event number. If resetArgs is true, newArgs will replace the process args.
@@ -262,25 +246,17 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
 
-	recorded, _ := d.target.Recorded()
-	if recorded && !rerecord {
-		return nil, d.target.Restart(pos)
-	}
-
-	if pos != "" {
-		return nil, proc.ErrNotRecorded
-	}
-
 	if !d.canRestart() {
 		return nil, ErrCanNotRestart
 	}
 
-	if valid, _ := d.target.Valid(); valid && !recorded {
+	if valid, _ := d.target.Valid(); valid {
 		// Ensure the process is in a PTRACE_STOP.
 		if err := stopProcess(d.target.Pid()); err != nil {
 			return nil, err
 		}
 	}
+
 	if err := d.detach(true); err != nil {
 		return nil, err
 	}
@@ -363,10 +339,6 @@ func (d *Debugger) State(nowait bool) (*api.DebuggerState, error) {
 		return &api.DebuggerState{Running: true}, nil
 	}
 
-	if d.isRecording() && nowait {
-		return &api.DebuggerState{Recording: true}, nil
-	}
-
 	d.dumpState.Mutex.Lock()
 	if d.dumpState.Dumping && nowait {
 		return &api.DebuggerState{CoreDumping: true}, nil
@@ -417,10 +389,6 @@ func (d *Debugger) state(retLoadCfg *proc.LoadConfig) (*api.DebuggerState, error
 	}
 
 	state.NextInProgress = d.target.Breakpoints().HasSteppingBreakpoints()
-
-	if recorded, _ := d.target.Recorded(); recorded {
-		state.When, _ = d.target.When()
-	}
 
 	state.WatchOutOfScope = make([]*api.Breakpoint, 0, len(d.target.Breakpoints().WatchOutOfScope))
 	for _, bp := range d.target.Breakpoints().WatchOutOfScope {
@@ -945,18 +913,12 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 	switch command.Name {
 	case api.Continue:
 		log.Debug("continuing")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
 		err = d.target.Continue()
 	case api.DirectionCongruentContinue:
 		log.Debug("continuing (direction congruent)")
 		err = d.target.Continue()
 	case api.Call:
 		log.Debug("function call %s", command.Expr)
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
 		if command.ReturnInfoLoadConfig == nil {
 			return nil, errors.New("can not call function with nil ReturnInfoLoadConfig")
 		}
@@ -970,57 +932,17 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 		err = proc.EvalExpressionWithCalls(d.target, g, command.Expr, *api.LoadConfigToProc(command.ReturnInfoLoadConfig), !command.UnsafeCall)
 	case api.Rewind:
 		log.Debug("rewinding")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.Continue()
 	case api.Next:
 		log.Debug("nexting")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.Next()
-	case api.ReverseNext:
-		log.Debug("reverse nexting")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.Next()
 	case api.Step:
 		log.Debug("stepping")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.Step()
-	case api.ReverseStep:
-		log.Debug("reverse stepping")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.Step()
 	case api.StepInstruction:
-		log.Debug("single stepping")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.StepInstruction()
-	case api.ReverseStepInstruction:
-		log.Debug("reverse single stepping")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.StepInstruction()
 	case api.StepOut:
 		log.Debug("step out")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.StepOut()
-	case api.ReverseStepOut:
-		log.Debug("reverse step out")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.StepOut()
 	case api.SwitchThread:
 		log.Debug("switching to thread %d", command.ThreadID)
@@ -1719,13 +1641,6 @@ func (d *Debugger) AsmInstructionText(inst *proc.AsmInstruction, flavour proc.As
 	return inst.Text(flavour, d.target.BinInfo())
 }
 
-// Recorded returns true if the target is a recording.
-func (d *Debugger) Recorded() (recorded bool, tracedir string) {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.Recorded()
-}
-
 // FindThreadReturnValues returns the return values of the function that
 // the thread of the given 'id' just stepped out of.
 func (d *Debugger) FindThreadReturnValues(id int, cfg proc.LoadConfig) ([]*proc.Variable, error) {
@@ -1742,27 +1657,6 @@ func (d *Debugger) FindThreadReturnValues(id int, cfg proc.LoadConfig) ([]*proc.
 	}
 
 	return thread.Common().ReturnValues(cfg), nil
-}
-
-// Checkpoint will set a checkpoint specified by the locspec.
-func (d *Debugger) Checkpoint(where string) (int, error) {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.Checkpoint(where)
-}
-
-// Checkpoints will return a list of checkpoints.
-func (d *Debugger) Checkpoints() ([]proc.Checkpoint, error) {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.Checkpoints()
-}
-
-// ClearCheckpoint will clear the checkpoint of the given ID.
-func (d *Debugger) ClearCheckpoint(id int) error {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.ClearCheckpoint(id)
 }
 
 // ListDynamicLibraries returns a list of loaded dynamic libraries.
@@ -1799,7 +1693,7 @@ func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
 		out.Backend = "native"
 	}
 
-	if !d.isRecording() && !d.IsRunning() {
+	if !d.IsRunning() {
 		out.TargetGoVersion = d.target.BinInfo().Producer()
 	}
 

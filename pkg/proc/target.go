@@ -37,10 +37,8 @@ const (
 // Target represents the process being debugged.
 type Target struct {
 	Process
-	RecordingManipulation
 
-	proc   ProcessInternal
-	recman RecordingManipulationInternal
+	proc ProcessInternal
 
 	pid int
 
@@ -200,13 +198,6 @@ func NewTarget(p ProcessInternal, pid int, currentThread Thread, cfg NewTargetCo
 		pid:           pid,
 	}
 
-	if recman, ok := p.(RecordingManipulationInternal); ok {
-		t.recman = recman
-	} else {
-		t.recman = &dummyRecordingManipulation{}
-	}
-	t.RecordingManipulation = t.recman
-
 	g, _ := GetG(currentThread)
 	t.selectedGoroutine = g
 
@@ -283,11 +274,6 @@ func (t *Target) ClearCaches() {
 // Restarting of a normal process happens at a higher level (debugger.Restart).
 func (t *Target) Restart(from string) error {
 	t.ClearCaches()
-	currentThread, err := t.recman.Restart(from)
-	if err != nil {
-		return err
-	}
-	t.currentThread = currentThread
 	t.selectedGoroutine, _ = GetG(t.CurrentThread())
 	if from != "" {
 		t.StopReason = StopManual
@@ -567,18 +553,6 @@ type dummyRecordingManipulation struct {
 
 // Recorded always returns false for the native proc backend.
 func (*dummyRecordingManipulation) Recorded() (bool, string) { return false, "" }
-
-// ChangeDirection will always return an error in the native proc backend, only for
-// recorded traces.
-func (*dummyRecordingManipulation) ChangeDirection(dir Direction) error {
-	if dir != Forward {
-		return ErrNotRecorded
-	}
-	return nil
-}
-
-// GetDirection will always return Forward.
-func (*dummyRecordingManipulation) GetDirection() Direction { return Forward }
 
 // When will always return an empty string and nil, not supported on native proc backend.
 func (*dummyRecordingManipulation) When() (string, error) { return "", nil }

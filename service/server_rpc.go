@@ -457,33 +457,6 @@ func (c *RPCServer) Disassemble(arg DisassembleIn, out *DisassembleOut) error {
 	return nil
 }
 
-func (s *RPCServer) Recorded(arg RecordedIn, out *RecordedOut) error {
-	out.Recorded, out.TraceDirectory = s.debugger.Recorded()
-	return nil
-}
-
-func (s *RPCServer) Checkpoint(arg CheckpointIn, out *CheckpointOut) error {
-	var err error
-	out.ID, err = s.debugger.Checkpoint(arg.Where)
-	return err
-}
-
-func (s *RPCServer) ListCheckpoints(arg ListCheckpointsIn, out *ListCheckpointsOut) error {
-	var err error
-	cps, err := s.debugger.Checkpoints()
-	if err != nil {
-		return err
-	}
-	out.Checkpoints = make([]api.Checkpoint, len(cps))
-	for i := range cps {
-		out.Checkpoints[i] = api.Checkpoint(cps[i])
-	}
-	return nil
-}
-
-func (s *RPCServer) ClearCheckpoint(arg ClearCheckpointIn, out *ClearCheckpointOut) error {
-	return s.debugger.ClearCheckpoint(arg.ID)
-}
 
 func (s *RPCServer) IsMulticlient(arg IsMulticlientIn, out *IsMulticlientOut) error {
 	*out = IsMulticlientOut{

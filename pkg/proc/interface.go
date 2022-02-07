@@ -64,38 +64,6 @@ type ProcessInternal interface {
 	StartCallInjection() (func(), error)
 }
 
-// RecordingManipulation is an interface for manipulating process recordings.
-type RecordingManipulation interface {
-	// Recorded returns true if the current process is a recording and the path
-	// to the trace directory.
-	Recorded() (recorded bool, tracedir string)
-	// Direction changes execution direction.
-	ChangeDirection(Direction) error
-	// GetDirection returns the current direction of execution.
-	GetDirection() Direction
-	// When returns current recording position.
-	When() (string, error)
-	// Checkpoint sets a checkpoint at the current position.
-	Checkpoint(where string) (id int, err error)
-	// Checkpoints returns the list of currently set checkpoint.
-	Checkpoints() ([]Checkpoint, error)
-	// ClearCheckpoint removes a checkpoint.
-	ClearCheckpoint(id int) error
-}
-
-// RecordingManipulationInternal is an interface that a Delve backend can
-// implement if it is a recording.
-type RecordingManipulationInternal interface {
-	RecordingManipulation
-
-	// Restart restarts the recording from the specified position, or from the
-	// last checkpoint if pos == "".
-	// If pos starts with 'c' it's a checkpoint ID, otherwise it's an event
-	// number.
-	// Returns the new current thread after the restart has completed.
-	Restart(pos string) (Thread, error)
-}
-
 // Direction is the direction of execution for the target process.
 type Direction int8
 

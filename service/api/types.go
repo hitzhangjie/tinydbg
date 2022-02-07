@@ -450,6 +450,7 @@ const (
 	// Next continues to the next source line, not entering function calls.
 	Next = "next"
 	// ReverseNext continues backward to the previous line of source code, not entering function calls.
+	// TODO not supported
 	ReverseNext = "reverseNext"
 	// SwitchThread switches the debugger's current thread context.
 	SwitchThread = "switchThread"

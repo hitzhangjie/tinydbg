@@ -149,17 +149,6 @@ type Client interface {
 	// Disassemble code of the function containing PC
 	DisassemblePC(scope api.EvalScope, pc uint64, flavour api.AssemblyFlavour) (api.AsmInstructions, error)
 
-	// Recorded returns true if the target is a recording.
-	Recorded() bool
-	// TraceDirectory returns the path to the trace directory for a recording.
-	TraceDirectory() (string, error)
-	// Checkpoint sets a checkpoint at the current position.
-	Checkpoint(where string) (checkpointID int, err error)
-	// ListCheckpoints gets all checkpoints.
-	ListCheckpoints() ([]api.Checkpoint, error)
-	// ClearCheckpoint removes a checkpoint
-	ClearCheckpoint(id int) error
-
 	// SetReturnValuesLoadConfig sets the load configuration for return values.
 	SetReturnValuesLoadConfig(*api.LoadConfig)
 
@@ -593,41 +582,6 @@ func (c *RPCClient) DisassemblePC(scope api.EvalScope, pc uint64, flavour api.As
 	var out DisassembleOut
 	err := c.call("Disassemble", DisassembleIn{scope, pc, 0, flavour}, &out)
 	return out.Disassemble, err
-}
-
-// Recorded returns true if the debugger target is a recording.
-func (c *RPCClient) Recorded() bool {
-	out := new(RecordedOut)
-	c.call("Recorded", RecordedIn{}, out)
-	return out.Recorded
-}
-
-// TraceDirectory returns the path to the trace directory for a recording.
-func (c *RPCClient) TraceDirectory() (string, error) {
-	var out RecordedOut
-	err := c.call("Recorded", RecordedIn{}, &out)
-	return out.TraceDirectory, err
-}
-
-// Checkpoint sets a checkpoint at the current position.
-func (c *RPCClient) Checkpoint(where string) (checkpointID int, err error) {
-	var out CheckpointOut
-	err = c.call("Checkpoint", CheckpointIn{where}, &out)
-	return out.ID, err
-}
-
-// ListCheckpoints gets all checkpoints.
-func (c *RPCClient) ListCheckpoints() ([]api.Checkpoint, error) {
-	var out ListCheckpointsOut
-	err := c.call("ListCheckpoints", ListCheckpointsIn{}, &out)
-	return out.Checkpoints, err
-}
-
-// ClearCheckpoint removes a checkpoint
-func (c *RPCClient) ClearCheckpoint(id int) error {
-	var out ClearCheckpointOut
-	err := c.call("ClearCheckpoint", ClearCheckpointIn{id}, &out)
-	return err
 }
 
 func (c *RPCClient) SetReturnValuesLoadConfig(cfg *api.LoadConfig) {

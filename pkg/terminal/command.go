@@ -185,26 +185,6 @@ func DebugCommands(client service.Client) *Commands {
 		{aliases: []string{"dump"}, cmdFn: dump, helpMsg: dumpCmdHelpMsg},
 	}
 
-	addrecorded := client == nil
-	if !addrecorded {
-		if state, err := client.GetStateNonBlocking(); err == nil {
-			addrecorded = state.Recording
-			if !addrecorded {
-				addrecorded = client.Recorded()
-			}
-		}
-	}
-
-	if addrecorded {
-		c.cmds = append(c.cmds,
-			command{aliases: []string{"rewind", "rw"}, group: runCmds, cmdFn: c.rewind, helpMsg: rewindCmdHelpMsg},
-			command{aliases: []string{"check", "checkpoint"}, cmdFn: checkpoint, helpMsg: checkpointCmdHelpMsg},
-			command{aliases: []string{"checkpoints"}, cmdFn: checkpoints, helpMsg: checkpointsCmdHelpMsg},
-			command{aliases: []string{"clear-checkpoint", "clearcheck"}, cmdFn: clearCheckpoint, helpMsg: clearcheckCmdHelpMsg},
-			command{aliases: []string{"rev"}, group: runCmds, cmdFn: c.revCmd, helpMsg: revCmdHelpMsg},
-		)
-	}
-
 	sort.Sort(byFirstAlias(c.cmds))
 	return c
 }
@@ -729,63 +709,6 @@ func writeGoroutineLabels(w io.Writer, g *api.Goroutine, prefix string) {
 }
 
 func restart(t *Term, ctx callContext, args string) error {
-	if t.client.Recorded() {
-		return restartRecorded(t, ctx, args)
-	}
-
-	return restartLive(t, ctx, args)
-}
-
-func restartRecorded(t *Term, ctx callContext, args string) error {
-	v := config.Split2PartsBySpace(args)
-
-	rerecord := false
-	resetArgs := false
-	newArgv := []string{}
-	restartPos := ""
-
-	if len(v) > 0 {
-		if v[0] == "-r" {
-			rerecord = true
-			if len(v) == 2 {
-				var err error
-				resetArgs, newArgv, err = parseNewArgv(v[1])
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			if len(v) > 1 {
-				return fmt.Errorf("too many arguments to restart")
-			}
-			restartPos = v[0]
-		}
-	}
-
-	if err := restartIntl(t, rerecord, restartPos, resetArgs, newArgv); err != nil {
-		return err
-	}
-
-	state, err := t.client.GetState()
-	if err != nil {
-		return err
-	}
-	printcontext(t, state)
-	printfile(t, state.CurrentThread.File, state.CurrentThread.Line, true)
-	t.printDisplays()
-	return nil
-}
-
-// parseOptionalCount parses an optional count argument.
-// If there are not arguments, a value of 1 is returned as the default.
-func parseOptionalCount(arg string) (int64, error) {
-	if len(arg) == 0 {
-		return 1, nil
-	}
-	return strconv.ParseInt(arg, 0, 64)
-}
-
-func restartLive(t *Term, ctx callContext, args string) error {
 	resetArgs, newArgv, err := parseNewArgv(args)
 	if err != nil {
 		return err
@@ -797,6 +720,15 @@ func restartLive(t *Term, ctx callContext, args string) error {
 
 	log.Info("Process restarted with PID: %d", t.client.ProcessPid())
 	return nil
+}
+
+// parseOptionalCount parses an optional count argument.
+// If there are not arguments, a value of 1 is returned as the default.
+func parseOptionalCount(arg string) (int64, error) {
+	if len(arg) == 0 {
+		return 1, nil
+	}
+	return strconv.ParseInt(arg, 0, 64)
 }
 
 func restartIntl(t *Term, rerecord bool, restartPos string, resetArgs bool, newArgv []string) error {
@@ -847,9 +779,6 @@ func printcontextNoState(t *Term) {
 }
 
 func (c *Commands) rebuild(t *Term, ctx callContext, args string) error {
-	if ctx.Prefix == revPrefix {
-		return c.rewind(t, ctx, args)
-	}
 	defer t.printDisplays()
 	discarded, err := t.client.Restart(true)
 	if len(discarded) > 0 {
@@ -876,11 +805,6 @@ func (c *Commands) cont(t *Term, ctx callContext, args string) error {
 				}
 			}
 		}()
-	}
-
-	// if reverse continue, so rewind
-	if ctx.Prefix == revPrefix {
-		return c.rewind(t, ctx, args)
 	}
 
 	// if continue, so run to next breakpoint
@@ -2458,71 +2382,6 @@ func (c *Commands) executeFile(t *Term, name string) error {
 	}
 
 	return scanner.Err()
-}
-
-func (c *Commands) rewind(t *Term, ctx callContext, args string) error {
-	c.frame = 0
-	stateChan := t.client.Rewind()
-	var state *api.DebuggerState
-	for state = range stateChan {
-		if state.Err != nil {
-			return state.Err
-		}
-		printcontext(t, state)
-	}
-	printfile(t, state.CurrentThread.File, state.CurrentThread.Line, true)
-	return nil
-}
-
-func checkpoint(t *Term, ctx callContext, args string) error {
-	if args == "" {
-		state, err := t.client.GetState()
-		if err != nil {
-			return err
-		}
-		var loc api.Location = api.Location{PC: state.CurrentThread.PC, File: state.CurrentThread.File, Line: state.CurrentThread.Line, Function: state.CurrentThread.Function}
-		if state.SelectedGoroutine != nil {
-			loc = state.SelectedGoroutine.CurrentLoc
-		}
-		args = fmt.Sprintf("%s() %s:%d (%#x)", loc.Function.Name(), loc.File, loc.Line, loc.PC)
-	}
-
-	cpid, err := t.client.Checkpoint(args)
-	if err != nil {
-		return err
-	}
-
-	log.Info("Checkpoint c%d created.", cpid)
-	return nil
-}
-
-func checkpoints(t *Term, ctx callContext, args string) error {
-	cps, err := t.client.ListCheckpoints()
-	if err != nil {
-		return err
-	}
-	w := new(tabwriter.Writer)
-	w.Init(os.Stdout, 4, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tWhen\tNote")
-	for _, cp := range cps {
-		fmt.Fprintf(w, "c%d\t%s\t%s\n", cp.ID, cp.When, cp.Where)
-	}
-	w.Flush()
-	return nil
-}
-
-func clearCheckpoint(t *Term, ctx callContext, args string) error {
-	if len(args) == 0 {
-		return errors.New("not enough arguments to clear-checkpoint")
-	}
-	if args[0] != 'c' {
-		return errors.New("clear-checkpoint argument must be a checkpoint ID")
-	}
-	id, err := strconv.Atoi(args[1:])
-	if err != nil {
-		return errors.New("clear-checkpoint argument must be a checkpoint ID")
-	}
-	return t.client.ClearCheckpoint(id)
 }
 
 func display(t *Term, ctx callContext, args string) error {
