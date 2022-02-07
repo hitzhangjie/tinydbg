@@ -91,12 +91,6 @@ func Print(out io.Writer, path string, reader io.Reader, startLine, endLine, arr
 		case *ast.File:
 			emit(token.PACKAGE, f.Package, token.NoPos)
 			return true
-		case *ast.FuncType:
-			if n.Pos() == token.NoPos {
-				return true
-			}
-			emit(token.FUNC, n.Pos(), token.NoPos)
-			return true
 		case *ast.BasicLit:
 			emit(n.Kind, n.Pos(), n.End())
 			return true
@@ -135,7 +129,7 @@ func Print(out io.Writer, path string, reader io.Reader, startLine, endLine, arr
 			kwposval := nval.FieldByName(kwname)
 			if kwposval != (reflect.Value{}) {
 				kwpos, ok := kwposval.Interface().(token.Pos)
-				if ok {
+				if ok && kwpos != token.NoPos {
 					emit(token.ILLEGAL, kwpos, token.NoPos)
 				}
 			}

@@ -81,7 +81,7 @@ func TestPrint(t *testing.T) {
 	buf := &bytes.Buffer{}
 	colorize.Print(buf, "main.go", bytes.NewBufferString(src), 1, 30, 10, colors)
 
-	const printToStdout = true
+	const printToStdout = false
 	if printToStdout {
 		colorize.Print(os.Stdout, "main.go", bytes.NewBufferString(src), 1, 30, 10, colors)
 	}
