@@ -14,9 +14,9 @@ import (
 
 var src = `package main
 
-// Vehical defines the vehical behavior
-type Vehical interface{
-	// Run vehical can run in a speed
+// Vehicle defines the vehicle behavior
+type Vehicle interface{
+	// Run vehicle can run in a speed
 	Run()
 }
 
@@ -30,8 +30,8 @@ func (a *BMWS1000RR) Run() {
 }
 
 func main() {
-	var vehical = &BMWS1000RR{}
-	vehical.Run()
+	var vehicle = &BMWS1000RR{}
+	vehicle.Run()
 }
 `
 
