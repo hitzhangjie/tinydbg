@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
@@ -86,7 +85,7 @@ func TestPrint(t *testing.T) {
 		colorize.Print(os.Stdout, "main.go", bytes.NewBufferString(src), 1, 30, 10, colors)
 	}
 
-	if !reflect.DeepEqual(buf.Bytes(), printed) {
+	if !bytes.Equal(buf.Bytes(), printed) {
 		t.Errorf("terminal/colorize.Print outputs mismatch")
 	}
 }
