@@ -5,7 +5,6 @@ package gobuild
 import (
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
 	"github.com/hitzhangjie/dlv/pkg/log"
@@ -41,25 +40,13 @@ func optflags(args []string) []string {
 // GoBuild builds non-test files in 'pkgs' and writes the output at 'debugname'.
 func GoBuild(debugname string, pkgs []string) error {
 	args := goBuildArgs(debugname, pkgs, false)
-	return gocommandRun("build", args...)
-}
-
-// GoBuildCombinedOutput builds non-test files in 'pkgs' and writes the output at 'debugname'.
-func GoBuildCombinedOutput(debugname string, pkgs []string) (string, []byte, error) {
-	args := goBuildArgs(debugname, pkgs, false)
-	return gocommandCombinedOutput("build", args...)
+	return goCommandRun("build", args...)
 }
 
 // GoTestBuild builds test files 'pkgs' and writes the output at 'debugname'.
 func GoTestBuild(debugname string, pkgs []string) error {
 	args := goBuildArgs(debugname, pkgs, true)
-	return gocommandRun("test", args...)
-}
-
-// GoTestBuildCombinedOutput builds test files 'pkgs' and writes the output at 'debugname'.
-func GoTestBuildCombinedOutput(debugname string, pkgs []string) (string, []byte, error) {
-	args := goBuildArgs(debugname, pkgs, true)
-	return gocommandCombinedOutput("test", args...)
+	return goCommandRun("test", args...)
 }
 
 func goBuildArgs(debugname string, pkgs []string, isTest bool) []string {
@@ -72,22 +59,11 @@ func goBuildArgs(debugname string, pkgs []string, isTest bool) []string {
 	return args
 }
 
-func gocommandRun(command string, args ...string) error {
-	_, goBuild := gocommandExecCmd(command, args...)
-	goBuild.Stderr = os.Stdout
-	goBuild.Stdout = os.Stderr
-	return goBuild.Run()
-}
-
-func gocommandCombinedOutput(command string, args ...string) (string, []byte, error) {
-	buildCmd, goBuild := gocommandExecCmd(command, args...)
-	out, err := goBuild.CombinedOutput()
-	return buildCmd, out, err
-}
-
-func gocommandExecCmd(command string, args ...string) (string, *exec.Cmd) {
-	allargs := []string{command}
-	allargs = append(allargs, args...)
-	goBuild := exec.Command("go", allargs...)
-	return strings.Join(append([]string{"go"}, allargs...), " "), goBuild
+func goCommandRun(command string, args ...string) error {
+	cmdArgs := []string{command}
+	cmdArgs = append(cmdArgs, args...)
+	cmd := exec.Command("go", cmdArgs...)
+	cmd.Stderr = os.Stdout
+	cmd.Stdout = os.Stderr
+	return cmd.Run()
 }
