@@ -101,9 +101,6 @@ substitute-path:
 
 # Allow user to specify output syntax flavor of assembly, one of this list "intel"(default), "gnu", "go".
 # disassemble-flavor: intel
-
-# List of directories to use when searching for separate debug info files.
-debug-info-directories: ["/usr/lib/debug/.build-id"]
 `)
 	return err
 }
