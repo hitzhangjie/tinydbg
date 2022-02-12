@@ -350,27 +350,16 @@ The '% n' form means we should stop at the breakpoint when the hitcount is a mul
 
 	configCmdHelpMsg = `Changes configuration parameters.
 
-	config -list
+	config -list : Show all configuration parameters.
+	config -save : Saves the configuration file to disk, overwriting current configuration file.
 
-Show all configuration parameters.
+	config <parameter> <value> : Changes the value of a configuration parameter.
 
-	config -save
+	config substitute-path <from> <to> : Adds a path substitution rule.
+	config substitute-path <from>      : Removes a paths substitution rule.
 
-Saves the configuration file to disk, overwriting the current configuration file.
-
-	config <parameter> <value>
-
-Changes the value of a configuration parameter.
-
-	config substitute-path <from> <to>
-	config substitute-path <from>
-
-Adds or removes a path substitution rule.
-
-	config alias <command> <alias>
-	config alias <alias>
-
-Defines <alias> as an alias to <command> or removes an alias.`
+	config alias <command> <alias>     : Defines <alias> an alias to <command>
+	config alias <alias>               : Removes an alias <alias>`
 
 	editCmdHelpMsg = `Open where you are in $DELVE_EDITOR or $EDITOR
 
