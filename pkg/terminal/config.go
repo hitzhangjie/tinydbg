@@ -62,6 +62,7 @@ func configureSet(t *Term, args string) error {
 	return config.ConfigureSetSimple(rest, cfgname, field)
 }
 
+// add or delete substitute-path rule
 func configureSetSubstitutePath(t *Term, rest string) error {
 	argv := config.SplitQuotedFields(rest, '"')
 	switch len(argv) {
