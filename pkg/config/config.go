@@ -6,6 +6,12 @@ const (
 )
 
 // SubstitutePathRule describes a rule for substitution of path to source code file.
+//
+// This allows to rewrite a source path stored in program's debug information,
+// if the sources were moved to a different place between compilation and debugging.
+//
+// This works similarly as in GDB, see also:
+// GDB source path: https://sourceware.org/gdb/onlinedocs/gdb/Source-Path.html.
 type SubstitutePathRule struct {
 	// Directory path will be substituted if it matches `From`.
 	From string
