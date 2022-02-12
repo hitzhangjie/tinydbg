@@ -10,26 +10,25 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// SaveConfig will marshal and save the config struct
-// to disk.
+// SaveConfig will marshal and save the config struct to disk.
 func SaveConfig(conf *Config) error {
-	fullConfigFile, err := GetConfigFilePath(configFile)
+	fp, err := GetConfigFilePath(configFile)
 	if err != nil {
 		return err
 	}
 
-	out, err := yaml.Marshal(*conf)
+	dat, err := yaml.Marshal(*conf)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.Create(fullConfigFile)
+	f, err := os.Create(fp)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	_, err = f.Write(out)
+	_, err = f.Write(dat)
 	return err
 }
 
