@@ -39,10 +39,9 @@ const optimizedFunctionWarning = "Warning: debugging optimized function"
 type cmdPrefix int
 
 const (
-	noPrefix       = cmdPrefix(0)
-	onPrefix       = cmdPrefix(1 << iota) // TODO what's this?
-	deferredPrefix                        // deferred?
-	revPrefix                             // reverse?
+	noPrefix = cmdPrefix(0)
+	onPrefix = cmdPrefix(1 << iota)
+	deferredPrefix
 )
 
 type callContext struct {
@@ -123,12 +122,12 @@ func DebugCommands(client service.Client) *Commands {
 		{aliases: []string{"break", "b"}, group: breakCmds, cmdFn: breakpoint, helpMsg: breakCmdHelpMsg},
 		{aliases: []string{"trace", "t"}, group: breakCmds, cmdFn: tracepoint, allowedPrefixes: onPrefix, helpMsg: traceCmdHelpMsg},
 		{aliases: []string{"restart", "r"}, group: runCmds, cmdFn: restart, helpMsg: restartCmdHelpMsg},
-		{aliases: []string{"rebuild"}, group: runCmds, cmdFn: c.rebuild, allowedPrefixes: revPrefix, helpMsg: rebuildCmdHelpMsg},
-		{aliases: []string{"continue", "c"}, group: runCmds, cmdFn: c.cont, allowedPrefixes: revPrefix, helpMsg: continueCmdHelpMsg},
-		{aliases: []string{"step", "s"}, group: runCmds, cmdFn: c.step, allowedPrefixes: revPrefix, helpMsg: stepCmdHelpMsg},
-		{aliases: []string{"step-instruction", "si"}, group: runCmds, allowedPrefixes: revPrefix, cmdFn: c.stepInstruction, helpMsg: stepInstCmdHelpMsg},
-		{aliases: []string{"next", "n"}, group: runCmds, cmdFn: c.next, allowedPrefixes: revPrefix, helpMsg: nextCmdHelpMsg},
-		{aliases: []string{"stepout", "so"}, group: runCmds, allowedPrefixes: revPrefix, cmdFn: c.stepout, helpMsg: stepOutCmdHelpMsg},
+		{aliases: []string{"rebuild"}, group: runCmds, cmdFn: c.rebuild, helpMsg: rebuildCmdHelpMsg},
+		{aliases: []string{"continue", "c"}, group: runCmds, cmdFn: c.cont, helpMsg: continueCmdHelpMsg},
+		{aliases: []string{"step", "s"}, group: runCmds, cmdFn: c.step, helpMsg: stepCmdHelpMsg},
+		{aliases: []string{"step-instruction", "si"}, group: runCmds, cmdFn: c.stepInstruction, helpMsg: stepInstCmdHelpMsg},
+		{aliases: []string{"next", "n"}, group: runCmds, cmdFn: c.next, helpMsg: nextCmdHelpMsg},
+		{aliases: []string{"stepout", "so"}, group: runCmds, cmdFn: c.stepout, helpMsg: stepOutCmdHelpMsg},
 		{aliases: []string{"call"}, group: runCmds, cmdFn: c.call, helpMsg: callCmdHelpMsg},
 		{aliases: []string{"threads"}, group: goroutineCmds, cmdFn: threads, helpMsg: threadsCmdHelpMsg},
 		{aliases: []string{"thread", "tr"}, group: goroutineCmds, cmdFn: thread, helpMsg: threadCmdHelpMsg},
@@ -868,9 +867,6 @@ func (c *Commands) step(t *Term, ctx callContext, args string) error {
 	// this step operation maybe interrupted by some breakpoints.
 	c.frame = 0
 	stepfn := t.client.Step
-	if ctx.Prefix == revPrefix {
-		stepfn = t.client.ReverseStep
-	}
 	state, err := exitedToError(stepfn())
 	if err != nil {
 		printcontextNoState(t)
@@ -895,13 +891,7 @@ func (c *Commands) stepInstruction(t *Term, ctx callContext, args string) error 
 	defer t.printDisplays()
 
 	// tell dbg server to step next instruction
-	var fn func() (*api.DebuggerState, error)
-	if ctx.Prefix == revPrefix {
-		fn = t.client.ReverseStepInstruction
-	} else {
-		fn = t.client.StepInstruction
-	}
-
+	fn := t.client.StepInstruction
 	state, err := exitedToError(fn())
 	if err != nil {
 		printcontextNoState(t)
@@ -910,15 +900,6 @@ func (c *Commands) stepInstruction(t *Term, ctx callContext, args string) error 
 	printcontext(t, state)
 	printfile(t, state.CurrentThread.File, state.CurrentThread.Line, true)
 	return nil
-}
-
-func (c *Commands) revCmd(t *Term, ctx callContext, args string) error {
-	if len(args) == 0 {
-		return errors.New("not enough arguments")
-	}
-
-	ctx.Prefix = revPrefix
-	return c.CallWithContext(args, t, ctx)
 }
 
 func (c *Commands) next(t *Term, ctx callContext, args string) error {
@@ -932,9 +913,6 @@ func (c *Commands) next(t *Term, ctx callContext, args string) error {
 
 	// tell dbg server to run to next source
 	nextfn := t.client.Next
-	if ctx.Prefix == revPrefix {
-		nextfn = t.client.ReverseNext
-	}
 
 	// next [count]
 	var count int64
@@ -975,10 +953,6 @@ func (c *Commands) stepout(t *Term, ctx callContext, args string) error {
 	}
 
 	stepoutfn := t.client.StepOut
-	if ctx.Prefix == revPrefix {
-		stepoutfn = t.client.ReverseStepOut
-	}
-
 	state, err := exitedToError(stepoutfn())
 	if err != nil {
 		printcontextNoState(t)
