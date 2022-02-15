@@ -660,11 +660,11 @@ func (d *Defer) EvalScope(t *Target, thread Thread) (*EvalScope, error) {
 
 	rdr := scope.Fn.cu.image.dwarfReader
 	rdr.Seek(scope.Fn.offset)
-	e, err := rdr.Next()
+	entry, err := rdr.Next()
 	if err != nil {
 		return nil, fmt.Errorf("could not read DWARF function entry: %v", err)
 	}
-	scope.Regs.FrameBase, _, _, _ = bi.Location(e, dwarf.AttrFrameBase, scope.PC, scope.Regs, scope.Mem)
+	scope.Regs.FrameBase, _, _, _ = bi.Location(entry, dwarf.AttrFrameBase, scope.PC, scope.Regs, scope.Mem)
 	scope.Mem = cacheMemory(scope.Mem, uint64(scope.Regs.CFA), int(d.argSz))
 
 	return scope, nil

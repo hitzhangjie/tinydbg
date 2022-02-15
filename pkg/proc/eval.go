@@ -76,7 +76,7 @@ func ConvertEvalScope(dbp *Target, gid, frame, deferCall int) (*EvalScope, error
 	if _, err := dbp.Valid(); err != nil {
 		return nil, err
 	}
-	ct := dbp.CurrentThread()
+	thread := dbp.CurrentThread()
 	g, err := FindGoroutine(dbp, gid)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func ConvertEvalScope(dbp *Target, gid, frame, deferCall int) (*EvalScope, error
 	if g != nil {
 		locs, err = g.Stacktrace(frame+1, opts)
 	} else {
-		locs, err = ThreadStacktrace(ct, frame+1)
+		locs, err = ThreadStacktrace(thread, frame+1)
 	}
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func ConvertEvalScope(dbp *Target, gid, frame, deferCall int) (*EvalScope, error
 			return nil, d.Unreadable
 		}
 
-		return d.EvalScope(dbp, ct)
+		return d.EvalScope(dbp, thread)
 	}
 
 	return FrameToScope(dbp, dbp.Memory(), g, locs[frame:]...), nil
