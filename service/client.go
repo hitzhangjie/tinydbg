@@ -32,29 +32,19 @@ type Client interface {
 
 	// Continue resumes process execution.
 	Continue() <-chan *api.DebuggerState
-	// Rewind resumes process execution backwards.
-	Rewind() <-chan *api.DebuggerState
-	// DirectionCongruentContinue resumes process execution, if a reverse next, step or stepout operation is in progress it will resume execution backward.
+	// DirectionCongruentContinue resumes process execution, if a next, step or stepout operation is in progress it will resume execution.
 	DirectionCongruentContinue() <-chan *api.DebuggerState
 	// Next continues to the next source line, not entering function calls.
 	Next() (*api.DebuggerState, error)
-	// ReverseNext continues backward to the previous line of source code, not entering function calls.
-	ReverseNext() (*api.DebuggerState, error)
 	// Step continues to the next source line, entering function calls.
 	Step() (*api.DebuggerState, error)
-	// ReverseStep continues backward to the previous line of source code, entering function calls.
-	ReverseStep() (*api.DebuggerState, error)
 	// StepOut continues to the return address of the current function.
 	StepOut() (*api.DebuggerState, error)
-	// ReverseStepOut continues backward to the calle rof the current function.
-	ReverseStepOut() (*api.DebuggerState, error)
 	// Call resumes process execution while making a function call.
 	Call(goroutineID int, expr string, unsafe bool) (*api.DebuggerState, error)
 
 	// SingleStep will step a single cpu instruction.
 	StepInstruction() (*api.DebuggerState, error)
-	// ReverseSingleStep will reverse step a single cpu instruction.
-	ReverseStepInstruction() (*api.DebuggerState, error)
 	// SwitchThread switches the current thread context.
 	SwitchThread(threadID int) (*api.DebuggerState, error)
 	// SwitchGoroutine switches the current goroutine (and the current thread as well)
@@ -242,10 +232,6 @@ func (c *RPCClient) Continue() <-chan *api.DebuggerState {
 	return c.continueDir(api.Continue)
 }
 
-func (c *RPCClient) Rewind() <-chan *api.DebuggerState {
-	return c.continueDir(api.Rewind)
-}
-
 func (c *RPCClient) DirectionCongruentContinue() <-chan *api.DebuggerState {
 	return c.continueDir(api.DirectionCongruentContinue)
 }
@@ -295,33 +281,15 @@ func (c *RPCClient) Next() (*api.DebuggerState, error) {
 	return &out.State, err
 }
 
-func (c *RPCClient) ReverseNext() (*api.DebuggerState, error) {
-	var out CommandOut
-	err := c.call("Command", api.DebuggerCommand{Name: api.ReverseNext, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
-	return &out.State, err
-}
-
 func (c *RPCClient) Step() (*api.DebuggerState, error) {
 	var out CommandOut
 	err := c.call("Command", api.DebuggerCommand{Name: api.Step, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
 	return &out.State, err
 }
 
-func (c *RPCClient) ReverseStep() (*api.DebuggerState, error) {
-	var out CommandOut
-	err := c.call("Command", api.DebuggerCommand{Name: api.ReverseStep, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
-	return &out.State, err
-}
-
 func (c *RPCClient) StepOut() (*api.DebuggerState, error) {
 	var out CommandOut
 	err := c.call("Command", api.DebuggerCommand{Name: api.StepOut, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
-	return &out.State, err
-}
-
-func (c *RPCClient) ReverseStepOut() (*api.DebuggerState, error) {
-	var out CommandOut
-	err := c.call("Command", api.DebuggerCommand{Name: api.ReverseStepOut, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
 	return &out.State, err
 }
 
@@ -334,12 +302,6 @@ func (c *RPCClient) Call(goroutineID int, expr string, unsafe bool) (*api.Debugg
 func (c *RPCClient) StepInstruction() (*api.DebuggerState, error) {
 	var out CommandOut
 	err := c.call("Command", api.DebuggerCommand{Name: api.StepInstruction}, &out)
-	return &out.State, err
-}
-
-func (c *RPCClient) ReverseStepInstruction() (*api.DebuggerState, error) {
-	var out CommandOut
-	err := c.call("Command", api.DebuggerCommand{Name: api.ReverseStepInstruction}, &out)
 	return &out.State, err
 }
 

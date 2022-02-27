@@ -928,9 +928,6 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 			}
 		}
 		err = proc.EvalExpressionWithCalls(d.target, g, command.Expr, *api.LoadConfigToProc(command.ReturnInfoLoadConfig), !command.UnsafeCall)
-	case api.Rewind:
-		log.Debug("rewinding")
-		err = d.target.Continue()
 	case api.Next:
 		log.Debug("nexting")
 		err = d.target.Next()
