@@ -36,13 +36,13 @@ const (
 // address.
 type Breakpoint struct {
 	// File & line information for printing.
-	FunctionName string
-	File         string
-	Line         int
+	Function string // function name
+	File     string // file name
+	Line     int    // line number
 
-	Addr         uint64 // Address breakpoint is set for.
-	OriginalData []byte // If software breakpoint, the data we replace with breakpoint instruction.
-	Name         string // User defined name of the breakpoint
+	Addr uint64 // the address where the breakpoint is set for
+	Orig []byte // if software breakpoint, the orignal data replaced by breakpoint instruction
+	Name string // user-defined name of the breakpoint
 
 	WatchExpr     string
 	WatchType     WatchType
@@ -71,13 +71,12 @@ type Breakpoint struct {
 // Breaklet represents one of multiple breakpoints that can overlap on a
 // single physical breakpoint.
 type Breaklet struct {
-	// Kind describes whether this is a stepping breakpoint (for next'ing or
-	// stepping).
+	// Kind describes whether this is a stepping breakpoint (for nexting or stepping)
 	Kind BreakpointKind
 
 	LogicalID int // ID of the logical breakpoint that owns this physical breakpoint
 
-	// Cond: if not nil the breakpoint will be triggered only if evaluating Cond returns true
+	// if Cond not nil, the breakpoint will be triggered only if evaluating Cond returns true
 	Cond ast.Expr
 
 	HitCount      map[int]uint64 // Number of times a breakpoint has been reached in a certain goroutine
@@ -94,7 +93,7 @@ type Breaklet struct {
 	// the function, not when the function is called directly
 	DeferReturns []uint64
 
-	// HitCond: if not nil the breakpoint will be triggered only if the evaluated HitCond returns
+	// if HitCond not nil the breakpoint will be triggered only if the evaluated HitCond returns
 	// true with the TotalHitCount.
 	HitCond *struct {
 		Op  token.Token
@@ -147,32 +146,32 @@ const (
 	steppingMask = NextBreakpoint | NextDeferBreakpoint | StepBreakpoint
 )
 
-// WatchType is the watchpoint type
+// WatchType 定义了硬件断点的watch类型
 type WatchType uint8
 
 const (
-	WatchRead WatchType = 1 << iota
-	WatchWrite
+	WatchRead  WatchType = 1 << iota // read类型
+	WatchWrite                       // write类型
 )
 
 // Read returns true if the hardware breakpoint should trigger on memory reads.
-func (wtype WatchType) Read() bool {
-	return wtype&WatchRead != 0
+func (t WatchType) Read() bool {
+	return t&WatchRead != 0
 }
 
 // Write returns true if the hardware breakpoint should trigger on memory writes.
-func (wtype WatchType) Write() bool {
-	return wtype&WatchWrite != 0
+func (t WatchType) Write() bool {
+	return t&WatchWrite != 0
 }
 
 // Size returns the size in bytes of the hardware breakpoint.
-func (wtype WatchType) Size() int {
-	return int(wtype >> 4)
+func (t WatchType) Size() int {
+	return int(t >> 4)
 }
 
 // withSize returns a new HWBreakType with the size set to the specified value
-func (wtype WatchType) withSize(sz uint8) WatchType {
-	return WatchType((sz << 4) | uint8(wtype&0xf))
+func (t WatchType) withSize(sz uint8) WatchType {
+	return WatchType((sz << 4) | uint8(t&0xf))
 }
 
 var ErrHWBreakUnsupported = errors.New("hardware breakpoints not implemented")
@@ -195,7 +194,7 @@ func (bp *Breakpoint) LogicalID() int {
 func (bp *Breakpoint) VerboseDescr() []string {
 	r := []string{}
 
-	r = append(r, fmt.Sprintf("OriginalData=%#x", bp.OriginalData))
+	r = append(r, fmt.Sprintf("OriginalData=%#x", bp.Orig))
 
 	if bp.WatchType != 0 {
 		r = append(r, fmt.Sprintf("HWBreakIndex=%#x watchStackOff=%#x", bp.HWBreakIndex, bp.watchStackOff))
@@ -691,7 +690,7 @@ func (t *Target) setBreakpointInternal(addr uint64, kind BreakpointKind, wtype W
 	}
 
 	newBreakpoint := &Breakpoint{
-		FunctionName: fnName,
+		Function:     fnName,
 		WatchType:    wtype,
 		HWBreakIndex: hwidx,
 		File:         f,

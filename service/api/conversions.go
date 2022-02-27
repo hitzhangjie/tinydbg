@@ -16,13 +16,12 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc"
 )
 
-// ConvertBreakpoint converts from a proc.Breakpoint to
-// an api.Breakpoint.
+// ConvertBreakpoint converts from a proc.Breakpoint to an api.Breakpoint.
 func ConvertBreakpoint(bp *proc.Breakpoint) *Breakpoint {
 	b := &Breakpoint{
 		Name:         bp.Name,
 		ID:           bp.LogicalID(),
-		FunctionName: bp.FunctionName,
+		FunctionName: bp.Function,
 		File:         bp.File,
 		Line:         bp.Line,
 		Addr:         bp.Addr,
@@ -80,9 +79,8 @@ func ConvertBreakpoints(bps []*proc.Breakpoint) []*Breakpoint {
 	return r
 }
 
-// ConvertThread converts a proc.Thread into an
-// api thread.
-func ConvertThread(th proc.Thread) *Thread {
+// ConvertThread converts a proc.Thread into an api thread.
+func ConvertThread(thread proc.Thread) *Thread {
 	var (
 		function *Function
 		file     string
@@ -91,7 +89,7 @@ func ConvertThread(th proc.Thread) *Thread {
 		gid      int
 	)
 
-	loc, err := th.Location()
+	loc, err := thread.Location()
 	if err == nil {
 		pc = loc.PC
 		file = loc.File
@@ -100,17 +98,16 @@ func ConvertThread(th proc.Thread) *Thread {
 	}
 
 	var bp *Breakpoint
-
-	if b := th.Breakpoint(); b.Active {
+	if b := thread.Breakpoint(); b.Active {
 		bp = ConvertBreakpoint(b.Breakpoint)
 	}
 
-	if g, _ := proc.GetG(th); g != nil {
+	if g, _ := proc.GetG(thread); g != nil {
 		gid = g.ID
 	}
 
 	return &Thread{
-		ID:          th.ThreadID(),
+		ID:          thread.ThreadID(),
 		PC:          pc,
 		File:        file,
 		Line:        line,
@@ -129,6 +126,7 @@ func ConvertThreads(threads []proc.Thread) []*Thread {
 	return r
 }
 
+// PrettyTypeName returns the typename of DWARF type.
 func PrettyTypeName(typ godwarf.Type) string {
 	if typ == nil {
 		return ""
@@ -279,7 +277,7 @@ func ConvertFunction(fn *proc.Function) *Function {
 	// those fields is not documented their value was replaced with 0 when
 	// gosym.Func was replaced by debug_info entries.
 	return &Function{
-		Name_:     fn.Name,
+		_Name:     fn.Name,
 		Type:      0,
 		Value:     fn.Entry,
 		GoType:    0,

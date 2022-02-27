@@ -173,8 +173,8 @@ func (dbp *nativeProcess) WriteBreakpoint(bp *proc.Breakpoint) error {
 		return nil
 	}
 
-	bp.OriginalData = make([]byte, dbp.bi.Arch.BreakpointSize())
-	_, err := dbp.memthread.ReadMemory(bp.OriginalData, bp.Addr)
+	bp.Orig = make([]byte, dbp.bi.Arch.BreakpointSize())
+	_, err := dbp.memthread.ReadMemory(bp.Orig, bp.Addr)
 	if err != nil {
 		return err
 	}

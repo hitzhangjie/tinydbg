@@ -228,13 +228,11 @@ func (frame *Stackframe) Var(name string) *Variable {
 
 // Function represents thread-scoped function information.
 type Function struct {
-	// Name is the function name.
-	Name_  string `json:"name"`
-	Value  uint64 `json:"value"`
-	Type   byte   `json:"type"`
-	GoType uint64 `json:"goType"`
-	// Optimized is true if the function was optimized
-	Optimized bool `json:"optimized"`
+	_Name     string `json:"name"` // function name
+	Value     uint64 `json:"value"`
+	Type      byte   `json:"type"`
+	GoType    uint64 `json:"goType"`
+	Optimized bool   `json:"optimized"` // if this function is optimize
 }
 
 // Name will return the function name.
@@ -242,7 +240,7 @@ func (fn *Function) Name() string {
 	if fn == nil {
 		return "???"
 	}
-	return fn.Name_
+	return fn._Name
 }
 
 // VariableFlags is the type of the Flags field of Variable.
@@ -272,7 +270,7 @@ const (
 
 	// VariableFakeAddress means the address of this variable is either fake
 	// (i.e. the variable is partially or completely stored in a CPU register
-	// and doesn't have a real address) or possibly no longer availabe (because
+	// and doesn't have a real address) or possibly no longer available (because
 	// the variable is the return value of a function call and allocated on a
 	// frame that no longer exists)
 	VariableFakeAddress

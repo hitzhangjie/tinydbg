@@ -157,8 +157,7 @@ func (t *nativeThread) SetCurrentBreakpoint(adjustPC bool) error {
 	return nil
 }
 
-// Breakpoint returns the current breakpoint that is active
-// on this thread.
+// Breakpoint returns the current breakpoint that is active on this thread.
 func (t *nativeThread) Breakpoint() *proc.BreakpointState {
 	return &t.CurrentBreakpoint
 }
@@ -170,7 +169,7 @@ func (t *nativeThread) ThreadID() int {
 
 // clearSoftwareBreakpoint clears the specified breakpoint.
 func (t *nativeThread) clearSoftwareBreakpoint(bp *proc.Breakpoint) error {
-	if _, err := t.WriteMemory(bp.Addr, bp.OriginalData); err != nil {
+	if _, err := t.WriteMemory(bp.Addr, bp.Orig); err != nil {
 		return fmt.Errorf("could not clear breakpoint %s", err)
 	}
 	return nil

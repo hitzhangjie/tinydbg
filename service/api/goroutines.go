@@ -6,20 +6,22 @@ import (
 	"strings"
 )
 
+// PrintGoroutinesFlags 控制如何打印goroutine信息
 type PrintGoroutinesFlags uint8
 
 const (
-	PrintGoroutinesStack PrintGoroutinesFlags = 1 << iota
-	PrintGoroutinesLabels
+	PrintGoroutinesStack  PrintGoroutinesFlags = 1 << iota // 打印goroutine堆栈
+	PrintGoroutinesLabels                                  // 打印goroutine labels
 )
 
+// FormatGoroutineLoc 控制如何格式化goroutine位置信息
 type FormatGoroutineLoc int
 
 const (
-	FormatGLocRuntimeCurrent = FormatGoroutineLoc(iota)
-	FormatGLocUserCurrent
-	FormatGLocGo
-	FormatGLocStart
+	FormatGLocRuntimeCurrent = FormatGoroutineLoc(iota) // 打印goroutine当前地址
+	FormatGLocUserCurrent                               // 打印goroutine当前地址，排除runtime调用部分
+	FormatGLocGo                                        // 打印启动当前goroutine的指令地址
+	FormatGLocStart                                     // 打印启动当前goroutine的函数地址
 )
 
 const (
@@ -32,17 +34,18 @@ const goroutineBatchSize = 10000
 
 // ParseGoroutineArgs parse goroutine's arguments
 func ParseGoroutineArgs(argstr string) ([]ListGoroutinesFilter, GoroutineGroupingOptions, FormatGoroutineLoc, PrintGoroutinesFlags, int, int, error) {
-	args := strings.Split(argstr, " ")
-	var filters []ListGoroutinesFilter
-	var group GoroutineGroupingOptions
-	var fgl = FormatGLocUserCurrent
-	var flags PrintGoroutinesFlags
-	var depth = 10
-	var batchSize = goroutineBatchSize
-
+	var (
+		filters   []ListGoroutinesFilter
+		group     GoroutineGroupingOptions
+		fgl       = FormatGLocUserCurrent
+		flags     PrintGoroutinesFlags
+		depth     = 10
+		batchSize = goroutineBatchSize
+	)
 	group.MaxGroupMembers = maxGroupMembers
 	group.MaxGroups = maxGoroutineGroups
 
+	args := strings.Split(argstr, " ")
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
@@ -66,14 +69,12 @@ func ParseGoroutineArgs(argstr string) ([]ListGoroutinesFilter, GoroutineGroupin
 					i++
 				}
 			}
-
 		case "-w", "-with":
 			filter, err := readGoroutinesFilter(args, &i)
 			if err != nil {
 				return nil, GoroutineGroupingOptions{}, 0, 0, 0, 0, fmt.Errorf("wrong argument: '%s'", arg)
 			}
 			filters = append(filters, *filter)
-
 		case "-wo", "-without":
 			filter, err := readGoroutinesFilter(args, &i)
 			if err != nil {
@@ -97,7 +98,6 @@ func ParseGoroutineArgs(argstr string) ([]ListGoroutinesFilter, GoroutineGroupin
 				i++
 			}
 			batchSize = 0 // grouping only works well if run on all goroutines
-
 		case "":
 			// nothing to do
 		default:

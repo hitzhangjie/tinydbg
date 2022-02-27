@@ -42,17 +42,14 @@ const (
 	maxGoroutineUserCurrentDepth = 30 // Maximum depth used by (*G).UserCurrent to search its location
 )
 
+// floatSpecial defines different modes of float values
 type floatSpecial uint8
 
 const (
-	// FloatIsNormal means the value is a normal float.
-	FloatIsNormal floatSpecial = iota
-	// FloatIsNaN means the float is a special NaN value.
-	FloatIsNaN
-	// FloatIsPosInf means the float is a special positive inifitiy value.
-	FloatIsPosInf
-	// FloatIsNegInf means the float is a special negative infinity value.
-	FloatIsNegInf
+	FloatIsNormal floatSpecial = iota // is a normal float.
+	FloatIsNaN                        // is a special NaN value.
+	FloatIsPosInf                     // is a special positive inifitiy value.
+	FloatIsNegInf                     // is a special negative infinity value.
 )
 
 type variableFlags uint16
