@@ -1,9 +1,12 @@
 // elfwriter is a package to write ELF files without having their entire
 // contents in memory at any one time.
+//
 // This package is incomplete, only features needed to write core files are
 // implemented, notably missing:
 // - section headers
 // - program headers at the beginning of the file
+//
+// see: https://github.com/go-delve/delve/pull/2173
 
 package elfwriter
 

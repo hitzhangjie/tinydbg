@@ -115,37 +115,20 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 	fhdr.Class = elf.ELFCLASS64
 	fhdr.Data = elf.ELFDATA2LSB
 	fhdr.Version = elf.EV_CURRENT
-
-	switch bi.GOOS {
-	case "linux":
-		fhdr.OSABI = elf.ELFOSABI_LINUX
-	default:
-		panic(fmt.Sprintf("unsupported OSABI: %s", bi.GOOS))
-	}
-
+	fhdr.OSABI = elf.ELFOSABI_LINUX
 	fhdr.Type = elf.ET_CORE
-
-	switch bi.Arch.Name {
-	case "amd64":
-		fhdr.Machine = elf.EM_X86_64
-	case "386":
-		fhdr.Machine = elf.EM_386
-	default:
-		panic("not implemented")
-	}
-
+	fhdr.Machine = elf.EM_X86_64
 	fhdr.Entry = 0
 
 	w := elfwriter.New(out, &fhdr)
 
-	notes := []elfwriter.Note{}
-
+	// dump dlv header note
 	entryPoint, err := t.EntryPoint()
 	if err != nil {
 		state.setErr(err)
 		return
 	}
-
+	notes := []elfwriter.Note{}
 	notes = append(notes, elfwriter.Note{
 		Type: elfwriter.DelveHeaderNoteType,
 		Name: "Delve Header",
@@ -155,8 +138,8 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 	threads := t.ThreadList()
 	state.setThreadsTotal(len(threads))
 
+	// dump note for target process
 	var threadsDone bool
-
 	if flags&DumpPlatformIndependent == 0 {
 		threadsDone, notes, err = t.proc.DumpProcessNotes(notes, state.threadDone)
 		if err != nil {
@@ -164,7 +147,7 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 			return
 		}
 	}
-
+	// dump note for each thread
 	if !threadsDone {
 		for _, th := range threads {
 			if w.Err != nil {

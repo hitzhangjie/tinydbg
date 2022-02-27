@@ -95,14 +95,6 @@ func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 		t.longCommandCancel()
 		t.starlarkEnv.Cancel()
 		state, err := t.client.GetStateNonBlocking()
-		if err == nil && state.Recording {
-			log.Info("received SIGINT, stopping recording (will not forward signal)")
-			err := t.client.StopRecording()
-			if err != nil {
-				log.Error("%v", err)
-			}
-			continue
-		}
 		if err == nil && state.CoreDumping {
 			log.Info("received SIGINT, stopping dump")
 			err := t.client.CoreDumpCancel()

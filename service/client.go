@@ -164,9 +164,6 @@ type Client interface {
 	// This function will return an error if it reads less than `length` bytes.
 	ExamineMemory(address uint64, length int) ([]byte, bool, error)
 
-	// StopRecording stops a recording if one is in progress.
-	StopRecording() error
-
 	// CoreDumpStart starts creating a core dump to the specified file
 	CoreDumpStart(dest string) (api.DumpState, error)
 	// CoreDumpWait waits for the core dump to finish, or for the specified amount of milliseconds
@@ -614,10 +611,6 @@ func (c *RPCClient) ExamineMemory(address uint64, count int) ([]byte, bool, erro
 		return nil, false, err
 	}
 	return out.Mem, out.IsLittleEndian, nil
-}
-
-func (c *RPCClient) StopRecording() error {
-	return c.call("StopRecording", StopRecordingIn{}, &StopRecordingOut{})
 }
 
 func (c *RPCClient) CoreDumpStart(dest string) (api.DumpState, error) {

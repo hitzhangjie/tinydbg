@@ -68,20 +68,6 @@ func assertVariable(t *testing.T, variable *proc.Variable, expected varTest) {
 	}
 }
 
-func findFirstNonRuntimeFrame(p *proc.Target) (proc.Stackframe, error) {
-	frames, err := proc.ThreadStacktrace(p.CurrentThread(), 10)
-	if err != nil {
-		return proc.Stackframe{}, err
-	}
-
-	for _, frame := range frames {
-		if frame.Current.Fn != nil && !strings.HasPrefix(frame.Current.Fn.Name, "runtime.") {
-			return frame, nil
-		}
-	}
-	return proc.Stackframe{}, fmt.Errorf("non-runtime frame not found")
-}
-
 func evalScope(p *proc.Target) (*proc.EvalScope, error) {
 	return proc.GoroutineScope(p, p.CurrentThread())
 }
@@ -131,7 +117,7 @@ func withTestProcessArgs(name string, t *testing.T, wd string, args []string, bu
 	}
 
 	defer func() {
-		p.Detach(true)
+		_ = p.Detach(true)
 	}()
 
 	fn(p, fixture)
@@ -182,7 +168,6 @@ func TestVariableEvaluation(t *testing.T) {
 		{"NonExistent", true, "", "", "", fmt.Errorf("could not find symbol value for NonExistent")},
 	}
 
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -309,7 +294,6 @@ func TestVariableEvaluationShort(t *testing.T) {
 		{"NonExistent", true, "", "", "", fmt.Errorf("could not find symbol value for NonExistent")},
 	}
 
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -365,7 +349,6 @@ func TestMultilineVariableEvaluation(t *testing.T) {
 		Nest: *(*main.Nest)(…`, "", "main.Nest", nil},
 	}
 
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -441,7 +424,6 @@ func TestLocalVariables(t *testing.T) {
 				{"baz", true, "\"bazburzum\"", "", "string", nil}}},
 	}
 
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, fixture proctest.Fixture) {
 		err := p.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -469,7 +451,6 @@ func TestLocalVariables(t *testing.T) {
 }
 
 func TestEmbeddedStruct(t *testing.T) {
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		testcases := []varTest{
 			{"b.val", true, "-314", "-314", "int", nil},
@@ -826,7 +807,6 @@ func TestEvalExpression(t *testing.T) {
 		}
 	}
 
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		for _, tc := range testcases {
@@ -854,7 +834,6 @@ func TestEvalExpression(t *testing.T) {
 }
 
 func TestEvalAddrAndCast(t *testing.T) {
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		c1addr, err := evalVariable(p, "&c1", pnormalLoadConfig)
@@ -881,7 +860,6 @@ func TestEvalAddrAndCast(t *testing.T) {
 }
 
 func TestMapEvaluation(t *testing.T) {
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		m1v, err := evalVariable(p, "m1", pnormalLoadConfig)
@@ -923,7 +901,6 @@ func TestMapEvaluation(t *testing.T) {
 }
 
 func TestUnsafePointer(t *testing.T) {
-	proctest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		up1v, err := evalVariable(p, "up1", pnormalLoadConfig)
@@ -933,11 +910,6 @@ func TestUnsafePointer(t *testing.T) {
 			t.Fatalf("wrong value for up1: %s", ss)
 		}
 	})
-}
-
-type issue426TestCase struct {
-	name string
-	typ  string
 }
 
 func testPackageRenamesHelper(t *testing.T, p *proc.Target, testcases []varTest) {
@@ -1017,7 +989,6 @@ func TestPackageRenames(t *testing.T) {
 		return
 	}
 
-	proctest.AllowRecording(t)
 	withTestProcess("pkgrenames", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		testPackageRenamesHelper(t, p, testcases)
@@ -1093,8 +1064,6 @@ type testCaseCallFunction struct {
 }
 
 func TestCallFunction(t *testing.T) {
-	proctest.AllowRecording(t)
-
 	var testcases = []testCaseCallFunction{
 		// Basic function call injection tests
 
@@ -1456,7 +1425,6 @@ func TestCgoEval(t *testing.T) {
 		{"v_align_check[90]", false, "align_check {a: 90, b: 90}", "align_check {a: 90, b: 90}", "align_check", nil},
 	}
 
-	proctest.AllowRecording(t)
 	withTestProcess("testvariablescgo/", t, func(p *proc.Target, fixture proctest.Fixture) {
 		assertNoError(p.Continue(), t, "Continue() returned an error")
 		for _, tc := range testcases {
@@ -1490,14 +1458,14 @@ func TestEvalExpressionGenerics(t *testing.T) {
 
 	testcases := [][]varTest{
 		// testfn[int, float32]
-		[]varTest{
+		{
 			{"arg1", true, "3", "", "int", nil},
 			{"arg2", true, "2.1", "", "float32", nil},
 			{"m", true, "map[float32]int [2.1: 3, ]", "", "map[float32]int", nil},
 		},
 
 		// testfn[*astruct, astruct]
-		[]varTest{
+		{
 			{"arg1", true, "*main.astruct {x: 0, y: 1}", "", "*main.astruct", nil},
 			{"arg2", true, "main.astruct {x: 2, y: 3}", "", "main.astruct", nil},
 			{"m", true, "map[main.astruct]*main.astruct [{x: 2, y: 3}: *{x: 0, y: 1}, ]", "", "map[main.astruct]*main.astruct", nil},

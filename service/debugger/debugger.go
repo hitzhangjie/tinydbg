@@ -1757,7 +1757,7 @@ func (d *Debugger) DumpStart(dest string) error {
 		return ErrCoreDumpInProgress
 	}
 
-	fh, err := os.Create(dest)
+	file, err := os.Create(dest)
 	if err != nil {
 		d.targetMutex.Unlock()
 		return err
@@ -1774,7 +1774,7 @@ func (d *Debugger) DumpStart(dest string) error {
 	d.dumpState.Err = nil
 	go func() {
 		defer d.targetMutex.Unlock()
-		d.target.Dump(fh, 0, &d.dumpState)
+		d.target.Dump(file, 0, &d.dumpState)
 	}()
 
 	return nil

@@ -21,11 +21,6 @@ type DebuggerState struct {
 	Pid int
 	// Running is true if the process is running and no other information can be collected.
 	Running bool
-	// Recording is true if the process is currently being recorded and no other
-	// information can be collected. While the debugger is in this state
-	// sending a StopRecording request will halt the recording, every other
-	// request will block until the process has been recorded.
-	Recording bool
 	// Core dumping currently in progress.
 	CoreDumping bool
 	// CurrentThread is the currently selected debugger thread.
