@@ -131,6 +131,8 @@ func DebugCommands(client service.Client) *Commands {
 		{aliases: []string{"call"}, group: runCmds, cmdFn: c.call, helpMsg: callCmdHelpMsg},
 		{aliases: []string{"threads"}, group: goroutineCmds, cmdFn: threads, helpMsg: threadsCmdHelpMsg},
 		{aliases: []string{"thread", "tr"}, group: goroutineCmds, cmdFn: thread, helpMsg: threadCmdHelpMsg},
+		{aliases: []string{"clear"}, group: breakCmds, cmdFn: clear, helpMsg: clearCmdHelpMsg},
+		{aliases: []string{"clearall"}, group: breakCmds, cmdFn: clearAll, helpMsg: clearallCmdHelpMsg},
 		{aliases: []string{"toggle"}, group: breakCmds, cmdFn: toggle, helpMsg: toggleCmdHelpMsg},
 		{aliases: []string{"goroutines", "grs"}, group: goroutineCmds, cmdFn: goroutines, helpMsg: goroutinesCmdHelpMsg},
 		{aliases: []string{"goroutine", "gr"}, group: goroutineCmds, allowedPrefixes: onPrefix, cmdFn: c.goroutine, helpMsg: goroutineCmdHelpMsg},
