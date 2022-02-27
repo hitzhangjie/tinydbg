@@ -110,7 +110,7 @@ func ThreadStacktrace(thread Thread, depth int) ([]Stackframe, error) {
 }
 
 func (g *G) stackIterator(opts StacktraceOptions) (*stackIterator, error) {
-	bi := g.variable.bi
+	bi := g.variable.bin
 	if g.Thread != nil {
 		regs, err := g.Thread.Registers()
 		if err != nil {
@@ -124,7 +124,7 @@ func (g *G) stackIterator(opts StacktraceOptions) (*stackIterator, error) {
 			dwarfRegs,
 			g.stack.hi, g, opts), nil
 	}
-	so := g.variable.bi.PCToImage(g.PC)
+	so := g.variable.bin.PCToImage(g.PC)
 	return newStackIterator(
 		bi, g.variable.mem,
 		bi.Arch.addrAndStackRegsToDwarfRegisters(so.StaticBase, g.PC, g.SP, g.BP, g.LR),

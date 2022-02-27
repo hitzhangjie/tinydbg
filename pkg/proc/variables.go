@@ -95,7 +95,7 @@ type Variable struct {
 	RealType  godwarf.Type
 	Kind      reflect.Kind
 	mem       MemoryReadWriter
-	bi        *BinaryInfo
+	bin       *BinaryInfo
 
 	Value        constant.Value
 	FloatSpecial floatSpecial
@@ -506,20 +506,20 @@ func (g *G) UserCurrent() Location {
 // that spawned this goroutine.
 func (g *G) Go() Location {
 	pc := g.GoPC
-	if fn := g.variable.bi.PCToFunc(pc); fn != nil {
+	if fn := g.variable.bin.PCToFunc(pc); fn != nil {
 		// Backup to CALL instruction.
 		// Mimics runtime/traceback.go:677.
 		if g.GoPC > fn.Entry {
 			pc--
 		}
 	}
-	f, l, fn := g.variable.bi.PCToLine(pc)
+	f, l, fn := g.variable.bin.PCToLine(pc)
 	return Location{PC: g.GoPC, File: f, Line: l, Fn: fn}
 }
 
 // StartLoc returns the starting location of the goroutine.
 func (g *G) StartLoc(tgt *Target) Location {
-	fn := g.variable.bi.PCToFunc(g.StartPC)
+	fn := g.variable.bin.PCToFunc(g.StartPC)
 	fn = tgt.dwrapUnwrap(fn)
 	if fn == nil {
 		return Location{PC: g.StartPC}
@@ -549,9 +549,9 @@ func (g *G) Labels() map[string]string {
 	var labels map[string]string
 	if labelsVar := g.variable.loadFieldNamed("labels"); labelsVar != nil && len(labelsVar.Children) == 1 {
 		if address := labelsVar.Children[0]; address.Addr != 0 {
-			labelMapType, _ := g.variable.bi.findType("runtime/pprof.labelMap")
+			labelMapType, _ := g.variable.bin.findType("runtime/pprof.labelMap")
 			if labelMapType != nil {
-				labelMap := newVariable("", address.Addr, labelMapType, g.variable.bi, g.variable.mem)
+				labelMap := newVariable("", address.Addr, labelMapType, g.variable.bin, g.variable.mem)
 				labelMap.loadValue(loadFullValue)
 				labels = map[string]string{}
 				for i := range labelMap.Children {
@@ -592,7 +592,7 @@ func newVariableFromThread(t Thread, name string, addr uint64, dwarfType godwarf
 }
 
 func (v *Variable) newVariable(name string, addr uint64, dwarfType godwarf.Type, mem MemoryReadWriter) *Variable {
-	return newVariable(name, addr, dwarfType, v.bi, mem)
+	return newVariable(name, addr, dwarfType, v.bin, mem)
 }
 
 func newVariable(name string, addr uint64, dwarfType godwarf.Type, bi *BinaryInfo, mem MemoryReadWriter) *Variable {
@@ -626,7 +626,7 @@ func newVariable(name string, addr uint64, dwarfType godwarf.Type, bi *BinaryInf
 		Addr:      addr,
 		DwarfType: dwarfType,
 		mem:       mem,
-		bi:        bi,
+		bin:       bi,
 	}
 
 	v.RealType = resolveTypedef(v.DwarfType)
@@ -645,7 +645,7 @@ func newVariable(name string, addr uint64, dwarfType godwarf.Type, bi *BinaryInf
 				v.Kind = reflect.String
 			}
 			if v.Addr != 0 {
-				v.Base, v.Unreadable = readUintRaw(v.mem, v.Addr, int64(v.bi.Arch.PtrSize()))
+				v.Base, v.Unreadable = readUintRaw(v.mem, v.Addr, int64(v.bin.Arch.PtrSize()))
 			}
 		}
 	case *godwarf.ChanType:
@@ -660,7 +660,7 @@ func newVariable(name string, addr uint64, dwarfType godwarf.Type, bi *BinaryInf
 		v.stride = 1
 		v.fieldType = &godwarf.UintType{BasicType: godwarf.BasicType{CommonType: godwarf.CommonType{ByteSize: 1, Name: "byte"}, BitSize: 8, BitOffset: 0}}
 		if v.Addr != 0 {
-			v.Base, v.Len, v.Unreadable = readStringInfo(v.mem, v.bi.Arch, v.Addr)
+			v.Base, v.Len, v.Unreadable = readStringInfo(v.mem, v.bin.Arch, v.Addr)
 		}
 	case *godwarf.SliceType:
 		v.Kind = reflect.Slice
@@ -782,7 +782,7 @@ func (v *Variable) TypeString() string {
 	}
 	r := v.DwarfType.String()
 	if r == "*void" {
-		cu := v.bi.Images[v.DwarfType.Common().Index].findCompileUnitForOffset(v.DwarfType.Common().Offset)
+		cu := v.bin.Images[v.DwarfType.Common().Index].findCompileUnitForOffset(v.DwarfType.Common().Offset)
 		if cu != nil && cu.isgo {
 			r = "unsafe.Pointer"
 		}
@@ -829,7 +829,7 @@ func (v *Variable) parseG() (*G, error) {
 
 	if deref {
 		var err error
-		gaddr, err = readUintRaw(mem, gaddr, int64(v.bi.Arch.PtrSize()))
+		gaddr, err = readUintRaw(mem, gaddr, int64(v.bin.Arch.PtrSize()))
 		if err != nil {
 			return nil, fmt.Errorf("error derefing *G %s", err)
 		}
@@ -882,7 +882,7 @@ func (v *Variable) parseG() (*G, error) {
 	startpc := loadInt64Maybe("startpc")     // +rtype uintptr
 	waitSince := loadInt64Maybe("waitsince") // +rtype int64
 	waitReason := int64(0)
-	if producer := v.bi.Producer(); producer != "" && goversion.ProducerAfterOrEqual(producer, 1, 11) {
+	if producer := v.bin.Producer(); producer != "" && goversion.ProducerAfterOrEqual(producer, 1, 11) {
 		waitReason = loadInt64Maybe("waitreason") // +rtype -opt waitReason
 	}
 	var stackhi, stacklo uint64
@@ -901,7 +901,7 @@ func (v *Variable) parseG() (*G, error) {
 		return nil, ErrUnreadableG
 	}
 
-	f, l, fn := v.bi.PCToLine(uint64(pc))
+	f, l, fn := v.bin.PCToLine(uint64(pc))
 
 	v.Name = "runtime.curg"
 
@@ -1019,7 +1019,7 @@ func (a *Ancestor) Stack(n int) ([]Stackframe, error) {
 			return nil, fmt.Errorf("wrong type for pcs item %d: %v", i, pcsVar.Children[i].Kind)
 		}
 		pc, _ := constant.Int64Val(pcsVar.Children[i].Value)
-		fn := a.pcsVar.bi.PCToFunc(uint64(pc))
+		fn := a.pcsVar.bin.PCToFunc(uint64(pc))
 		if fn == nil {
 			loc := Location{PC: uint64(pc)}
 			r[i] = Stackframe{Current: loc, Call: loc}
@@ -1364,7 +1364,7 @@ func convertToEface(srcv, dstv *Variable) error {
 		dstv.writeEmptyInterface(uint64(_type.Addr), data)
 		return nil
 	}
-	typeAddr, typeKind, runtimeTypeFound, err := dwarfToRuntimeType(srcv.bi, srcv.mem, srcv.RealType)
+	typeAddr, typeKind, runtimeTypeFound, err := dwarfToRuntimeType(srcv.bin, srcv.mem, srcv.RealType)
 	if err != nil {
 		return err
 	}
@@ -1552,7 +1552,7 @@ func (v *Variable) loadChanInfo() {
 		field := &godwarf.StructField{}
 		*field = *structType.Field[i]
 		if field.Name == "buf" {
-			field.Type = pointerTo(fakeArrayType(chanLen, chanType.ElemType), v.bi.Arch)
+			field.Type = pointerTo(fakeArrayType(chanLen, chanType.ElemType), v.bin.Arch)
 		}
 		newStructType.Field[i] = field
 	}
@@ -1560,7 +1560,7 @@ func (v *Variable) loadChanInfo() {
 	v.RealType = &godwarf.ChanType{
 		TypedefType: godwarf.TypedefType{
 			CommonType: chanType.TypedefType.CommonType,
-			Type:       pointerTo(newStructType, v.bi.Arch),
+			Type:       pointerTo(newStructType, v.bin.Arch),
 		},
 		ElemType: chanType.ElemType,
 	}
@@ -1789,8 +1789,8 @@ func (v *Variable) writeSlice(len, cap int64, base uint64) error {
 }
 
 func (v *Variable) writeString(len, base uint64) error {
-	writePointer(v.bi, v.mem, uint64(v.Addr), base)
-	writePointer(v.bi, v.mem, uint64(v.Addr)+uint64(v.bi.Arch.PtrSize()), len)
+	writePointer(v.bin, v.mem, uint64(v.Addr), base)
+	writePointer(v.bin, v.mem, uint64(v.Addr)+uint64(v.bin.Arch.PtrSize()), len)
 	return nil
 }
 
@@ -1816,14 +1816,14 @@ func (v *Variable) readFunctionPtr() {
 		return
 	}
 
-	val, err := readUintRaw(v.mem, v.closureAddr, int64(v.bi.Arch.PtrSize()))
+	val, err := readUintRaw(v.mem, v.closureAddr, int64(v.bin.Arch.PtrSize()))
 	if err != nil {
 		v.Unreadable = err
 		return
 	}
 
 	v.Base = val
-	fn := v.bi.PCToFunc(uint64(v.Base))
+	fn := v.bin.PCToFunc(uint64(v.Base))
 	if fn == nil {
 		v.Unreadable = fmt.Errorf("could not find function for %#v", v.Base)
 		return
@@ -1834,7 +1834,7 @@ func (v *Variable) readFunctionPtr() {
 
 // funcvalAddr reads the address of the funcval contained in a function variable.
 func (v *Variable) funcvalAddr() uint64 {
-	val, err := readUintRaw(v.mem, v.Addr, int64(v.bi.Arch.PtrSize()))
+	val, err := readUintRaw(v.mem, v.Addr, int64(v.bin.Arch.PtrSize()))
 	if err != nil {
 		v.Unreadable = err
 		return 0
@@ -1959,7 +1959,7 @@ func (v *Variable) mapIterator() *mapIterator {
 
 	it.hashTophashEmptyOne = hashTophashEmptyZero
 	it.hashMinTopHash = hashMinTopHashGo111
-	if producer := v.bi.Producer(); producer != "" && goversion.ProducerAfterOrEqual(producer, 1, 12) {
+	if producer := v.bin.Producer(); producer != "" && goversion.ProducerAfterOrEqual(producer, 1, 12) {
 		it.hashTophashEmptyOne = hashTophashEmptyOne
 		it.hashMinTopHash = hashMinTopHashGo112
 	}
@@ -2218,7 +2218,7 @@ func (v *Variable) loadInterface(recurseLevel int, loadData bool, cfg LoadConfig
 	if kind&kindDirectIface == 0 {
 		realtyp := resolveTypedef(typ)
 		if _, isptr := realtyp.(*godwarf.PtrType); !isptr {
-			typ = pointerTo(typ, v.bi.Arch)
+			typ = pointerTo(typ, v.bin.Arch)
 			deref = true
 		}
 	}
@@ -2237,12 +2237,12 @@ func (v *Variable) loadInterface(recurseLevel int, loadData bool, cfg LoadConfig
 	}
 }
 
-// ConstDescr describes the value of v using constants.
-func (v *Variable) ConstDescr() string {
-	if v.bi == nil || (v.Flags&VariableConstant != 0) {
+// ConstDesc describes the value of v using constants.
+func (v *Variable) ConstDesc() string {
+	if v.bin == nil || (v.Flags&VariableConstant != 0) {
 		return ""
 	}
-	ctyp := v.bi.consts.Get(v.DwarfType)
+	ctyp := v.bin.consts.Get(v.DwarfType)
 	if ctyp == nil {
 		return ""
 	}

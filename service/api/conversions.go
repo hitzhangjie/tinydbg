@@ -16,6 +16,9 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc"
 )
 
+// This file defines serveral functions to convert proc.* to api.*,
+// then the caller (such as RPCClient) could display the data.
+
 // ConvertBreakpoint converts from a proc.Breakpoint to an api.Breakpoint.
 func ConvertBreakpoint(bp *proc.Breakpoint) *Breakpoint {
 	b := &Breakpoint{
@@ -245,7 +248,7 @@ func VariableValueAsString(v *proc.Variable) string {
 	case reflect.String, reflect.Func:
 		return constant.StringVal(v.Value)
 	default:
-		if cd := v.ConstDescr(); cd != "" {
+		if cd := v.ConstDesc(); cd != "" {
 			return fmt.Sprintf("%s (%s)", cd, v.Value.String())
 		} else {
 			return v.Value.String()
@@ -265,8 +268,7 @@ func ConvertVars(pv []*proc.Variable) []Variable {
 	return vars
 }
 
-// ConvertFunction converts from gosym.Func to
-// api.Function.
+// ConvertFunction converts from gosym.Func to api.Function.
 func ConvertFunction(fn *proc.Function) *Function {
 	if fn == nil {
 		return nil
@@ -421,10 +423,12 @@ func ConvertRegisters(in *op.DwarfRegisters, dwarfRegisterToString func(int, *op
 	return
 }
 
+// ConvertImage converts proc.Image to api.Image.
 func ConvertImage(image *proc.Image) Image {
 	return Image{Path: image.Path, Address: image.StaticBase}
 }
 
+// ConvertDumpState converts proc.DumpState to api.DumpState.
 func ConvertDumpState(dumpState *proc.DumpState) *DumpState {
 	dumpState.Mutex.Lock()
 	defer dumpState.Mutex.Unlock()

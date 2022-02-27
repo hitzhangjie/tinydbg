@@ -1900,8 +1900,8 @@ func digits(n int) int {
 	return int(math.Floor(math.Log10(float64(n)))) + 1
 }
 
-func printStack(t *Term, out io.Writer, stack []api.Stackframe, ind string, offsets bool) {
-	api.PrintStack(t.formatPath, out, stack, ind, offsets, func(api.Stackframe) bool { return true })
+func printStack(t *Term, out io.Writer, stack []api.Stackframe, indent string, offsets bool) {
+	api.PrintStack(t.formatPath, out, stack, indent, offsets, func(api.Stackframe) bool { return true })
 }
 
 func printcontext(t *Term, state *api.DebuggerState) {

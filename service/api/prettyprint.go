@@ -419,7 +419,6 @@ func (v *Variable) writeSliceOrArrayTo(buf io.Writer, newlines bool, indent, fmt
 // `format` specifies the data format (or data type), `size` specifies size of each data,
 // like 4byte integer, 1byte character, etc. `count` specifies the number of values.
 func PrettyExamineMemory(address uintptr, memArea []byte, isLittleEndian bool, format byte, size int) string {
-
 	var (
 		cols      int
 		colFormat string
@@ -504,7 +503,10 @@ func digits(n int) int {
 	return int(math.Floor(math.Log10(float64(n)))) + 1
 }
 
-func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackframe, ind string, offsets bool, include func(Stackframe) bool) {
+// PrintStack print stack
+func PrintStack(formatPath func(string) string, out io.Writer,
+	stack []Stackframe, indent string, offsets bool, include func(Stackframe) bool) {
+
 	if len(stack) == 0 {
 		return
 	}
@@ -519,7 +521,7 @@ func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackfram
 
 	d := digits(len(stack) - 1)
 	fmtstr := "%s%" + strconv.Itoa(d) + "d  0x%016x in %s\n"
-	s := ind + strings.Repeat(" ", d+2+len(ind))
+	s := indent + strings.Repeat(" ", d+2+len(indent))
 
 	for i := range stack {
 		if !include(stack[i]) {
@@ -529,7 +531,7 @@ func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackfram
 			fmt.Fprintf(out, "%serror: %s\n", s, stack[i].Err)
 			continue
 		}
-		fmt.Fprintf(out, fmtstr, ind, i, stack[i].PC, stack[i].Function.Name())
+		fmt.Fprintf(out, fmtstr, indent, i, stack[i].PC, stack[i].Function.Name())
 		fmt.Fprintf(out, "%sat %s:%d\n", s, formatPath(stack[i].File), stack[i].Line)
 
 		if offsets {
@@ -561,6 +563,6 @@ func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackfram
 	}
 
 	if len(stack) > 0 && !stack[len(stack)-1].Bottom {
-		fmt.Fprintf(out, "%s"+stacktraceTruncatedMessage+"\n", ind)
+		fmt.Fprintf(out, "%s"+stacktraceTruncatedMessage+"\n", indent)
 	}
 }

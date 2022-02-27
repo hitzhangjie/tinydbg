@@ -1459,7 +1459,7 @@ func (v *Variable) pointerToVariable() *Variable {
 	v.OnlyAddr = true
 
 	typename := "*" + v.DwarfType.Common().Name
-	rv := v.newVariable("", 0, &godwarf.PtrType{CommonType: godwarf.CommonType{ByteSize: int64(v.bi.Arch.PtrSize()), Name: typename}, Type: v.DwarfType}, v.mem)
+	rv := v.newVariable("", 0, &godwarf.PtrType{CommonType: godwarf.CommonType{ByteSize: int64(v.bin.Arch.PtrSize()), Name: typename}, Type: v.DwarfType}, v.mem)
 	rv.Children = []Variable{*v}
 	rv.loaded = true
 
@@ -2115,8 +2115,8 @@ func (v *Variable) findMethod(mname string) (*Variable, error) {
 
 		//TODO(aarzilli): support generic functions?
 
-		if fn, ok := v.bi.LookupFunc[fmt.Sprintf("%s.%s.%s", pkg, receiver, mname)]; ok {
-			r, err := functionToVariable(fn, v.bi, v.mem)
+		if fn, ok := v.bin.LookupFunc[fmt.Sprintf("%s.%s.%s", pkg, receiver, mname)]; ok {
+			r, err := functionToVariable(fn, v.bin, v.mem)
 			if err != nil {
 				return nil, err
 			}
@@ -2128,8 +2128,8 @@ func (v *Variable) findMethod(mname string) (*Variable, error) {
 			return r, nil
 		}
 
-		if fn, ok := v.bi.LookupFunc[fmt.Sprintf("%s.(*%s).%s", pkg, receiver, mname)]; ok {
-			r, err := functionToVariable(fn, v.bi, v.mem)
+		if fn, ok := v.bin.LookupFunc[fmt.Sprintf("%s.(*%s).%s", pkg, receiver, mname)]; ok {
+			r, err := functionToVariable(fn, v.bin, v.mem)
 			if err != nil {
 				return nil, err
 			}

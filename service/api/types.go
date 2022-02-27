@@ -46,6 +46,7 @@ type DebuggerState struct {
 	Err error `json:"-"`
 }
 
+// TracepointResult result of tracepoint
 type TracepointResult struct {
 	// Addr is the address of this tracepoint.
 	Addr uint64 `json:"addr"`
@@ -63,8 +64,12 @@ type TracepointResult struct {
 	ReturnParams []Variable `json:"returnParams,omitempty"`
 }
 
-// Breakpoint addresses a set of locations at which process execution may be
-// suspended.
+// Breakpoint addresses a set of locations at which process execution may be suspended.
+//
+// Here, Breakpoint is a logic breakpoint, which may contains multiple physical
+// breakpoints, proc.Breakpoint represents the physical breakpoint.
+//
+// see https://github.com/go-delve/delve/pull/1717.
 type Breakpoint struct {
 	// ID is a unique identifier for the breakpoint.
 	ID int `json:"id"`
@@ -210,8 +215,7 @@ type Defer struct {
 	Unreadable  string
 }
 
-// Var will return the variable described by 'name' within
-// this stack frame.
+// Var returns the variable described by 'name' within this stack frame.
 func (frame *Stackframe) Var(name string) *Variable {
 	for i := range frame.Locals {
 		if frame.Locals[i].Name == name {
@@ -368,8 +372,8 @@ type Goroutine struct {
 }
 
 const (
-	GoroutineWaiting = proc.Gwaiting
-	GoroutineSyscall = proc.Gsyscall
+	GoroutineWaiting = proc.Gwaiting // goroutine正在等待
+	GoroutineSyscall = proc.Gsyscall // goroutine陷入系统调用
 )
 
 // DebuggerCommand is a command which changes the debugger's execution state.
@@ -447,17 +451,13 @@ const (
 	Call = "call"
 )
 
-// AssemblyFlavour describes the output
-// of disassembled code.
+// AssemblyFlavour describes the output of disassembled code.
 type AssemblyFlavour int
 
 const (
-	// GNUFlavour will disassemble using GNU assembly syntax.
-	GNUFlavour = AssemblyFlavour(proc.GNUFlavour)
-	// IntelFlavour will disassemble using Intel assembly syntax.
-	IntelFlavour = AssemblyFlavour(proc.IntelFlavour)
-	// GoFlavour will disassemble using Go assembly syntax.
-	GoFlavour = AssemblyFlavour(proc.GoFlavour)
+	GNUFlavour   = AssemblyFlavour(proc.GNUFlavour)   // GNU assembly syntax
+	IntelFlavour = AssemblyFlavour(proc.IntelFlavour) // Intel assembly syntax
+	GoFlavour    = AssemblyFlavour(proc.GoFlavour)    // Go assembly syntax
 )
 
 // AsmInstruction represents one assembly instruction at some address
@@ -615,6 +615,7 @@ type GoroutineGroup struct {
 	Total  int    // total number of goroutines that belong to this group
 }
 
+// GoroutineGroupingOptions options for grouping goroutines.
 type GoroutineGroupingOptions struct {
 	GroupBy         GoroutineField
 	GroupByKey      string

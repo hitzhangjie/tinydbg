@@ -120,7 +120,7 @@ func (ctxt *loadDebugInfoMapsContext) lookupAbstractOrigin(bi *BinaryInfo, off d
 // * After go1.11 the runtimeTypeToDIE map is used to look up the address of
 //   the type and map it drectly to a DIE.
 func runtimeTypeToDIE(_type *Variable, dataAddr uint64) (typ godwarf.Type, kind int64, err error) {
-	bi := _type.bi
+	bi := _type.bin
 
 	_type = _type.maybeDereference()
 
@@ -152,7 +152,7 @@ func runtimeTypeToDIE(_type *Variable, dataAddr uint64) (typ godwarf.Type, kind 
 
 	// go1.7 to go1.10 implementation: convert runtime._type structs to type names
 
-	if goversion.ProducerAfterOrEqual(_type.bi.Producer(), 1, 17) {
+	if goversion.ProducerAfterOrEqual(_type.bin.Producer(), 1, 17) {
 		// Go 1.17 changed the encoding of names in runtime._type breaking the
 		// code below, but the codepath above, using runtimeTypeToDIE should be
 		// enough.
@@ -211,7 +211,7 @@ type nameOfRuntimeTypeEntry struct {
 // _type is a non-loaded Variable pointing to runtime._type struct in the target.
 // The returned string is in the format that's used in DWARF data
 func nameOfRuntimeType(mds []moduleData, _type *Variable) (typename string, kind int64, err error) {
-	if e, ok := _type.bi.nameOfRuntimeType[_type.Addr]; ok {
+	if e, ok := _type.bin.nameOfRuntimeType[_type.Addr]; ok {
 		return e.typename, e.kind, nil
 	}
 
@@ -229,14 +229,14 @@ func nameOfRuntimeType(mds []moduleData, _type *Variable) (typename string, kind
 	if tflag&tflagNamed != 0 {
 		typename, err = nameOfNamedRuntimeType(mds, _type, kind, tflag)
 		if err == nil {
-			_type.bi.nameOfRuntimeType[_type.Addr] = nameOfRuntimeTypeEntry{typename: typename, kind: kind}
+			_type.bin.nameOfRuntimeType[_type.Addr] = nameOfRuntimeTypeEntry{typename: typename, kind: kind}
 		}
 		return typename, kind, err
 	}
 
 	typename, err = nameOfUnnamedRuntimeType(mds, _type, kind, tflag)
 	if err == nil {
-		_type.bi.nameOfRuntimeType[_type.Addr] = nameOfRuntimeTypeEntry{typename: typename, kind: kind}
+		_type.bin.nameOfRuntimeType[_type.Addr] = nameOfRuntimeTypeEntry{typename: typename, kind: kind}
 	}
 	return typename, kind, err
 }
@@ -269,7 +269,7 @@ func nameOfNamedRuntimeType(mds []moduleData, _type *Variable, kind, tflag int64
 	// For a description of how memory is organized for type names read
 	// the comment to 'type name struct' in $GOROOT/src/reflect/type.go
 
-	typename, _, _, err = resolveNameOff(_type.bi, mds, _type.Addr, uint64(strOff), _type.mem)
+	typename, _, _, err = resolveNameOff(_type.bin, mds, _type.Addr, uint64(strOff), _type.mem)
 	if err != nil {
 		return "", err
 	}
@@ -295,7 +295,7 @@ func nameOfNamedRuntimeType(mds []moduleData, _type *Variable, kind, tflag int64
 	if ut := uncommon(_type, tflag); ut != nil {
 		if pkgPathField := ut.loadFieldNamed("pkgpath"); pkgPathField != nil && pkgPathField.Value != nil {
 			pkgPathOff, _ := constant.Int64Val(pkgPathField.Value)
-			pkgPath, _, _, err := resolveNameOff(_type.bi, mds, _type.Addr, uint64(pkgPathOff), _type.mem)
+			pkgPath, _, _, err := resolveNameOff(_type.bin, mds, _type.Addr, uint64(pkgPathOff), _type.mem)
 			if err != nil {
 				return "", err
 			}
@@ -374,11 +374,11 @@ func nameOfUnnamedRuntimeType(mds []moduleData, _type *Variable, kind, tflag int
 // (optional) and then by an array of pointers to runtime._type,
 // one for each input and output argument.
 func nameOfFuncRuntimeType(mds []moduleData, _type *Variable, tflag int64, anonymous bool) (string, error) {
-	rtyp, err := _type.bi.findType("runtime._type")
+	rtyp, err := _type.bin.findType("runtime._type")
 	if err != nil {
 		return "", err
 	}
-	prtyp := pointerTo(rtyp, _type.bi.Arch)
+	prtyp := pointerTo(rtyp, _type.bin.Arch)
 
 	uadd := _type.RealType.Common().ByteSize
 	if ut := uncommon(_type, tflag); ut != nil {
@@ -405,7 +405,7 @@ func nameOfFuncRuntimeType(mds []moduleData, _type *Variable, tflag int64, anony
 
 	for i := int64(0); i < inCount; i++ {
 		argtype := cursortyp.maybeDereference()
-		cursortyp.Addr += uint64(_type.bi.Arch.PtrSize())
+		cursortyp.Addr += uint64(_type.bin.Arch.PtrSize())
 		argtypename, _, err := nameOfRuntimeType(mds, argtype)
 		if err != nil {
 			return "", err
@@ -432,7 +432,7 @@ func nameOfFuncRuntimeType(mds []moduleData, _type *Variable, tflag int64, anony
 		buf.WriteString(" (")
 		for i := int64(0); i < outCount; i++ {
 			argtype := cursortyp.maybeDereference()
-			cursortyp.Addr += uint64(_type.bi.Arch.PtrSize())
+			cursortyp.Addr += uint64(_type.bin.Arch.PtrSize())
 			argtypename, _, err := nameOfRuntimeType(mds, argtype)
 			if err != nil {
 				return "", err
@@ -470,14 +470,14 @@ func nameOfInterfaceRuntimeType(mds []moduleData, _type *Variable, kind, tflag i
 			case imethodFieldName:
 				nameoff, _ := constant.Int64Val(im.Children[i].Value)
 				var err error
-				methodname, _, _, err = resolveNameOff(_type.bi, mds, _type.Addr, uint64(nameoff), _type.mem)
+				methodname, _, _, err = resolveNameOff(_type.bin, mds, _type.Addr, uint64(nameoff), _type.mem)
 				if err != nil {
 					return "", err
 				}
 
 			case imethodFieldItyp:
 				typeoff, _ := constant.Int64Val(im.Children[i].Value)
-				typ, err := resolveTypeOff(_type.bi, mds, _type.Addr, uint64(typeoff), _type.mem)
+				typ, err := resolveTypeOff(_type.bin, mds, _type.Addr, uint64(typeoff), _type.mem)
 				if err != nil {
 					return "", err
 				}
@@ -540,7 +540,7 @@ func nameOfStructRuntimeType(mds []moduleData, _type *Variable, kind, tflag int6
 				}
 
 				var err error
-				fieldname, _, _, err = loadName(_type.bi, uint64(nameoff), _type.mem)
+				fieldname, _, _, err = loadName(_type.bin, uint64(nameoff), _type.mem)
 				if err != nil {
 					return "", err
 				}
@@ -593,7 +593,7 @@ func fieldToType(mds []moduleData, _type *Variable, fieldName string) (string, e
 }
 
 func specificRuntimeType(_type *Variable, kind int64) (*Variable, error) {
-	typ, err := typeForKind(kind, _type.bi)
+	typ, err := typeForKind(kind, _type.bin)
 	if err != nil {
 		return nil, err
 	}
@@ -610,7 +610,7 @@ func uncommon(_type *Variable, tflag int64) *Variable {
 		return nil
 	}
 
-	typ, err := _type.bi.findType("runtime.uncommontype")
+	typ, err := _type.bin.findType("runtime.uncommontype")
 	if err != nil {
 		return nil
 	}
