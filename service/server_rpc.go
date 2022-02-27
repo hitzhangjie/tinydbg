@@ -457,7 +457,6 @@ func (c *RPCServer) Disassemble(arg DisassembleIn, out *DisassembleOut) error {
 	return nil
 }
 
-
 func (s *RPCServer) IsMulticlient(arg IsMulticlientIn, out *IsMulticlientOut) error {
 	*out = IsMulticlientOut{
 		IsMulticlient: s.config.AcceptMulti,
@@ -528,17 +527,6 @@ func (s *RPCServer) ExamineMemory(arg ExamineMemoryIn, out *ExaminedMemoryOut) e
 	out.IsLittleEndian = true // TODO: get byte order from debugger.target.BinInfo().Arch
 
 	return nil
-}
-
-func (s *RPCServer) StopRecording(arg StopRecordingIn, cb RPCCallback) {
-	close(cb.SetupDoneChan())
-	var out StopRecordingOut
-	err := s.debugger.StopRecording()
-	if err != nil {
-		cb.Return(nil, err)
-		return
-	}
-	cb.Return(out, nil)
 }
 
 // DumpStart starts a core dump to arg.Destination.

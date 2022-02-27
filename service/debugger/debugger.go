@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
@@ -24,6 +26,8 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc/core"
 	"github.com/hitzhangjie/dlv/pkg/proc/native"
 	"github.com/hitzhangjie/dlv/service/api"
+
+	sys "golang.org/x/sys/unix"
 )
 
 // Debugger service.
@@ -44,9 +48,6 @@ type Debugger struct {
 	running      bool
 	runningMutex sync.Mutex
 
-	stopRecording func() error
-	recordMutex   sync.Mutex
-
 	dumpState proc.DumpState
 
 	// Debugger keeps a map of disabled breakpoints so lower layers like proc
@@ -54,15 +55,15 @@ type Debugger struct {
 	disabledBreakpoints map[int]*api.Breakpoint
 }
 
-// New creates a new Debugger. ProcessArgs specify the commandline arguments for the
-// new process.
+// New creates a new Debugger, processArgs will be passed to the new process.
 func New(config *Config, processArgs []string) (*Debugger, error) {
 	d := &Debugger{
-		config:      config,
-		processArgs: processArgs,
+		config:              config,
+		processArgs:         processArgs,
+		disabledBreakpoints: make(map[int]*api.Breakpoint),
 	}
 
-	// Create the process by either attaching or launching.
+	// Create the process by either attaching/launching or open coredump.
 	switch {
 	case d.config.AttachPid > 0:
 		log.Info("attaching to pid: %d", d.config.AttachPid)
@@ -99,8 +100,6 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		}
 	}
 
-	d.disabledBreakpoints = make(map[int]*api.Breakpoint)
-
 	return d, nil
 }
 
@@ -116,6 +115,7 @@ func (d *Debugger) canRestart() bool {
 	}
 }
 
+// checkGoVersion check whether the Go version used to build the target is supported
 func (d *Debugger) checkGoVersion() error {
 	producer := d.target.BinInfo().Producer()
 	if producer == "" {
@@ -124,6 +124,7 @@ func (d *Debugger) checkGoVersion() error {
 	return goversion.Compatible(producer, !d.config.CheckGoVersion)
 }
 
+// TargetGoVersion returns the Go version used to build the target
 func (d *Debugger) TargetGoVersion() string {
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
@@ -145,12 +146,6 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.Target, error)
 	}
 
 	return native.Launch(processArgs, wd, launchFlags)
-}
-
-func (d *Debugger) recordingStart(stop func() error) {
-	d.recordMutex.Lock()
-	d.stopRecording = stop
-	d.recordMutex.Unlock()
 }
 
 // Attach will attach to the process specified by 'pid'.
@@ -882,16 +877,12 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 		// access the process directly.
 		log.Debug("halting")
 
-		d.recordMutex.Lock()
-		if d.stopRecording == nil {
-			err = d.target.RequestManualStop()
-			// The error returned from d.target.Valid will have more context
-			// about the exited process.
-			if _, valErr := d.target.Valid(); valErr != nil {
-				err = valErr
-			}
+		err = d.target.RequestManualStop()
+		// The error returned from d.target.Valid will have more context
+		// about the exited process.
+		if _, valErr := d.target.Valid(); valErr != nil {
+			err = valErr
 		}
-		d.recordMutex.Unlock()
 	}
 
 	withBreakpointInfo := true
@@ -1707,16 +1698,6 @@ func (d *Debugger) ListPackagesBuildInfo(includeFiles bool) []*proc.PackageBuild
 	return d.target.BinInfo().ListPackagesBuildInfo(includeFiles)
 }
 
-// StopRecording stops a recording (if one is in progress)
-func (d *Debugger) StopRecording() error {
-	d.recordMutex.Lock()
-	defer d.recordMutex.Unlock()
-	if d.stopRecording == nil {
-		return ErrNotRecording
-	}
-	return d.stopRecording()
-}
-
 // StopReason returns the reason the reason why the target process is stopped.
 // A process could be stopped for multiple simultaneous reasons, in which
 // case only one will be reported.
@@ -1871,4 +1852,29 @@ func verifyBinaryFormat(exePath string) error {
 		return api.ErrNotExecutable
 	}
 	return nil
+}
+
+func attachErrorMessage(pid int, err error) error {
+	fallbackerr := fmt.Errorf("could not attach to pid %d: %s", pid, err)
+	if errno, ok := err.(syscall.Errno); ok {
+		if errno == syscall.EPERM {
+			bs, err := ioutil.ReadFile("/proc/sys/kernel/yama/ptrace_scope")
+			if err == nil && len(bs) >= 1 && bs[0] != '0' {
+				// Yama documentation: https://www.kernel.org/doc/Documentation/security/Yama.txt
+				return fmt.Errorf("Could not attach to pid %d: this could be caused by a kernel security setting, try writing \"0\" to /proc/sys/kernel/yama/ptrace_scope", pid)
+			}
+			fi, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+			if err != nil {
+				return fallbackerr
+			}
+			if fi.Sys().(*syscall.Stat_t).Uid != uint32(os.Getuid()) {
+				return fmt.Errorf("Could not attach to pid %d: current user does not own the process", pid)
+			}
+		}
+	}
+	return fallbackerr
+}
+
+func stopProcess(pid int) error {
+	return sys.Kill(pid, sys.SIGSTOP)
 }
