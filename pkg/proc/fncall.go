@@ -151,7 +151,7 @@ func (callCtx *callContext) doReturn(ret *Variable, err error) {
 // Because this can only be done in the current goroutine, unlike
 // EvalExpression, EvalExpressionWithCalls is not a method of EvalScope.
 func EvalExpressionWithCalls(t *Target, g *G, expr string, retLoadCfg LoadConfig, checkEscape bool) error {
-	bi := t.BinInfo()
+	bin := t.BinInfo()
 	if !t.SupportsFunctionCalls() {
 		return errFuncCallUnsupportedBackend
 	}
@@ -168,7 +168,7 @@ func EvalExpressionWithCalls(t *Target, g *G, expr string, retLoadCfg LoadConfig
 		return errFuncCallInProgress
 	}
 
-	dbgcallfn, _ := debugCallFunction(bi)
+	dbgcallfn, _ := debugCallFunction(bin)
 	if dbgcallfn == nil {
 		return errFuncCallUnsupported
 	}

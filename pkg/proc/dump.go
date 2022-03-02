@@ -12,9 +12,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/elfwriter"
 )
 
-var (
-	ErrMemoryMapNotSupported = errors.New("MemoryMap not supported")
-)
+var ErrMemoryMapNotSupported = errors.New("MemoryMap not supported")
 
 // DumpState represents the current state of a core dump in progress.
 type DumpState struct {

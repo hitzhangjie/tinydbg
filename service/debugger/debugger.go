@@ -918,7 +918,8 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 				return nil, err
 			}
 		}
-		err = proc.EvalExpressionWithCalls(d.target, g, command.Expr, *api.LoadConfigToProc(command.ReturnInfoLoadConfig), !command.UnsafeCall)
+		retLoadCfg := *api.LoadConfigToProc(command.ReturnInfoLoadConfig)
+		err = proc.EvalExpressionWithCalls(d.target, g, command.Expr, retLoadCfg, !command.UnsafeCall)
 	case api.Next:
 		log.Debug("nexting")
 		err = d.target.Next()

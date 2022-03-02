@@ -15,8 +15,7 @@ import (
 
 var amd64BreakInstruction = []byte{0xCC}
 
-// AMD64Arch returns an initialized AMD64
-// struct.
+// AMD64Arch returns an initialized AMD64 struct.
 func AMD64Arch(goos string) *Arch {
 	return &Arch{
 		Name:                             "amd64",

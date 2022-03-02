@@ -3,9 +3,8 @@ module github.com/hitzhangjie/dlv
 go 1.16
 
 require (
-	github.com/agiledragon/gomonkey/v2 v2.4.0
+	github.com/agiledragon/gomonkey/v2 v2.5.0
 	github.com/cilium/ebpf v0.7.0
-	github.com/cosiner/argv v0.1.0
 	github.com/derekparker/trie v0.0.0-20200317170641-1fdf38b7b0e9
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/peterh/liner v1.2.1

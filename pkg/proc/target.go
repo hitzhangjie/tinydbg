@@ -57,7 +57,7 @@ type Target struct {
 	// Normally selectedGoroutine is currentThread.GetG, it will not be only if SwitchGoroutine is called with a goroutine that isn't attached to a thread
 	selectedGoroutine *G
 
-	// fncallForG stores a mapping of current active function calls.
+	// fncallForG stores a mapping of current active function calls (<k,v>, k is goid).
 	fncallForG map[int]*callInjection
 
 	asyncPreemptChanged bool  // runtime/debug.asyncpreemptoff was changed
