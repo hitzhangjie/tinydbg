@@ -87,7 +87,7 @@ func New(client service.Client, conf *config.Config) *Term {
 
 // Close returns the terminal to its previous mode.
 func (t *Term) Close() {
-	t.line.Close()
+	_ = t.line.Close()
 }
 
 func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
