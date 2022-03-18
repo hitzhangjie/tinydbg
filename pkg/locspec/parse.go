@@ -432,19 +432,9 @@ func (loc *NormalLocationSpec) findFuncCandidates(scope *proc.EvalScope, limit i
 	return r
 }
 
-func crossPlatformPath(path string) string {
-	return path
-}
-
 // SubstitutePath applies the specified path substitution rules to path.
 func SubstitutePath(path string, rules [][2]string) string {
-	// On windows paths returned from headless server are as c:/dir/dir
-	// though os.PathSeparator is '\\'
-
-	separator := "/"                  // make it default
-	if strings.Contains(path, "\\") { // dependent on the path
-		separator = "\\"
-	}
+	separator := "/" // make it default
 	for _, r := range rules {
 		from := r[0]
 		to := r[1]
