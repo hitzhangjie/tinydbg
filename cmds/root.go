@@ -23,7 +23,7 @@ var (
 	continueOnStart bool // whether to continue the process on startup
 	acceptMulti     bool // whether allows multiple clients to connect to the same server
 
-	// debugger settins
+	// debugger settings
 	addr        string // the debugging server listen address
 	workingDir  string // the working directory for running the program
 	disableASLR bool   // whether disables ASLR
