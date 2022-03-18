@@ -102,8 +102,7 @@ var (
 	ShortLoadConfig = api.LoadConfig{MaxStringLen: 64, MaxStructFields: 3}
 )
 
-// byFirstAlias will sort by the first
-// alias of a command.
+// byFirstAlias will sort by the first alias of a command.
 type byFirstAlias []command
 
 func (a byFirstAlias) Len() int           { return len(a) }
