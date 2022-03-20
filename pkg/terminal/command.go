@@ -35,7 +35,7 @@ import (
 
 const optimizedFunctionWarning = "Warning: debugging optimized function"
 
-// TODO what does cmdPrefix do?
+// cmdPrefix indicates kind of debugging state
 type cmdPrefix int
 
 const (
