@@ -1,0 +1,81 @@
+@startuml
+namespace op {
+    class DwarfRegister << (S,Aquamarine) >> {
+        + Uint64Val uint64
+        + Bytes []byte
+
+        + FillBytes() 
+        + Overwrite(reg2 *DwarfRegister) *DwarfRegister
+
+    }
+    class DwarfRegisters << (S,Aquamarine) >> {
+        - regs []*DwarfRegister
+        - loadMoreCallback <font color=blue>func</font>() 
+
+        + StaticBase uint64
+        + CFA int64
+        + FrameBase int64
+        + ObjBase int64
+        + ByteOrder binary.ByteOrder
+        + PCRegNum uint64
+        + SPRegNum uint64
+        + BPRegNum uint64
+        + LRRegNum uint64
+        + ChangeFunc RegisterChangeFunc
+        + FloatLoadError error
+
+        - loadMore() 
+
+        + SetLoadMoreCallback(fn <font color=blue>func</font>() ) 
+        + CurrentSize() int
+        + Uint64Val(idx uint64) uint64
+        + Bytes(idx uint64) []byte
+        + Reg(idx uint64) *DwarfRegister
+        + PC() uint64
+        + SP() uint64
+        + BP() uint64
+        + AddReg(idx uint64, reg *DwarfRegister) 
+        + ClearRegisters() 
+    }
+    DwarfRegisters "1" -left-> "N" DwarfRegister
+    DwarfRegisters -right-> RegisterChangeFunc
+    class Piece << (S,Aquamarine) >> {
+        + Size int
+        + Kind PieceKind
+        + Val uint64
+        + Bytes []byte
+    }
+    Piece -> PieceKind
+    class context << (S,Aquamarine) >> {
+        - buf *bytes.Buffer
+        - prog []byte
+        - stack []int64
+        - pieces []Piece
+        - ptrSize int
+        - readMemory ReadMemoryFunc
+
+        - closeLoc(opcode0 Opcode, piece Piece) error
+        - jump(n int16) error
+    }
+    context -down-> Piece
+	context -> Opcode
+	context -left-> ReadMemoryFunc
+    class op.Opcode << (T, #FF7700) >>  {
+    }
+    class op.PieceKind << (T, #FF7700) >>  {
+    }
+    class op.ReadMemoryFunc << (T, #FF7700) >>  {
+    }
+    class op.RegisterChangeFunc << (T, #FF7700) >>  {
+    }
+    class op.stackfn << (T, #FF7700) >>  {
+    }
+    "op.stackfn" "1" -left- "1" Opcode
+}
+"op.DwarfRegisters" *-- "op.context"
+
+
+"op.<font color=blue>func</font>(Opcode, *context) error" #.left. "op.stackfn"
+"op.<font color=blue>func</font>([]byte, uint64) (int, error)" #.right. "op.ReadMemoryFunc"
+"op.<font color=blue>func</font>(uint64, *DwarfRegister) error" #.left. "op.RegisterChangeFunc"
+@enduml

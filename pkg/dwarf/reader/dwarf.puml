@@ -1,0 +1,32 @@
+@startuml
+namespace reader {
+    class Reader << (S,Aquamarine) >> {
+        - depth int
+
+        + Seek(off dwarf.Offset) 
+        + SeekToEntry(entry *dwarf.Entry) error
+        + AddrFor(name string, staticBase uint64, ptrSize int) (uint64, error)
+        + SeekToType(entry *dwarf.Entry, resolveTypedefs bool, resolvePointerTypes bool) (*dwarf.Entry, error)
+        + NextType() (*dwarf.Entry, error)
+        + SeekToTypeNamed(name string) (*dwarf.Entry, error)
+        + FindEntryNamed(name string, member bool) (*dwarf.Entry, error)
+        + InstructionsForEntryNamed(name string, member bool) ([]byte, error)
+        + InstructionsForEntry(entry *dwarf.Entry) ([]byte, error)
+        + NextMemberVariable() (*dwarf.Entry, error)
+        + NextPackageVariable() (*dwarf.Entry, error)
+        + NextCompileUnit() (*dwarf.Entry, error)
+
+    }
+    class Variable << (S,Aquamarine) >> {
+        + Depth int
+
+    }
+    class reader.VariablesFlags << (T, #FF7700) >>  {
+    }
+}
+"dwarf.Reader" *-- "reader.Reader"
+"godwarf.Tree" *-- "reader.Variable"
+
+
+"__builtin__.uint8" #.. "reader.VariablesFlags"
+@enduml

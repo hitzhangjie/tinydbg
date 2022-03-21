@@ -1,0 +1,60 @@
+@startuml
+namespace dwarfbuilder {
+    class Builder << (S,Aquamarine) >> {
+        - info bytes.Buffer
+        - loc bytes.Buffer
+        - abbrevs []tagDescr
+        - tagStack []*tagState
+
+        - abbrevFor(tag tagDescr) byte
+        - makeAbbrevTable() []byte
+
+        + Build() (...[]byte, error)
+        + TagOpen(tag dwarf.Tag, name string) dwarf.Offset
+        + SetHasChildren()
+        + TagClose()
+        + Attr(attr dwarf.Attr, val <font color=blue>interface</font>{}) dwarf.Offset
+        + PatchOffset(patchedOffset dwarf.Offset, patch dwarf.Offset)
+        + AddCompileUnit(name string, lowPC uint64) dwarf.Offset
+        + AddSubprogram(fnname string, lowpc uint64, highpc uint64) dwarf.Offset
+        + AddVariable(varname string, typ dwarf.Offset, loc <font color=blue>interface</font>{}) dwarf.Offset
+        + AddBaseType(typename string, encoding Encoding, byteSz uint16) dwarf.Offset
+        + AddStructType(typename string, byteSz uint16) dwarf.Offset
+        + AddMember(fieldname string, typ dwarf.Offset, memberLoc []byte) dwarf.Offset
+        + AddPointerType(typename string, typ dwarf.Offset) dwarf.Offset
+    }
+    Builder -down-> Encoding
+
+    class LocEntry << (S,Aquamarine) >> {
+        + Lowpc uint64
+        + Highpc uint64
+        + Loc []byte
+    }
+	Builder -left-> LocEntry
+	Builder -down-> Address
+
+    class dwarfbuilder.Address << (T, #FF7700) >>  {
+    }
+    class dwarfbuilder.Encoding << (T, #FF7700) >>  {
+    }
+    class dwarfbuilder.Form << (T, #FF7700) >>  {
+    }
+    class tagDescr << (S,Aquamarine) >> {
+        - tag dwarf.Tag
+        - attr []dwarf.Attr
+        - form []Form
+        - children bool
+    }
+    tagDescr "1" -down-> "1" dwarf.Tag
+	tagDescr "1" -down-> "n" dwarf.Attr
+    tagDescr "1" -right-> "n" Form
+
+    class tagState << (S,Aquamarine) >> {
+        - off dwarf.Offset
+		tagDescr
+    }
+    Builder --> tagState
+}
+"dwarfbuilder.tagDescr" *-up- "dwarfbuilder.tagState"
+
+@enduml

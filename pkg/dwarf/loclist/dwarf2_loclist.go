@@ -6,12 +6,6 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/dwarf/godwarf"
 )
 
-// Reader represents a loclist reader.
-type Reader interface {
-	Find(off int, staticBase, base, pc uint64, debugAddr *godwarf.DebugAddr) (*Entry, error)
-	Empty() bool
-}
-
 // Dwarf2Reader parses and presents DWARF loclist information for DWARF versions 2 through 4.
 type Dwarf2Reader struct {
 	data  []byte

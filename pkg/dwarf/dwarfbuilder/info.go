@@ -72,9 +72,9 @@ type Address uint64
 type tagDescr struct {
 	tag dwarf.Tag
 
-	attr     []dwarf.Attr
-	form     []Form
-	children bool
+	attr     []dwarf.Attr // attrs
+	form     []Form       // forms of attrs
+	children bool         // if tag has children
 }
 
 type tagState struct {

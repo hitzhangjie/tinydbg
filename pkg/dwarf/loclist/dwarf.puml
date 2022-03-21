@@ -1,0 +1,63 @@
+@startuml
+namespace loclist {
+    class Dwarf2Reader << (S,Aquamarine) >> {
+        - data []byte
+        - cur int
+        - ptrSz int
+
+        - read(sz int) []byte
+        - oneAddr() uint64
+
+        + Empty() bool
+        + Seek(off int) 
+        + Next(e *Entry) bool
+        + Find(off int, staticBase uint64, base uint64, pc uint64, debugAddr *godwarf.DebugAddr) (*Entry, error)
+    }
+    Dwarf2Reader -down-> Entry
+
+    class Dwarf5Reader << (S,Aquamarine) >> {
+        - byteOrder binary.ByteOrder
+        - ptrSz int
+        - data []byte
+
+        + Empty() bool
+        + Find(off int, staticBase uint64, base uint64, pc uint64, debugAddr *godwarf.DebugAddr) (*Entry, error)
+    }
+    Dwarf5Reader -down-> loclistsIterator
+	Dwarf5Reader -down-> Entry
+
+    class Entry << (S,Aquamarine) >> {
+        + LowPC uint64
+        + Instr []byte
+
+        + BaseAddressSelection() bool
+
+    }
+    interface Reader  {
+        + Find(off int, staticBase uint64, base uint64, pc uint64, debugAddr *godwarf.DebugAddr) (*Entry, error)
+        + Empty() bool
+
+    }
+    class loclistsIterator << (S,Aquamarine) >> {
+        - rdr *Dwarf5Reader
+        - debugAddr *godwarf.DebugAddr
+        - buf *bytes.Buffer
+        - staticBase uint64
+        - base uint64
+        - onRange bool
+        - atEnd bool
+        - start uint64
+        - instr []byte
+        - defaultInstr []byte
+        - err error
+
+        - next() bool
+        - readInstr() 
+    }
+    loclistsIterator -> Entry
+}
+
+"loclist.Reader" <|-- "loclist.Dwarf2Reader"
+"loclist.Reader" <|-- "loclist.Dwarf5Reader"
+
+@enduml

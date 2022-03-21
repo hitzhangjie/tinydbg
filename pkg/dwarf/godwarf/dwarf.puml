@@ -1,0 +1,146 @@
+@startuml
+namespace godwarf {
+    class ArrayType << (S,Aquamarine) >> {
+        + Type Type
+        + StrideBitSize int64
+        + Count int64
+
+        + String() string
+        + Size() int64
+        + Align() int64
+    }
+    class BasicType << (S,Aquamarine) >> {
+        + BitSize int64
+        + BitOffset int64
+
+        + Basic() *BasicType
+        + String() string
+        + Align() int64
+    }
+    class BoolType << (S,Aquamarine) >> {
+    }
+    class ChanType << (S,Aquamarine) >> {
+        + ElemType Type
+
+        + String() string
+    }
+    class CharType << (S,Aquamarine) >> {
+    }
+    class CommonType << (S,Aquamarine) >> {
+        + Index int
+        + ByteSize int64
+        + Name string
+        + ReflectKind reflect.Kind
+        + Offset dwarf.Offset
+
+        + Common() *CommonType
+        + Size() int64
+        + Align() int64
+    }
+    class DotDotDotType << (S,Aquamarine) >> {
+        + String() string
+    }
+    interface Entry  {
+        + Val( dwarf.Attr) <font color=blue>interface</font>{}
+    }
+    class FloatType << (S,Aquamarine) >> {
+    }
+    class FuncType << (S,Aquamarine) >> {
+        + ReturnType Type
+        + ParamType []Type
+
+        + String() string
+    }
+    class IntType << (S,Aquamarine) >> {
+    }
+    class InterfaceType << (S,Aquamarine) >> {
+        + String() string
+    }
+    class MapType << (S,Aquamarine) >> {
+        + KeyType Type
+        + ElemType Type
+
+        + String() string
+    }
+    class PtrType << (S,Aquamarine) >> {
+        + Type Type
+
+        + String() string
+    }
+    class SliceType << (S,Aquamarine) >> {
+        + ElemType Type
+
+        + String() string
+    }
+    class StringType << (S,Aquamarine) >> {
+        + String() string
+    }
+    class StructType << (S,Aquamarine) >> {
+        + StructName string
+        + Kind string
+        + Field []*StructField
+        + Incomplete bool
+
+        + String() string
+        + Defn(recCheck recCheck) string
+        + Size() int64
+        + Align() int64
+    }
+    class Tree << (S,Aquamarine) >> {
+        - typ Type
+
+        + Tag dwarf.Tag
+        + Offset dwarf.Offset
+        + Ranges [][]uint64
+        + Children []*Tree
+
+        + ContainsPC(pc uint64) bool
+        + Type(dw *dwarf.Data, index int, typeCache <font color=blue>map</font>[dwarf.Offset]Type) (Type, error)
+    }
+    interface Type  {
+        + Common() *CommonType
+        + String() string
+        + Size() int64
+        + Align() int64
+    }
+    class TypedefType << (S,Aquamarine) >> {
+        + Type Type
+
+        + String() string
+        + Size() int64
+    }
+    class UintType << (S,Aquamarine) >> {
+    }
+    class compositeEntry << (S,Aquamarine) >> {
+        + Val(attr dwarf.Attr) <font color=blue>interface</font>{}
+    }
+    class godwarf.compositeEntry << (T, #FF7700) >>  {
+    }
+    class "[]*dwarf.Entry" as dwarfEntry {
+        'This class was created so that we can correctly have an alias pointing to this name. Since it contains dots that can break namespaces
+    }
+}
+"godwarf.CommonType" *-- "godwarf.ArrayType"
+"godwarf.CommonType" *-- "godwarf.BasicType"
+"godwarf.BasicType" *-- "godwarf.BoolType"
+"godwarf.TypedefType" *-- "godwarf.ChanType"
+"godwarf.BasicType" *-- "godwarf.CharType"
+"godwarf.CommonType" *-- "godwarf.DotDotDotType"
+"godwarf.BasicType" *-- "godwarf.FloatType"
+"godwarf.CommonType" *-- "godwarf.FuncType"
+"godwarf.BasicType" *-- "godwarf.IntType"
+"godwarf.TypedefType" *-- "godwarf.InterfaceType"
+"godwarf.TypedefType" *-- "godwarf.MapType"
+"godwarf.CommonType" *-- "godwarf.PtrType"
+"godwarf.StructType" *-- "godwarf.SliceType"
+"godwarf.StructType" *-- "godwarf.StringType"
+"godwarf.CommonType" *-- "godwarf.StructType"
+"godwarf.Entry" *-- "godwarf.Tree"
+"godwarf.CommonType" *-- "godwarf.TypedefType"
+"godwarf.BasicType" *-- "godwarf.UintType"
+"godwarf.CommonType" -up-|> "godwarf.Type"
+
+"godwarf.Entry" <|-- "godwarf.compositeEntry"
+
+"godwarf.dwarfEntry" #.. "godwarf.compositeEntry"
+@enduml

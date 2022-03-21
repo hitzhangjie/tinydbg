@@ -20,6 +20,7 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/dwarf/util"
 )
 
+// DWARF attributes allocated for Go
 const (
 	AttrGoKind          dwarf.Attr = 0x2900
 	AttrGoKey           dwarf.Attr = 0x2901

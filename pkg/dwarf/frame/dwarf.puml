@@ -1,0 +1,100 @@
+@startuml
+namespace frame {
+    class CommonInformationEntry << (S,Aquamarine) >> {
+        - staticBase uint64
+        - ptrEncAddr ptrEnc
+
+        + Length uint32
+        + CIE_id uint32
+        + Version uint8
+        + Augmentation string
+        + CodeAlignmentFactor uint64
+        + DataAlignmentFactor int64
+        + ReturnAddressRegister uint64
+        + InitialInstructions []byte
+    }
+    class DWRule << (S,Aquamarine) >> {
+        + Rule Rule
+        + Offset int64
+        + Reg uint64
+        + Expression []byte
+    }
+    DWRule --> Rule
+    class FrameContext << (S,Aquamarine) >> {
+        - loc uint64
+        - order binary.ByteOrder
+        - address uint64
+        - initialRegs <font color=blue>map</font>[uint64]DWRule
+        - prevRegs <font color=blue>map</font>[uint64]DWRule
+        - buf *bytes.Buffer
+        - cie *CommonInformationEntry
+        - codeAlignment uint64
+        - dataAlignment int64
+
+        + CFA DWRule
+        + Regs <font color=blue>map</font>[uint64]DWRule
+        + RetAddrReg uint64
+
+        - executeDwarfProgram() 
+
+        + ExecuteUntilPC(instructions []byte) 
+    }
+    FrameContext -down-> DWRule
+    FrameContext -right-> CommonInformationEntry
+
+    class FrameDescriptionEntries << (S,Aquamarine) >> {
+        + FDEForPC(pc uint64) (*FrameDescriptionEntry, error)
+        + Append(otherFDEs FrameDescriptionEntries) FrameDescriptionEntries
+    }
+    FrameDescriptionEntries "1" -down-> "N" FrameDescriptionEntry
+
+    class FrameDescriptionEntry << (S,Aquamarine) >> {
+        - begin uint64
+        - order binary.ByteOrder
+
+        + Length uint32
+        + CIE *CommonInformationEntry
+        + Instructions []byte
+
+        + Cover(addr uint64) bool
+        + Begin() uint64
+        + End() uint64
+        + Translate(delta uint64) 
+        + EstablishFrame(pc uint64) *FrameContext
+    }
+    FrameDescriptionEntry -left-> CommonInformationEntry
+
+    class frame.FrameDescriptionEntries << (T, #FF7700) >>  {
+    }
+    class frame.Rule << (T, #FF7700) >>  {
+    }
+    class frame.instruction << (T, #FF7700) >>  {
+    }
+    instruction -up-> FrameContext
+    class frame.parsefunc << (T, #FF7700) >>  {
+    }
+    parsefunc -up-> parseContext
+    class parseContext << (S,Aquamarine) >> {
+        - staticBase uint64
+        - buf *bytes.Buffer
+        - totalLen int
+        - entries FrameDescriptionEntries
+        - ciemap <font color=blue>map</font>[int]*CommonInformationEntry
+        - common *CommonInformationEntry
+        - frame *FrameDescriptionEntry
+        - length uint32
+        - ptrSize int
+        - ehFrameAddr uint64
+        - err error
+
+        - parsingEHFrame() bool
+        - cieEntry(cieid uint32) bool
+        - offset() int
+        - readEncodedPtr(addr uint64, buf util.ByteReaderWithLen, ptrEnc ptrEnc) uint64
+    }
+    parseContext -up-> CommonInformationEntry
+}
+
+"frame.<font color=blue>func</font>(*FrameContext) " #.up. "frame.instruction"
+"frame.<font color=blue>func</font>(*parseContext) parsefunc" #.up. "frame.parsefunc"
+@enduml
