@@ -1,0 +1,2814 @@
+@startuml
+
+package "linutil" {
+	class "AMD64PtraceRegs" as linutil.AMD64PtraceRegs <<V,Orchid>> {
+		+R15: uint64
+		+R14: uint64
+		+R13: uint64
+		+R12: uint64
+		+Rbp: uint64
+		+Rbx: uint64
+		+R11: uint64
+		+R10: uint64
+		+R9: uint64
+		+R8: uint64
+		+Rax: uint64
+		+Rcx: uint64
+		+Rdx: uint64
+		+Rsi: uint64
+		+Rdi: uint64
+		+Orig_rax: uint64
+		+Rip: uint64
+		+Cs: uint64
+		+Eflags: uint64
+		+Rsp: uint64
+		+Ss: uint64
+		+Fs_base: uint64
+		+Gs_base: uint64
+		+Ds: uint64
+		+Es: uint64
+		+Fs: uint64
+		+Gs: uint64
+	}
+}
+
+
+
+package "linutil" {
+	class "AMD64Registers" as linutil.AMD64Registers <<V,Orchid>> {
+		+Regs: *linutil.AMD64PtraceRegs
+		+Fpregs: proc.Register
+		+Fpregset: amd64util.AMD64Xstate
+		-loadFpRegs: func(*linutil.AMD64Registers) error
+		+Slice(floatingPoint: bool): (proc.Register, error)
+		+PC(): uint64
+		+SP(): uint64
+		+BP(): uint64
+		+TLS(): uint64
+		+GAddr(): (uint64, bool)
+		+Copy(): (proc.Registers, error)
+		+SetReg(regNum: uint64, reg: op.DwarfRegister): (bool, error)
+	}
+}
+
+	linutil.AMD64Registers --> linutil.AMD64PtraceRegs
+	linutil.AMD64Registers --> proc.Register
+	linutil.AMD64Registers --> amd64util.AMD64Xstate
+
+	linutil.AMD64Registers ..> proc.Register : <<return>> 
+	linutil.AMD64Registers ..> error : <<return>> 
+	linutil.AMD64Registers ..> proc.Registers : <<return>> 
+	linutil.AMD64Registers ..> error : <<return>> 
+	linutil.AMD64Registers ..> error : <<return>> 
+
+package "linutil" {
+	class "linkMap" as linutil.linkMap <<V,Orchid>> {
+		-addr: uint64
+		-name: string
+		-ld: uint64
+		-next: uint64
+		-prev: uint64
+	}
+}
+
+
+
+package "native" {
+	class "linuxPrPsInfo" as native.linuxPrPsInfo <<V,Orchid>> {
+		+State: uint8
+		+Sname: int8
+		+Zomb: uint8
+		+Nice: int8
+		-_: [4]uint8
+		+Flag: uint64
+		+Uid: uint32
+		+Gid: uint32
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Fname: [16]uint8
+		+Args: [80]uint8
+	}
+}
+
+
+
+package "native" {
+	class "linuxPrStatusAMD64" as native.linuxPrStatusAMD64 <<V,Orchid>> {
+		+Siginfo: native.linuxSiginfo
+		+Cursig: uint16
+		-_: [2]uint8
+		+Sigpend: uint64
+		+Sighold: uint64
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Utime: unix.Timeval
+		+Stime: unix.Timeval
+		+CUtime: unix.Timeval
+		+CStime: unix.Timeval
+		+Reg: linutil.AMD64PtraceRegs
+		+Fpvalid: int64
+	}
+}
+
+	native.linuxPrStatusAMD64 --> native.linuxSiginfo
+	native.linuxPrStatusAMD64 --> linutil.AMD64PtraceRegs
+
+
+package "native" {
+	class "linuxSiginfo" as native.linuxSiginfo <<V,Orchid>> {
+		+Signo: int32
+		+Code: int32
+		+Errno: int32
+	}
+}
+
+
+
+package "native" {
+	class "nativeProcess" as native.nativeProcess <<E,#FFCC00>> {
+		-bi: proc.BinaryInfo
+		-pid: int
+		-breakpoints: proc.BreakpointMap
+		-threads: map[int]*native.nativeThread
+		-memthread: *native.nativeThread
+		-os: *native.osProcessDetails
+		-firstStart: bool
+		-resumeChan: chan<- struct{}
+		-ptraceChan: chan func()
+		-ptraceDoneChan: chan interface{}
+		-childProcess: bool
+		-stopMu: sync.Mutex
+		-manualStopRequested: bool
+		-iscgo: bool
+		-exited: bool
+		-detached: bool
+		+MemoryMap(): (proc.MemoryMapEntry, error)
+		+BinInfo(): proc.BinaryInfo
+		+StartCallInjection(): (func(), error)
+		+Detach(kill: bool): err: error
+		+Valid(): (bool, error)
+		+ResumeNotify(ch: chan<- struct{})
+		+ThreadList(): proc.Thread
+		+FindThread(threadID: int): (proc.Thread, bool)
+		+Memory(): proc.MemoryReadWriter
+		+Breakpoints(): proc.BreakpointMap
+		+RequestManualStop(): error
+		+CheckAndClearManualStopRequest(): bool
+		+WriteBreakpoint(bp: proc.Breakpoint): error
+		+EraseBreakpoint(bp: proc.Breakpoint): error
+		+ContinueOnce(): (proc.Thread, proc.StopReason, error)
+		+FindBreakpoint(pc: uint64, adjustPC: bool): (proc.Breakpoint, bool)
+		-initialize(path: string): (proc.Target, error)
+		-handlePtraceFuncs()
+		-execPtraceFunc(fn: func())
+		-postExit()
+		-writeSoftwareBreakpoint(thread: *native.nativeThread, addr: uint64): error
+		+SupportsBPF(): bool
+		+DumpProcessNotes(notes: elfwriter.Note, threadDone: func()): (threadsDone: bool, out: elfwriter.Note, err: error)
+		+GetBufferedTracepoints(): ebpf.RawUProbeParams
+		-kill(): error
+		-requestManualStop(): err: error
+		-addThread(tid: int, attach: bool): (*native.nativeThread, error)
+		-updateThreadList(): error
+		-trapWait(pid: int): (*native.nativeThread, error)
+		-trapWaitInternal(pid: int, options: native.trapWaitOptions): (*native.nativeThread, error)
+		-waitFast(pid: int): (int, unix.WaitStatus, error)
+		-wait(pid: int, options: int): (int, unix.WaitStatus, error)
+		-exitGuard(err: error): error
+		-resume(): error
+		-stop(trapthread: *native.nativeThread): (*native.nativeThread, error)
+		-detach(kill: bool): error
+		+EntryPoint(): (uint64, error)
+		+SetUProbe(fnName: string, goidOffset: int64, args: ebpf.UProbeArgMap): error
+	}
+}
+
+	native.nativeProcess --> proc.BinaryInfo
+	native.nativeProcess --> proc.BreakpointMap
+	native.nativeProcess --> native.nativeThread
+	native.nativeProcess --> native.osProcessDetails
+	native.nativeProcess --> sync.Mutex
+
+	native.nativeProcess ..> proc.MemoryMapEntry : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> proc.BinaryInfo : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> proc.Thread : <<return>> 
+	native.nativeProcess ..> proc.Thread : <<return>> 
+	native.nativeProcess ..> proc.MemoryReadWriter : <<return>> 
+	native.nativeProcess ..> proc.BreakpointMap : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> proc.Breakpoint : <<use>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> proc.Breakpoint : <<use>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> proc.Thread : <<return>> 
+	native.nativeProcess ..> proc.StopReason : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> proc.Breakpoint : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> ebpf.RawUProbeParams : <<return>> 
+	native.nativeProcess ..> error : <<return>> 
+	native.nativeProcess ..> ebpf.UProbeArgMap : <<use>> 
+	native.nativeProcess ..> error : <<return>> 
+
+package "native" {
+	class "nativeThread" as native.nativeThread <<E,#FFCC00>> {
+		+ID: int
+		+Status: *native.waitStatus
+		+CurrentBreakpoint: proc.BreakpointState
+		-dbp: *native.nativeProcess
+		-singleStepping: bool
+		-os: *native.osSpecificDetails
+		-common: proc.CommonThread
+		+Continue(): error
+		+StepInstruction(): err: error
+		+Location(): (proc.Location, error)
+		+BinInfo(): proc.BinaryInfo
+		+Common(): proc.CommonThread
+		+SetCurrentBreakpoint(adjustPC: bool): error
+		+Breakpoint(): proc.BreakpointState
+		+ThreadID(): int
+		-clearSoftwareBreakpoint(bp: proc.Breakpoint): error
+		+Registers(): (proc.Registers, error)
+		+RestoreRegisters(savedRegs: proc.Registers): error
+		+PC(): (uint64, error)
+		+ProcessMemory(): proc.MemoryReadWriter
+		-stop(): err: error
+		+Stopped(): bool
+		-resume(): error
+		-resumeWithSig(sig: int): err: error
+		-singleStep(): err: error
+		+WriteMemory(addr: uint64, data: []byte): (written: int, err: error)
+		+ReadMemory(data: []byte, addr: uint64): (n: int, err: error)
+		-writeHardwareBreakpoint(addr: uint64, wtype: proc.WatchType, idx: uint8): error
+		-clearHardwareBreakpoint(addr: uint64, wtype: proc.WatchType, idx: uint8): error
+		-findHardwareBreakpoint(): (proc.Breakpoint, error)
+		-setPC(pc: uint64): error
+		+SetReg(regNum: uint64, reg: op.DwarfRegister): error
+		-fpRegisters(): (regs: proc.Register, fpregs: amd64util.AMD64Xstate, err: error)
+		-restoreRegisters(savedRegs: proc.Registers): error
+		-withDebugRegisters(f: amd64util.DebugRegisters) error): error
+	}
+}
+
+	native.nativeThread --> native.waitStatus
+	native.nativeThread --> proc.BreakpointState
+	native.nativeThread --> native.nativeProcess
+	native.nativeThread --> native.osSpecificDetails
+	native.nativeThread --> proc.CommonThread
+
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> proc.Location : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> proc.BinaryInfo : <<return>> 
+	native.nativeThread ..> proc.CommonThread : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> proc.BreakpointState : <<return>> 
+	native.nativeThread ..> proc.Registers : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> proc.Registers : <<use>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> proc.MemoryReadWriter : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+	native.nativeThread ..> error : <<return>> 
+
+package "native" {
+	class "osProcessDetails" as native.osProcessDetails <<E,#FFCC00>> {
+		-comm: string
+		-ebpf: ebpf.EBPFContext
+		+Close()
+	}
+}
+
+	native.osProcessDetails --> ebpf.EBPFContext
+
+
+package "native" {
+	class "osSpecificDetails" as native.osSpecificDetails <<V,Orchid>> {
+		-delayedSignal: int
+		-running: bool
+		-setbp: bool
+		-phantomBreakpointPC: uint64
+	}
+}
+
+
+
+package "native" {
+	class "trapWaitOptions" as native.trapWaitOptions <<V,Orchid>>
+}
+
+
+
+package "native" {
+	class "waitStatus" as native.waitStatus <<V,Orchid>>
+}
+
+
+
+package "test" {
+	class "BuildFlags" as test.BuildFlags <<V,Orchid>>
+}
+
+
+
+package "test" {
+	class "Fixture" as test.Fixture <<V,Orchid>> {
+		+Name: string
+		+Path: string
+		+Source: string
+		+BuildDir: string
+	}
+}
+
+
+
+package "test" {
+	class "fixtureKey" as test.fixtureKey <<V,Orchid>> {
+		+Name: string
+		+Flags: test.BuildFlags
+	}
+}
+
+	test.fixtureKey --> test.BuildFlags
+
+
+package "proc" {
+	class "Ancestor" as proc.Ancestor <<V,Orchid>> {
+		+ID: int64
+		+Unreadable: error
+		-pcsVar: *proc.Variable
+		+Stack(n: int): ([]proc.Stackframe, error)
+	}
+}
+
+	proc.Ancestor --> error
+	proc.Ancestor --> proc.Variable
+
+	proc.Ancestor ..> proc.Stackframe : <<return>> 
+	proc.Ancestor ..> error : <<return>> 
+
+package "proc" {
+	class "Arch" as proc.Arch <<V,Orchid>> {
+		+Name: string
+		-ptrSize: int
+		-maxInstructionLength: int
+		-prologues: []proc.opcodeSeq
+		-breakpointInstruction: []byte
+		-altBreakpointInstruction: []byte
+		-breakInstrMovesPC: bool
+		-derefTLS: bool
+		-usesLR: bool
+		+PCRegNum: uint64
+		+SPRegNum: uint64
+		+BPRegNum: uint64
+		+ContextRegNum: uint64
+		-asmDecode: op.DwarfRegisters, memrw proc.MemoryReadWriter, bi *proc.BinaryInfo) error
+		-fixFrameUnwindContext: frame.FrameContext
+		-switchStack: op.DwarfRegisters) bool
+		-regSize: func(uint64) int
+		+RegistersToDwarfRegisters: op.DwarfRegisters
+		-addrAndStackRegsToDwarfRegisters: op.DwarfRegisters
+		+DwarfRegisterToString: op.DwarfRegister) (string, bool, string)
+		-inhibitStepInto: func(bi *proc.BinaryInfo, pc uint64) bool
+		+RegisterNameToDwarf: func(s string) (int, bool)
+		-asmRegisters: map[int]proc.asmRegister
+		-crosscall2fn: *proc.Function
+		-sigreturnfn: *proc.Function
+		+PtrSize(): int
+		+MaxInstructionLength(): int
+		+BreakpointInstruction(): []byte
+		+AltBreakpointInstruction(): []byte
+		+BreakInstrMovesPC(): bool
+		+BreakpointSize(): int
+		+DerefTLS(): bool
+		-getAsmRegister(regs: op.DwarfRegisters, asmreg: int): (uint64, error)
+	}
+}
+
+	proc.Arch --> proc.opcodeSeq
+	proc.Arch --> proc.asmRegister
+	proc.Arch --> proc.Function
+	proc.Arch --> proc.Function
+
+
+package "proc" {
+	class "AsmInstruction" as proc.AsmInstruction <<V,Orchid>> {
+		+Loc: proc.Location
+		+DestLoc: *proc.Location
+		+Bytes: []byte
+		+Breakpoint: bool
+		+AtPC: bool
+		+Size: int
+		+Kind: proc.AsmInstructionKind
+		+Inst: proc.archInst
+		+IsCall(): bool
+		+IsRet(): bool
+		+IsJmp(): bool
+		+IsHardBreak(): bool
+		+Text(flavour: proc.AssemblyFlavour, bi: *proc.BinaryInfo): string
+	}
+}
+
+	proc.AsmInstruction --> proc.Location
+	proc.AsmInstruction --> proc.Location
+	proc.AsmInstruction --> proc.AsmInstructionKind
+	proc.AsmInstruction --> proc.archInst
+
+	proc.AsmInstruction ..> proc.AssemblyFlavour : <<use>> 
+	proc.AsmInstruction ..> proc.BinaryInfo : <<use>> 
+
+package "proc" {
+	class "AsmInstructionKind" as proc.AsmInstructionKind <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "AssemblyFlavour" as proc.AssemblyFlavour <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "BinaryInfo" as proc.BinaryInfo <<E,#FFCC00>> {
+		+Arch: *proc.Arch
+		+GOOS: string
+		+Functions: []proc.Function
+		+Sources: []string
+		+LookupFunc: map[string]*proc.Function
+		-lookupGenericFunc: map[string][]*proc.Function
+		+SymNames: elf.Symbol
+		+Images: []*proc.Image
+		+ElfDynamicSection: proc.ElfDynamicSection
+		-lastModified: time.Time
+		+PackageMap: map[string][]string
+		-frameEntries: frame.FrameDescriptionEntries
+		-types: map[string]proc.dwarfRef
+		-packageVars: []proc.packageVar
+		-gStructOffset: uint64
+		-nameOfRuntimeType: map[uint64]proc.nameOfRuntimeTypeEntry
+		-consts: proc.constantsMap
+		-inlinedCallLines: map[proc.fileLine][]uint64
+		-dwrapUnwrapCache: map[uint64]*proc.Function
+		-regabi: bool
+		+FindFunction(funcName: string): ([]*proc.Function, error)
+		+LoadBinaryInfo(path: string, entryPoint: uint64): error
+		+GStructOffset(): uint64
+		+LastModified(): time.Time
+		+Types(): ([]string, error)
+		+PCToLine(pc: uint64): (string, int, *proc.Function)
+		+AllPCsForFileLines(filename: string, linenos: []int): map[int][]uint64
+		+PCToFunc(pc: uint64): *proc.Function
+		+PCToImage(pc: uint64): *proc.Image
+		+AddImage(path: string, addr: uint64): error
+		-moduleDataToImage(md: *proc.moduleData): *proc.Image
+		-imageToModuleData(image: *proc.Image, mds: []proc.moduleData): *proc.moduleData
+		-typeToImage(typ: godwarf.Type): *proc.Image
+		+Close(): error
+		+LoadImageFromData(dwdata: dwarf.Data, debugFrameBytes: []byte, debugLineBytes: []byte, debugLocBytes: []byte)
+		-locationExpr(entry: godwarf.Entry, attr: dwarf.Attr, pc: uint64): ([]byte, *proc.locationExpr, error)
+		+LocationCovers(entry: dwarf.Entry, attr: dwarf.Attr): ([][2]uint64, error)
+		+Location(entry: godwarf.Entry, attr: dwarf.Attr, pc: uint64, regs: op.DwarfRegisters, mem: proc.MemoryReadWriter): (int64, op.Piece, *proc.locationExpr, error)
+		-loclistEntry(off: int64, pc: uint64): []byte
+		-findCompileUnit(pc: uint64): *proc.compileUnit
+		+Producer(): string
+		-funcToImage(fn: *proc.Function): *proc.Image
+		-parseDebugFrameGeneral(image: *proc.Image, debugFrameBytes: []byte, debugFrameName: string, debugFrameErr: error, ehFrameBytes: []byte, ehFrameAddr: uint64, ehFrameName: string, byteOrder: binary.ByteOrder)
+		-loadSymbolName(image: *proc.Image, file: elf.File, wg: *sync.WaitGroup)
+		-parseDebugFrameElf(image: *proc.Image, exe: elf.File, debugInfoBytes: []byte, wg: *sync.WaitGroup)
+		-setGStructOffsetElf(image: *proc.Image, exe: elf.File, wg: *sync.WaitGroup)
+		-findType(name: string): (godwarf.Type, error)
+		-findTypeExpr(expr: ast.Expr): (godwarf.Type, error)
+		-findArrayType(n: int, etyp: string): (godwarf.Type, error)
+		-registerTypeToPackageMap(entry: dwarf.Entry)
+		-loadDebugInfoMaps(image: *proc.Image, debugInfoBytes: []byte, debugLineBytes: []byte, wg: *sync.WaitGroup, cont: func())
+		+LookupGenericFunc(): map[string][]*proc.Function
+		-loadDebugInfoMapsCompileUnit(ctxt: *proc.loadDebugInfoMapsContext, image: *proc.Image, reader: reader.Reader, cu: *proc.compileUnit)
+		-loadDebugInfoMapsImportedUnit(entry: dwarf.Entry, ctxt: *proc.loadDebugInfoMapsContext, image: *proc.Image, cu: *proc.compileUnit)
+		-addAbstractSubprogram(entry: dwarf.Entry, ctxt: *proc.loadDebugInfoMapsContext, reader: reader.Reader, image: *proc.Image, cu: *proc.compileUnit)
+		-addConcreteInlinedSubprogram(entry: dwarf.Entry, originOffset: dwarf.Offset, ctxt: *proc.loadDebugInfoMapsContext, reader: reader.Reader, cu: *proc.compileUnit)
+		-addConcreteSubprogram(entry: dwarf.Entry, ctxt: *proc.loadDebugInfoMapsContext, reader: reader.Reader, cu: *proc.compileUnit)
+		-loadDebugInfoMapsInlinedCalls(ctxt: *proc.loadDebugInfoMapsContext, reader: reader.Reader, cu: *proc.compileUnit)
+		-expandPackagesInType(expr: ast.Expr)
+		-symLookup(addr: uint64): (string, uint64)
+		+ListPackagesBuildInfo(includeFiles: bool): []*proc.PackageBuildInfo
+	}
+}
+
+	proc.BinaryInfo --> proc.Arch
+	proc.BinaryInfo --> proc.Function
+	proc.BinaryInfo --> proc.ElfDynamicSection
+	proc.BinaryInfo --> proc.dwarfRef
+	proc.BinaryInfo --> proc.packageVar
+	proc.BinaryInfo --> proc.nameOfRuntimeTypeEntry
+	proc.BinaryInfo --> proc.constantsMap
+
+	proc.BinaryInfo ..> error : <<return>> 
+	proc.BinaryInfo ..> error : <<return>> 
+	proc.BinaryInfo ..> error : <<return>> 
+	proc.BinaryInfo ..> proc.Function : <<return>> 
+	proc.BinaryInfo ..> proc.Function : <<return>> 
+	proc.BinaryInfo ..> proc.Image : <<return>> 
+	proc.BinaryInfo ..> error : <<return>> 
+	proc.BinaryInfo ..> error : <<return>> 
+	proc.BinaryInfo ..> error : <<return>> 
+	proc.BinaryInfo ..> proc.MemoryReadWriter : <<use>> 
+	proc.BinaryInfo ..> proc.locationExpr : <<return>> 
+	proc.BinaryInfo ..> error : <<return>> 
+
+package "proc" {
+	class "Breaklet" as proc.Breaklet <<V,Orchid>> {
+		+Kind: proc.BreakpointKind
+		+LogicalID: int
+		+Cond: ast.Expr
+		+HitCount: map[int]uint64
+		+TotalHitCount: uint64
+		+DeferReturns: []uint64
+		+HitCond: token.Token; Val int}
+		-checkPanicCall: bool
+		-callback: func(th proc.Thread) bool
+		-watchpoint: *proc.Breakpoint
+	}
+}
+
+	proc.Breaklet --> proc.BreakpointKind
+	proc.Breaklet --> proc.Breakpoint
+
+
+package "proc" {
+	class "Breakpoint" as proc.Breakpoint <<E,#FFCC00>> {
+		+Function: string
+		+File: string
+		+Line: int
+		+Addr: uint64
+		+Orig: []byte
+		+Name: string
+		+WatchExpr: string
+		+WatchType: proc.WatchType
+		+HWBreakIndex: uint8
+		-watchStackOff: int64
+		+Breaklets: []*proc.Breaklet
+		+Tracepoint: bool
+		+TraceReturn: bool
+		+Goroutine: bool
+		+Stacktrace: int
+		+Variables: []string
+		+LoadArgs: *proc.LoadConfig
+		+LoadLocals: *proc.LoadConfig
+		+UserData: interface{}
+		-returnInfo: *proc.returnBreakpointInfo
+		+String(): string
+		+LogicalID(): int
+		+VerboseDescr(): []string
+		-checkCondition(tgt: *proc.Target, thread: proc.Thread, bpstate: *proc.BreakpointState)
+		+IsStepping(): bool
+		+IsUser(): bool
+		+UserBreaklet(): *proc.Breaklet
+		-canOverlap(kind: proc.BreakpointKind): bool
+	}
+}
+
+	proc.Breakpoint --> proc.WatchType
+	proc.Breakpoint --> proc.LoadConfig
+	proc.Breakpoint --> proc.LoadConfig
+	proc.Breakpoint --> proc.returnBreakpointInfo
+
+	proc.Breakpoint ..> proc.Breaklet : <<return>> 
+
+package "proc" {
+	class "BreakpointExistsError" as proc.BreakpointExistsError <<V,Orchid>> {
+		+File: string
+		+Line: int
+		+Addr: uint64
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "BreakpointKind" as proc.BreakpointKind <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "BreakpointMap" as proc.BreakpointMap <<V,Orchid>> {
+		+M: map[uint64]*proc.Breakpoint
+		+WatchOutOfScope: []*proc.Breakpoint
+		-breakpointIDCounter: int
+		+HasSteppingBreakpoints(): bool
+		+HasHWBreakpoints(): bool
+	}
+}
+
+
+
+package "proc" {
+	class "BreakpointState" as proc.BreakpointState <<E,#FFCC00>> {
+		+Breakpoint: *proc.Breakpoint
+		+Active: bool
+		+Stepping: bool
+		+SteppingInto: bool
+		+CondError: error
+		-checkCond(tgt: *proc.Target, breaklet: *proc.Breaklet, thread: proc.Thread)
+		+Clear()
+		+String(): string
+	}
+}
+
+	proc.BreakpointState --> proc.Breakpoint
+	proc.BreakpointState --> error
+
+
+package "proc" {
+	class "Checkpoint" as proc.Checkpoint <<V,Orchid>> {
+		+ID: int
+		+When: string
+		+Where: string
+	}
+}
+
+
+
+package "proc" {
+	class "CommonThread" as proc.CommonThread <<V,Orchid>> {
+		+CallReturn: bool
+		-returnValues: []*proc.Variable
+		-g: *proc.G
+		+ReturnValues(cfg: proc.LoadConfig): []*proc.Variable
+	}
+}
+
+	proc.CommonThread --> proc.G
+
+	proc.CommonThread ..> proc.LoadConfig : <<use>> 
+
+package "proc" {
+	class "Defer" as proc.Defer <<E,#FFCC00>> {
+		+DwrapPC: uint64
+		+DeferPC: uint64
+		+SP: uint64
+		-link: *proc.Defer
+		-argSz: int64
+		-variable: *proc.Variable
+		+Unreadable: error
+		-load()
+		+Next(): *proc.Defer
+		+EvalScope(t: *proc.Target, thread: proc.Thread): (*proc.EvalScope, error)
+		+DeferredFunc(p: *proc.Target): (file: string, line: int, fn: *proc.Function)
+	}
+}
+
+	proc.Defer --> proc.Defer
+	proc.Defer --> proc.Variable
+	proc.Defer --> error
+
+	proc.Defer ..> proc.Defer : <<return>> 
+	proc.Defer ..> proc.Target : <<use>> 
+	proc.Defer ..> proc.Thread : <<use>> 
+	proc.Defer ..> proc.EvalScope : <<return>> 
+	proc.Defer ..> error : <<return>> 
+	proc.Defer ..> proc.Target : <<use>> 
+	proc.Defer ..> proc.Function : <<return>> 
+
+package "proc" {
+	class "Direction" as proc.Direction <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "DumpFlags" as proc.DumpFlags <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "DumpState" as proc.DumpState <<E,#FFCC00>> {
+		+Mutex: sync.Mutex
+		+Dumping: bool
+		+AllDone: bool
+		+Canceled: bool
+		+DoneChan: chan struct{}
+		+ThreadsDone: int
+		+ThreadsTotal: int
+		+MemDone: uint64
+		+MemTotal: uint64
+		+Err: error
+		-setErr(err: error)
+		-setThreadsTotal(n: int)
+		-threadDone()
+		-setMemTotal(n: uint64)
+		-memDone(delta: uint64)
+		-isCanceled(): bool
+	}
+}
+
+	proc.DumpState --> sync.Mutex
+	proc.DumpState --> error
+
+
+package "proc" {
+	class "ElfDynamicSection" as proc.ElfDynamicSection <<V,Orchid>> {
+		+Addr: uint64
+		+Size: uint64
+	}
+}
+
+
+
+package "proc" {
+	class "ErrCouldNotFindLine" as proc.ErrCouldNotFindLine <<V,Orchid>> {
+		-fileFound: bool
+		-filename: string
+		-lineno: int
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "ErrFunctionNotFound" as proc.ErrFunctionNotFound <<V,Orchid>> {
+		+FuncName: string
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "ErrNoBuildIDNote" as proc.ErrNoBuildIDNote <<V,Orchid>> {
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "ErrNoGoroutine" as proc.ErrNoGoroutine <<V,Orchid>> {
+		-tid: int
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "ErrNoSourceForPC" as proc.ErrNoSourceForPC <<V,Orchid>> {
+		-pc: uint64
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "ErrProcessExited" as proc.ErrProcessExited <<V,Orchid>> {
+		+Pid: int
+		+Status: int
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "EvalScope" as proc.EvalScope <<E,#FFCC00>> {
+		+Location: proc.Location
+		+Regs: op.DwarfRegisters
+		+Mem: proc.MemoryReadWriter
+		-g: *proc.G
+		+BinInfo: *proc.BinaryInfo
+		-target: *proc.Target
+		-frameOffset: int64
+		-callCtx: *proc.callContext
+		-dictAddr: uint64
+		+EvalExpression(expr: string, cfg: proc.LoadConfig): (*proc.Variable, error)
+		+Locals(flags: proc.localsFlags): ([]*proc.Variable, error)
+		-setValue(dstv: *proc.Variable, srcv: *proc.Variable, srcExpr: string): error
+		+SetVariable(name: string, value: string): error
+		+LocalVariables(cfg: proc.LoadConfig): ([]*proc.Variable, error)
+		+FunctionArguments(cfg: proc.LoadConfig): ([]*proc.Variable, error)
+		+PackageVariables(cfg: proc.LoadConfig): ([]*proc.Variable, error)
+		-findGlobal(pkgName: string, varName: string): (*proc.Variable, error)
+		-findGlobalInternal(name: string): (*proc.Variable, error)
+		-image(): *proc.Image
+		+DwarfReader(): reader.Reader
+		+PtrSize(): int
+		-evalToplevelTypeCast(t: ast.Expr, cfg: proc.LoadConfig): (*proc.Variable, error)
+		-evalAST(t: ast.Expr): (*proc.Variable, error)
+		-evalTypeCast(node: ast.CallExpr): (*proc.Variable, error)
+		-evalBuiltinCall(node: ast.CallExpr): (*proc.Variable, error)
+		-evalIdent(node: ast.Ident): (*proc.Variable, error)
+		-evalStructSelector(node: ast.SelectorExpr): (*proc.Variable, error)
+		-evalTypeAssert(node: ast.TypeAssertExpr): (*proc.Variable, error)
+		-evalIndex(node: ast.IndexExpr): (*proc.Variable, error)
+		-evalReslice(node: ast.SliceExpr): (*proc.Variable, error)
+		-evalPointerDeref(node: ast.StarExpr): (*proc.Variable, error)
+		-evalAddrOf(node: ast.UnaryExpr): (*proc.Variable, error)
+		-evalUnary(node: ast.UnaryExpr): (*proc.Variable, error)
+		-evalBinary(node: ast.BinaryExpr): (*proc.Variable, error)
+	}
+}
+
+	proc.EvalScope --> proc.Location
+	proc.EvalScope --> proc.MemoryReadWriter
+	proc.EvalScope --> proc.G
+	proc.EvalScope --> proc.BinaryInfo
+	proc.EvalScope --> proc.Target
+	proc.EvalScope --> proc.callContext
+
+	proc.EvalScope ..> proc.LoadConfig : <<use>> 
+	proc.EvalScope ..> proc.Variable : <<return>> 
+	proc.EvalScope ..> error : <<return>> 
+	proc.EvalScope ..> proc.localsFlags : <<use>> 
+	proc.EvalScope ..> error : <<return>> 
+	proc.EvalScope ..> error : <<return>> 
+	proc.EvalScope ..> proc.LoadConfig : <<use>> 
+	proc.EvalScope ..> error : <<return>> 
+	proc.EvalScope ..> proc.LoadConfig : <<use>> 
+	proc.EvalScope ..> error : <<return>> 
+	proc.EvalScope ..> proc.LoadConfig : <<use>> 
+	proc.EvalScope ..> error : <<return>> 
+
+package "proc" {
+	class "Function" as proc.Function <<V,Orchid>> {
+		+Name: string
+		+Entry: uint64
+		+End: uint64
+		-offset: dwarf.Offset
+		-cu: *proc.compileUnit
+		-trampoline: bool
+		+InlinedCalls: []proc.InlinedCall
+		-instRange(): [2]int
+		+PackageName(): string
+		+ReceiverName(): string
+		+BaseName(): string
+		+NameWithoutTypeParams(): string
+		+Optimized(): bool
+		+PrologueEndPC(): uint64
+		-exportedRuntime(): bool
+		-privateRuntime(): bool
+		-fakeType(bi: *proc.BinaryInfo, removeReceiver: bool): (godwarf.FuncType, error)
+	}
+}
+
+	proc.Function --> proc.compileUnit
+	proc.Function --> proc.InlinedCall
+
+
+package "proc" {
+	class "G" as proc.G <<E,#FFCC00>> {
+		+ID: int
+		+PC: uint64
+		+SP: uint64
+		+BP: uint64
+		+LR: uint64
+		+GoPC: uint64
+		+StartPC: uint64
+		+Status: uint64
+		-stack: proc.stack
+		+WaitSince: int64
+		+WaitReason: int64
+		+SystemStack: bool
+		+CurrentLoc: proc.Location
+		+Thread: proc.Thread
+		-variable: *proc.Variable
+		+Unreadable: error
+		-labels: *map[string]string
+		-stackIterator(opts: proc.StacktraceOptions): (*proc.stackIterator, error)
+		+Stacktrace(depth: int, opts: proc.StacktraceOptions): ([]proc.Stackframe, error)
+		-readDefers(frames: []proc.Stackframe)
+		+Defer(): *proc.Defer
+		+UserCurrent(): proc.Location
+		+Go(): proc.Location
+		+StartLoc(tgt: *proc.Target): proc.Location
+		+System(tgt: *proc.Target): bool
+		+Labels(): map[string]string
+	}
+}
+
+	proc.G --> proc.stack
+	proc.G --> proc.Location
+	proc.G --> proc.Thread
+	proc.G --> proc.Variable
+	proc.G --> error
+
+	proc.G ..> proc.StacktraceOptions : <<use>> 
+	proc.G ..> proc.Stackframe : <<return>> 
+	proc.G ..> error : <<return>> 
+	proc.G ..> proc.Defer : <<return>> 
+	proc.G ..> proc.Location : <<return>> 
+	proc.G ..> proc.Location : <<return>> 
+	proc.G ..> proc.Target : <<use>> 
+	proc.G ..> proc.Location : <<return>> 
+	proc.G ..> proc.Target : <<use>> 
+
+package "proc" {
+	class "Image" as proc.Image <<E,#FFCC00>> {
+		+Path: string
+		+StaticBase: uint64
+		-addr: uint64
+		-index: int
+		-closer: io.Closer
+		-sepDebugCloser: io.Closer
+		-dwarf: dwarf.Data
+		-dwarfReader: dwarf.Reader
+		-loclist2: loclist.Dwarf2Reader
+		-loclist5: loclist.Dwarf5Reader
+		-debugAddr: godwarf.DebugAddrSection
+		-debugLineStr: []byte
+		-typeCache: godwarf.Type
+		-compileUnits: []*proc.compileUnit
+		-dwarfTreeCache: simplelru.LRU
+		-runtimeMallocgcTree: godwarf.Tree
+		-runtimeTypeToDIE: map[uint64]proc.runtimeTypeDIE
+		-loadErrMu: sync.Mutex
+		-loadErr: error
+		+DwarfReader(): reader.Reader
+		-registerRuntimeTypeToDIE(entry: dwarf.Entry, ardr: reader.Reader)
+		+Close(): error
+		-setLoadError(fmtstr: string, args: []interface{})
+		+LoadError(): error
+		-getDwarfTree(off: dwarf.Offset): (godwarf.Tree, error)
+		-findCompileUnitForOffset(off: dwarf.Offset): *proc.compileUnit
+		+Type(offset: dwarf.Offset): (godwarf.Type, error)
+	}
+}
+
+	proc.Image --> proc.runtimeTypeDIE
+	proc.Image --> sync.Mutex
+	proc.Image --> error
+
+	proc.Image ..> error : <<return>> 
+	proc.Image ..> error : <<return>> 
+	proc.Image ..> error : <<return>> 
+
+package "proc" {
+	class "InlinedCall" as proc.InlinedCall <<V,Orchid>> {
+		-cu: *proc.compileUnit
+		+LowPC: uint64
+		+HighPC: uint64
+	}
+}
+
+	proc.InlinedCall --> proc.compileUnit
+
+
+package "proc" {
+	class "InvalidAddressError" as proc.InvalidAddressError <<V,Orchid>> {
+		+Address: uint64
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "IsNilErr" as proc.IsNilErr <<V,Orchid>> {
+		-name: string
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "KeepSteppingBreakpoints" as proc.KeepSteppingBreakpoints <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "LaunchFlags" as proc.LaunchFlags <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "LoadConfig" as proc.LoadConfig <<V,Orchid>> {
+		+FollowPointers: bool
+		+MaxVariableRecurse: int
+		+MaxStringLen: int
+		+MaxArrayValues: int
+		+MaxStructFields: int
+		+MaxMapBuckets: int
+	}
+}
+
+
+
+package "proc" {
+	class "Location" as proc.Location <<V,Orchid>> {
+		+PC: uint64
+		+File: string
+		+Line: int
+		+Fn: *proc.Function
+	}
+}
+
+	proc.Location --> proc.Function
+
+
+package "proc" {
+	class "MemoryMapEntry" as proc.MemoryMapEntry <<V,Orchid>> {
+		+Addr: uint64
+		+Size: uint64
+		+Read: bool
+		+Write: bool
+		+Exec: bool
+		+Filename: string
+		+Offset: uint64
+	}
+}
+
+
+
+package "proc" {
+	interface "MemoryReadWriter" as proc.MemoryReadWriter {
+		+ReadMemory(buf: []byte, addr: uint64): (n: int, err: error)
+		+WriteMemory(addr: uint64, data: []byte): (written: int, err: error)
+	}
+}
+
+
+	proc.MemoryReadWriter ..> error : <<return>> 
+	proc.MemoryReadWriter ..> error : <<return>> 
+
+package "proc" {
+	interface "MemoryReader" as proc.MemoryReader {
+		+ReadMemory(buf: []byte, addr: uint64): (n: int, err: error)
+	}
+}
+
+
+	proc.MemoryReader ..> error : <<return>> 
+
+package "proc" {
+	class "NewTargetConfig" as proc.NewTargetConfig <<V,Orchid>> {
+		+Path: string
+		+DisableAsyncPreempt: bool
+		+StopReason: proc.StopReason
+		+CanDump: bool
+	}
+}
+
+	proc.NewTargetConfig --> proc.StopReason
+
+
+package "proc" {
+	class "NoBreakpointError" as proc.NoBreakpointError <<V,Orchid>> {
+		+Addr: uint64
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "NullAddrError" as proc.NullAddrError <<V,Orchid>> {
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "PackageBuildInfo" as proc.PackageBuildInfo <<V,Orchid>> {
+		+ImportPath: string
+		+DirectoryPath: string
+		+Files: map[string]struct{}
+	}
+}
+
+
+
+package "proc" {
+	interface "Process" as proc.Process {
+		+BinInfo(): *proc.BinaryInfo
+		+Breakpoints(): *proc.BreakpointMap
+		+CheckAndClearManualStopRequest(): bool
+		+EntryPoint(): (uint64, error)
+		+FindThread(threadID: int): (proc.Thread, bool)
+		+Memory(): proc.MemoryReadWriter
+		+RequestManualStop(): error
+		+ResumeNotify(: chan<- struct{})
+		+ThreadList(): []proc.Thread
+	}
+}
+
+
+	proc.Process ..> proc.BinaryInfo : <<return>> 
+	proc.Process ..> proc.BreakpointMap : <<return>> 
+	proc.Process ..> error : <<return>> 
+	proc.Process ..> proc.Thread : <<return>> 
+	proc.Process ..> proc.MemoryReadWriter : <<return>> 
+	proc.Process ..> error : <<return>> 
+	proc.Process ..> proc.Thread : <<return>> 
+
+package "proc" {
+	interface "ProcessInternal" as proc.ProcessInternal {
+		+BinInfo(): *proc.BinaryInfo
+		+Breakpoints(): *proc.BreakpointMap
+		+CheckAndClearManualStopRequest(): bool
+		+ContinueOnce(): (trapthread: proc.Thread, stopReason: proc.StopReason, err: error)
+		+Detach(: bool): error
+		+DumpProcessNotes(notes: elfwriter.Note, threadDone: func()): (bool, elfwriter.Note, error)
+		+EntryPoint(): (uint64, error)
+		+EraseBreakpoint(: *proc.Breakpoint): error
+		+FindThread(threadID: int): (proc.Thread, bool)
+		+GetBufferedTracepoints(): ebpf.RawUProbeParams
+		+Memory(): proc.MemoryReadWriter
+		+MemoryMap(): ([]proc.MemoryMapEntry, error)
+		+RequestManualStop(): error
+		+ResumeNotify(: chan<- struct{})
+		+SetUProbe(: string, : int64, : ebpf.UProbeArgMap): error
+		+StartCallInjection(): (func(), error)
+		+SupportsBPF(): bool
+		+ThreadList(): []proc.Thread
+		+Valid(): (bool, error)
+		+WriteBreakpoint(: *proc.Breakpoint): error
+	}
+}
+
+
+	proc.ProcessInternal ..> proc.BinaryInfo : <<return>> 
+	proc.ProcessInternal ..> proc.BreakpointMap : <<return>> 
+	proc.ProcessInternal ..> proc.Thread : <<return>> 
+	proc.ProcessInternal ..> proc.StopReason : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> proc.Breakpoint : <<use>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> proc.Thread : <<return>> 
+	proc.ProcessInternal ..> ebpf.RawUProbeParams : <<return>> 
+	proc.ProcessInternal ..> proc.MemoryReadWriter : <<return>> 
+	proc.ProcessInternal ..> proc.MemoryMapEntry : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> ebpf.UProbeArgMap : <<use>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> proc.Thread : <<return>> 
+	proc.ProcessInternal ..> error : <<return>> 
+	proc.ProcessInternal ..> proc.Breakpoint : <<use>> 
+	proc.ProcessInternal ..> error : <<return>> 
+
+package "proc" {
+	class "Register" as proc.Register <<V,Orchid>> {
+		+Name: string
+		+Reg: op.DwarfRegister
+	}
+}
+
+
+
+package "proc" {
+	interface "Registers" as proc.Registers {
+		+BP(): uint64
+		+Copy(): (proc.Registers, error)
+		+GAddr(): (uint64, bool)
+		+PC(): uint64
+		+SP(): uint64
+		+Slice(floatingPoint: bool): ([]proc.Register, error)
+		+TLS(): uint64
+	}
+}
+
+
+	proc.Registers ..> proc.Registers : <<return>> 
+	proc.Registers ..> error : <<return>> 
+	proc.Registers ..> proc.Register : <<return>> 
+	proc.Registers ..> error : <<return>> 
+
+package "proc" {
+	class "Stackframe" as proc.Stackframe <<V,Orchid>> {
+		+Current: proc.Location
+		+Call: proc.Location
+		+Regs: op.DwarfRegisters
+		-stackHi: uint64
+		+Ret: uint64
+		-addrret: uint64
+		+Err: error
+		+SystemStack: bool
+		+Inlined: bool
+		+Bottom: bool
+		-lastpc: uint64
+		+TopmostDefer: *proc.Defer
+		+Defers: []*proc.Defer
+		+FrameOffset(): int64
+		+FramePointerOffset(): int64
+	}
+}
+
+	proc.Stackframe --> proc.Location
+	proc.Stackframe --> proc.Location
+	proc.Stackframe --> error
+	proc.Stackframe --> proc.Defer
+
+
+package "proc" {
+	class "StacktraceOptions" as proc.StacktraceOptions <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "StopReason" as proc.StopReason <<V,Orchid>> {
+		+String(): string
+	}
+}
+
+
+
+package "proc" {
+	class "Target" as proc.Target <<E,#FFCC00>> {
+		+Process: proc.Process
+		-proc: proc.ProcessInternal
+		-pid: int
+		+StopReason: proc.StopReason
+		+CanDump: bool
+		+KeepSteppingBreakpoints: proc.KeepSteppingBreakpoints
+		-currentThread: proc.Thread
+		-selectedGoroutine: *proc.G
+		-fncallForG: map[int]*proc.callInjection
+		-asyncPreemptChanged: bool
+		-asyncPreemptOff: int64
+		-gcache: proc.goroutineCache
+		-iscgo: *bool
+		-exitStatus: int
+		-fakeMemoryRegistry: []*proc.compositeMemory
+		-fakeMemoryRegistryMap: map[string]*proc.compositeMemory
+		+SetBreakpoint(addr: uint64, kind: proc.BreakpointKind, cond: ast.Expr): (*proc.Breakpoint, error)
+		+SetEBPFTracepoint(fnName: string): error
+		-setEBPFTracepointOnFunc(fn: *proc.Function, goidOffset: int64): error
+		+SetWatchpoint(scope: *proc.EvalScope, expr: string, wtype: proc.WatchType, cond: ast.Expr): (*proc.Breakpoint, error)
+		-setBreakpointInternal(addr: uint64, kind: proc.BreakpointKind, wtype: proc.WatchType, cond: ast.Expr): (*proc.Breakpoint, error)
+		+SetBreakpointWithID(id: int, addr: uint64): (*proc.Breakpoint, error)
+		+ClearBreakpoint(addr: uint64): error
+		+ClearSteppingBreakpoints(): error
+		-finishClearBreakpoint(bp: *proc.Breakpoint): (bool, error)
+		-setStackWatchBreakpoints(scope: *proc.EvalScope, watchpoint: *proc.Breakpoint): error
+		-clearStackWatchBreakpoints(watchpoint: *proc.Breakpoint): error
+		+Dump(out: elfwriter.WriteCloserSeeker, flags: proc.DumpFlags, state: *proc.DumpState)
+		-dumpThreadNotes(notes: elfwriter.Note, state: *proc.DumpState, th: proc.Thread): elfwriter.Note
+		-dumpMemory(state: *proc.DumpState, w: elfwriter.Writer, mme: *proc.MemoryMapEntry)
+		-shouldDumpMemory(mme: *proc.MemoryMapEntry): bool
+		+Pid(): int
+		+IsCgo(): bool
+		+Valid(): (bool, error)
+		+SupportsFunctionCalls(): bool
+		+ClearCaches()
+		+Restart(from: string): error
+		+SelectedGoroutine(): *proc.G
+		+SwitchGoroutine(g: *proc.G): error
+		+SwitchThread(tid: int): error
+		+Detach(kill: bool): error
+		-createUnrecoveredPanicBreakpoint()
+		-createFatalThrowBreakpoint()
+		+CurrentThread(): proc.Thread
+		+GetBufferedTracepoints(): []*proc.UProbeTraceResult
+		+SetNextBreakpointID(id: int)
+		-newCompositeMemory(mem: proc.MemoryReadWriter, regs: op.DwarfRegisters, pieces: op.Piece, descr: *proc.locationExpr): (int64, *proc.compositeMemory, error)
+		-registerFakeMemory(mem: *proc.compositeMemory): addr: uint64
+		-findFakeMemory(addr: uint64): *proc.compositeMemory
+		-clearFakeMemory()
+		-dwrapUnwrap(fn: *proc.Function): *proc.Function
+		+Next(): err: error
+		+Continue(): error
+		+Step(): err: error
+		+StepOut(): error
+		+StepInstruction(): err: error
+	}
+}
+
+	proc.Target --> proc.Process
+	proc.Target --> proc.ProcessInternal
+	proc.Target --> proc.StopReason
+	proc.Target --> proc.KeepSteppingBreakpoints
+	proc.Target --> proc.Thread
+	proc.Target --> proc.G
+	proc.Target --> proc.goroutineCache
+
+	proc.Target ..> proc.BreakpointKind : <<use>> 
+	proc.Target ..> proc.Breakpoint : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> proc.EvalScope : <<use>> 
+	proc.Target ..> proc.WatchType : <<use>> 
+	proc.Target ..> proc.Breakpoint : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> proc.Breakpoint : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> proc.DumpFlags : <<use>> 
+	proc.Target ..> proc.DumpState : <<use>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> proc.G : <<return>> 
+	proc.Target ..> proc.G : <<use>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> proc.Thread : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+	proc.Target ..> error : <<return>> 
+
+package "proc" {
+	interface "Thread" as proc.Thread {
+		+BinInfo(): *proc.BinaryInfo
+		+Breakpoint(): *proc.BreakpointState
+		+Common(): *proc.CommonThread
+		+Location(): (*proc.Location, error)
+		+ProcessMemory(): proc.MemoryReadWriter
+		+Registers(): (proc.Registers, error)
+		+RestoreRegisters(: proc.Registers): error
+		+SetCurrentBreakpoint(adjustPC: bool): error
+		+SetReg(: uint64, : op.DwarfRegister): error
+		+StepInstruction(): error
+		+ThreadID(): int
+	}
+}
+
+
+	proc.Thread ..> proc.BinaryInfo : <<return>> 
+	proc.Thread ..> proc.BreakpointState : <<return>> 
+	proc.Thread ..> proc.CommonThread : <<return>> 
+	proc.Thread ..> proc.Location : <<return>> 
+	proc.Thread ..> error : <<return>> 
+	proc.Thread ..> proc.MemoryReadWriter : <<return>> 
+	proc.Thread ..> proc.Registers : <<return>> 
+	proc.Thread ..> error : <<return>> 
+	proc.Thread ..> proc.Registers : <<use>> 
+	proc.Thread ..> error : <<return>> 
+	proc.Thread ..> error : <<return>> 
+	proc.Thread ..> error : <<return>> 
+	proc.Thread ..> error : <<return>> 
+
+package "proc" {
+	class "UProbeTraceResult" as proc.UProbeTraceResult <<V,Orchid>> {
+		+FnAddr: int
+		+GoroutineID: int
+		+InputParams: []*proc.Variable
+		+ReturnParams: []*proc.Variable
+	}
+}
+
+
+
+package "proc" {
+	class "Variable" as proc.Variable <<E,#FFCC00>> {
+		+Addr: uint64
+		+OnlyAddr: bool
+		+Name: string
+		+DwarfType: godwarf.Type
+		+RealType: godwarf.Type
+		+Kind: reflect.Kind
+		-mem: proc.MemoryReadWriter
+		-bin: *proc.BinaryInfo
+		+Value: constant.Value
+		+FloatSpecial: proc.floatSpecial
+		-reg: op.DwarfRegister
+		+Len: int64
+		+Cap: int64
+		+Flags: proc.variableFlags
+		+Base: uint64
+		-stride: int64
+		-fieldType: godwarf.Type
+		-closureAddr: uint64
+		-mapSkip: int
+		+Children: []proc.Variable
+		-loaded: bool
+		+Unreadable: error
+		+LocationExpr: *proc.locationExpr
+		+DeclLine: int64
+		-newVariable(name: string, addr: uint64, dwarfType: godwarf.Type, mem: proc.MemoryReadWriter): *proc.Variable
+		-clone(): *proc.Variable
+		+TypeString(): string
+		-toField(field: godwarf.StructField): (*proc.Variable, error)
+		-parseG(): (*proc.G, error)
+		-loadFieldNamed(name: string): *proc.Variable
+		-fieldVariable(name: string): *proc.Variable
+		-structMember(memberName: string): (*proc.Variable, error)
+		-maybeDereference(): *proc.Variable
+		-loadValue(cfg: proc.LoadConfig)
+		-loadValueInternal(recurseLevel: int, cfg: proc.LoadConfig)
+		-loadSliceInfo(t: godwarf.SliceType)
+		-loadChanInfo()
+		-loadArrayValues(recurseLevel: int, cfg: proc.LoadConfig)
+		-readComplex(size: int64)
+		-writeComplex(real: float64, imag: float64, size: int64): error
+		-writeUint(value: uint64, size: int64): error
+		-readFloatRaw(size: int64): (float64, error)
+		-writeFloatRaw(f: float64, size: int64): error
+		-writeBool(value: bool): error
+		-writeZero(): error
+		-writeEmptyInterface(typeAddr: uint64, data: *proc.Variable): error
+		-writeSlice(len: int64, cap: int64, base: uint64): error
+		-writeString(len: uint64, base: uint64): error
+		-writeCopy(srcv: *proc.Variable): error
+		-readFunctionPtr()
+		-funcvalAddr(): uint64
+		-loadMap(recurseLevel: int, cfg: proc.LoadConfig)
+		-mapIterator(): *proc.mapIterator
+		-readInterface(): (_type: *proc.Variable, data: *proc.Variable, isnil: bool)
+		-loadInterface(recurseLevel: int, loadData: bool, cfg: proc.LoadConfig)
+		+ConstDesc(): string
+		-registerVariableTypeConv(newtyp: string): (*proc.Variable, error)
+		-pointerToVariable(): *proc.Variable
+		-isNil(): bool
+		-asInt(): (int64, error)
+		-asUint(): (uint64, error)
+		-isType(typ: godwarf.Type, kind: reflect.Kind): error
+		-sliceAccess(idx: int): (*proc.Variable, error)
+		-mapAccess(idx: *proc.Variable): (*proc.Variable, error)
+		+LoadResliced(start: int, cfg: proc.LoadConfig): (newV: *proc.Variable, err: error)
+		-reslice(low: int64, high: int64): (*proc.Variable, error)
+		-findMethod(mname: string): (*proc.Variable, error)
+	}
+}
+
+	proc.Variable --> proc.MemoryReadWriter
+	proc.Variable --> proc.BinaryInfo
+	proc.Variable --> proc.floatSpecial
+	proc.Variable --> proc.variableFlags
+	proc.Variable --> proc.Variable
+	proc.Variable --> error
+	proc.Variable --> proc.locationExpr
+
+	proc.Variable ..> proc.LoadConfig : <<use>> 
+	proc.Variable ..> proc.Variable : <<return>> 
+	proc.Variable ..> error : <<return>> 
+
+package "proc" {
+	class "WatchType" as proc.WatchType <<V,Orchid>> {
+		+Read(): bool
+		+Write(): bool
+		+Size(): int
+		-withSize(sz: uint8): proc.WatchType
+	}
+}
+
+
+
+package "proc" {
+	interface "archInst" as proc.archInst {
+		+OpcodeEquals(op: uint64): bool
+		+Text(flavour: proc.AssemblyFlavour, pc: uint64, symLookup: func(uint64) (string, uint64)): string
+	}
+}
+
+
+	proc.archInst ..> proc.AssemblyFlavour : <<use>> 
+
+package "proc" {
+	class "asmRegister" as proc.asmRegister <<V,Orchid>> {
+		-dwarfNum: uint64
+		-offset: uint
+		-mask: uint64
+	}
+}
+
+
+
+package "proc" {
+	class "buildIDHeader" as proc.buildIDHeader <<V,Orchid>> {
+		+Namesz: uint32
+		+Descsz: uint32
+		+Type: uint32
+	}
+}
+
+
+
+package "proc" {
+	class "callContext" as proc.callContext <<E,#FFCC00>> {
+		-p: *proc.Target
+		-checkEscape: bool
+		-retLoadCfg: proc.LoadConfig
+		-continueRequest: chan<- proc.continueRequest
+		-continueCompleted: <-chan *proc.G
+		-injectionThread: proc.Thread
+		-stacks: []proc.stack
+		-doContinue(): *proc.G
+		-doReturn(ret: *proc.Variable, err: error)
+	}
+}
+
+	proc.callContext --> proc.Target
+	proc.callContext --> proc.LoadConfig
+	proc.callContext --> proc.Thread
+	proc.callContext --> proc.stack
+
+
+package "proc" {
+	class "callInjection" as proc.callInjection <<V,Orchid>> {
+		-continueCompleted: chan<- *proc.G
+		-continueRequest: <-chan proc.continueRequest
+		-startThreadID: int
+		-endCallInjection: func()
+	}
+}
+
+
+
+package "proc" {
+	class "compileUnit" as proc.compileUnit <<V,Orchid>> {
+		-name: string
+		+Version: uint8
+		-lowPC: uint64
+		-ranges: [][2]uint64
+		-entry: dwarf.Entry
+		-isgo: bool
+		-lineInfo: line.DebugLineInfo
+		-optimized: bool
+		-producer: string
+		-offset: dwarf.Offset
+		-image: *proc.Image
+		-filePath(fileidx: int, entry: dwarf.Entry): (string, error)
+	}
+}
+
+	proc.compileUnit --> proc.Image
+
+
+package "proc" {
+	class "compileUnitsByOffset" as proc.compileUnitsByOffset <<V,Orchid>> {
+		+Len(): int
+		+Less(i: int, j: int): bool
+		+Swap(i: int, j: int)
+	}
+}
+
+
+
+package "proc" {
+	class "compositeMemory" as proc.compositeMemory <<V,Orchid>> {
+		-base: uint64
+		-realmem: proc.MemoryReadWriter
+		-arch: *proc.Arch
+		-regs: op.DwarfRegisters
+		-pieces: op.Piece
+		-data: []byte
+		+ReadMemory(data: []byte, addr: uint64): (int, error)
+		+WriteMemory(addr: uint64, data: []byte): (int, error)
+	}
+}
+
+	proc.compositeMemory --> proc.MemoryReadWriter
+	proc.compositeMemory --> proc.Arch
+
+	proc.compositeMemory ..> error : <<return>> 
+	proc.compositeMemory ..> error : <<return>> 
+
+package "proc" {
+	class "constantType" as proc.constantType <<V,Orchid>> {
+		-initialized: bool
+		-values: []proc.constantValue
+		-describe(n: int64): string
+	}
+}
+
+	proc.constantType --> proc.constantValue
+
+
+package "proc" {
+	class "constantValue" as proc.constantValue <<V,Orchid>> {
+		-name: string
+		-fullName: string
+		-value: int64
+		-singleBit: bool
+	}
+}
+
+
+
+package "proc" {
+	class "constantValuesByValue" as proc.constantValuesByValue <<V,Orchid>> {
+		+Len(): int
+		+Less(i: int, j: int): bool
+		+Swap(i: int, j: int)
+	}
+}
+
+
+proc.constantValuesByValue *-- proc.constantValue
+package "proc" {
+	class "constantsMap" as proc.constantsMap <<V,Orchid>> {
+		+Get(typ: godwarf.Type): *proc.constantType
+	}
+}
+
+
+	proc.constantsMap ..> proc.constantType : <<return>> 
+
+package "proc" {
+	class "continueRequest" as proc.continueRequest <<V,Orchid>> {
+		-cont: bool
+		-err: error
+		-ret: *proc.Variable
+	}
+}
+
+	proc.continueRequest --> error
+	proc.continueRequest --> proc.Variable
+
+
+package "proc" {
+	interface "cpuArch" as proc.cpuArch {
+		+String(): string
+	}
+}
+
+
+
+package "proc" {
+	class "dwarfRef" as proc.dwarfRef <<V,Orchid>> {
+		-imageIndex: int
+		-offset: dwarf.Offset
+	}
+}
+
+
+
+package "proc" {
+	class "fakeEntry" as proc.fakeEntry <<V,Orchid>> {
+		+Val(attr: dwarf.Attr): interface{}
+	}
+}
+
+
+
+package "proc" {
+	class "fileLine" as proc.fileLine <<V,Orchid>> {
+		-file: string
+		-line: int
+	}
+}
+
+
+
+package "proc" {
+	class "flagDescr" as proc.flagDescr <<V,Orchid>> {
+		-name: string
+		-mask: uint64
+	}
+}
+
+
+
+package "proc" {
+	class "flagRegisterDescr" as proc.flagRegisterDescr <<V,Orchid>> {
+		+Mask(): uint64
+		+Describe(reg: uint64, bitsize: int): string
+	}
+}
+
+
+proc.flagRegisterDescr *-- proc.flagDescr
+package "proc" {
+	class "floatSpecial" as proc.floatSpecial <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "fncallPanicErr" as proc.fncallPanicErr <<V,Orchid>> {
+		-panicVar: *proc.Variable
+		+Error(): string
+	}
+}
+
+	proc.fncallPanicErr --> proc.Variable
+
+
+package "proc" {
+	class "funcCallArg" as proc.funcCallArg <<V,Orchid>> {
+		-name: string
+		-typ: godwarf.Type
+		-off: int64
+		-dwarfEntry: godwarf.Tree
+		-isret: bool
+	}
+}
+
+
+
+package "proc" {
+	class "functionCallState" as proc.functionCallState <<V,Orchid>> {
+		-savedRegs: proc.Registers
+		-err: error
+		-expr: ast.CallExpr
+		-fn: *proc.Function
+		-receiver: *proc.Variable
+		-closureAddr: uint64
+		-formalArgs: []proc.funcCallArg
+		-argFrameSize: int64
+		-retvars: []*proc.Variable
+		-panicvar: *proc.Variable
+		-lateCallFailure: bool
+	}
+}
+
+	proc.functionCallState --> proc.Registers
+	proc.functionCallState --> error
+	proc.functionCallState --> proc.Function
+	proc.functionCallState --> proc.Variable
+	proc.functionCallState --> proc.funcCallArg
+	proc.functionCallState --> proc.Variable
+
+
+package "proc" {
+	class "functionsDebugInfoByEntry" as proc.functionsDebugInfoByEntry <<V,Orchid>> {
+		+Len(): int
+		+Less(i: int, j: int): bool
+		+Swap(i: int, j: int)
+	}
+}
+
+
+proc.functionsDebugInfoByEntry *-- proc.Function
+package "proc" {
+	class "goroutineCache" as proc.goroutineCache <<E,#FFCC00>> {
+		-partialGCache: map[int]*proc.G
+		-allGCache: []*proc.G
+		-allgentryAddr: uint64
+		-allglenAddr: uint64
+		-init(bi: *proc.BinaryInfo)
+		-getRuntimeAllg(bi: *proc.BinaryInfo, mem: proc.MemoryReadWriter): (uint64, uint64, error)
+		-addGoroutine(g: *proc.G)
+		+Clear()
+	}
+}
+
+
+
+package "proc" {
+	class "inlRange" as proc.inlRange <<V,Orchid>> {
+		-off: dwarf.Offset
+		-depth: uint32
+		-rng: [2]uint64
+	}
+}
+
+
+
+package "proc" {
+	class "internalError" as proc.internalError <<V,Orchid>> {
+		+Err: interface{}
+		+Stack: []proc.internalErrorFrame
+		+Error(): string
+	}
+}
+
+	proc.internalError --> proc.internalErrorFrame
+
+
+package "proc" {
+	class "internalErrorFrame" as proc.internalErrorFrame <<V,Orchid>> {
+		+Pc: uintptr
+		+Func: string
+		+File: string
+		+Line: int
+	}
+}
+
+
+
+package "proc" {
+	class "loadDebugInfoMapsContext" as proc.loadDebugInfoMapsContext <<V,Orchid>> {
+		-ardr: reader.Reader
+		-abstractOriginTable: dwarf.Offset]int
+		-knownPackageVars: map[string]struct{}
+		-offsetToVersion: dwarf.Offset]uint8
+		-lookupAbstractOrigin(bi: *proc.BinaryInfo, off: dwarf.Offset): int
+	}
+}
+
+
+
+package "proc" {
+	class "localsFlags" as proc.localsFlags <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "locationExpr" as proc.locationExpr <<V,Orchid>> {
+		-isBlock: bool
+		-isEscaped: bool
+		-off: int64
+		-pc: uint64
+		-instr: []byte
+		+String(): string
+	}
+}
+
+
+
+package "proc" {
+	class "mapIterator" as proc.mapIterator <<V,Orchid>> {
+		-v: *proc.Variable
+		-numbuckets: uint64
+		-oldmask: uint64
+		-buckets: *proc.Variable
+		-oldbuckets: *proc.Variable
+		-b: *proc.Variable
+		-bidx: uint64
+		-tophashes: *proc.Variable
+		-keys: *proc.Variable
+		-values: *proc.Variable
+		-overflow: *proc.Variable
+		-maxNumBuckets: uint64
+		-idx: int64
+		-hashTophashEmptyOne: uint64
+		-hashMinTopHash: uint64
+		-nextBucket(): bool
+		-next(): bool
+		-key(): *proc.Variable
+		-value(): *proc.Variable
+		-mapEvacuated(b: *proc.Variable): bool
+	}
+}
+
+	proc.mapIterator --> proc.Variable
+	proc.mapIterator --> proc.Variable
+	proc.mapIterator --> proc.Variable
+	proc.mapIterator --> proc.Variable
+	proc.mapIterator --> proc.Variable
+	proc.mapIterator --> proc.Variable
+	proc.mapIterator --> proc.Variable
+	proc.mapIterator --> proc.Variable
+
+
+package "proc" {
+	class "memCache" as proc.memCache <<V,Orchid>> {
+		-loaded: bool
+		-cacheAddr: uint64
+		-cache: []byte
+		-mem: proc.MemoryReadWriter
+		-contains(addr: uint64, size: int): bool
+		+ReadMemory(data: []byte, addr: uint64): (n: int, err: error)
+		+WriteMemory(addr: uint64, data: []byte): (written: int, err: error)
+	}
+}
+
+	proc.memCache --> proc.MemoryReadWriter
+
+	proc.memCache ..> error : <<return>> 
+	proc.memCache ..> error : <<return>> 
+
+package "proc" {
+	class "moduleData" as proc.moduleData <<V,Orchid>> {
+		-text: uint64
+		-etext: uint64
+		-types: uint64
+		-etypes: uint64
+		-typemapVar: *proc.Variable
+	}
+}
+
+	proc.moduleData --> proc.Variable
+
+
+package "proc" {
+	class "nameOfRuntimeTypeEntry" as proc.nameOfRuntimeTypeEntry <<V,Orchid>> {
+		-typename: string
+		-kind: int64
+	}
+}
+
+
+
+package "proc" {
+	class "nilCloser" as proc.nilCloser <<E,#FFCC00>> {
+		+Close(): error
+	}
+}
+
+
+	proc.nilCloser ..> error : <<return>> 
+
+package "proc" {
+	class "onNextGoroutineWalker" as proc.onNextGoroutineWalker <<V,Orchid>> {
+		-tgt: *proc.Target
+		-thread: proc.Thread
+		-ret: bool
+		-err: error
+		+Visit(n: ast.Node): ast.Visitor
+	}
+}
+
+	proc.onNextGoroutineWalker --> proc.Target
+	proc.onNextGoroutineWalker --> proc.Thread
+	proc.onNextGoroutineWalker --> error
+
+
+package "proc" {
+	class "opcodeSeq" as proc.opcodeSeq <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "packageVar" as proc.packageVar <<V,Orchid>> {
+		-name: string
+		-cu: *proc.compileUnit
+		-offset: dwarf.Offset
+		-addr: uint64
+	}
+}
+
+	proc.packageVar --> proc.compileUnit
+
+
+package "proc" {
+	class "packageVarsByAddr" as proc.packageVarsByAddr <<V,Orchid>> {
+		+Len(): int
+		+Less(i: int, j: int): bool
+		+Swap(i: int, j: int)
+	}
+}
+
+
+proc.packageVarsByAddr *-- proc.packageVar
+package "proc" {
+	class "returnBreakpointInfo" as proc.returnBreakpointInfo <<V,Orchid>> {
+		-retFrameCond: ast.Expr
+		-fn: *proc.Function
+		-frameOffset: int64
+		-spOffset: int64
+		+Collect(t: *proc.Target, thread: proc.Thread): []*proc.Variable
+	}
+}
+
+	proc.returnBreakpointInfo --> proc.Function
+
+	proc.returnBreakpointInfo ..> proc.Target : <<use>> 
+	proc.returnBreakpointInfo ..> proc.Thread : <<use>> 
+
+package "proc" {
+	class "runtimeTypeDIE" as proc.runtimeTypeDIE <<V,Orchid>> {
+		-offset: dwarf.Offset
+		-kind: int64
+	}
+}
+
+
+
+package "proc" {
+	class "stack" as proc.stack <<V,Orchid>> {
+		-hi: uint64
+		-lo: uint64
+	}
+}
+
+
+
+package "proc" {
+	class "stackIterator" as proc.stackIterator <<E,#FFCC00>> {
+		-pc: uint64
+		-top: bool
+		-atend: bool
+		-frame: proc.Stackframe
+		-bi: *proc.BinaryInfo
+		-mem: proc.MemoryReadWriter
+		-err: error
+		-stackhi: uint64
+		-systemstack: bool
+		-regs: op.DwarfRegisters
+		-g: *proc.G
+		-g0_sched_sp: uint64
+		-g0_sched_sp_loaded: bool
+		-opts: proc.StacktraceOptions
+		+Next(): bool
+		-switchToGoroutineStack()
+		+Frame(): proc.Stackframe
+		+Err(): error
+		-frameBase(fn: *proc.Function): int64
+		-newStackframe(ret: uint64, retaddr: uint64): proc.Stackframe
+		-stacktrace(depth: int): ([]proc.Stackframe, error)
+		-appendInlineCalls(frames: []proc.Stackframe, frame: proc.Stackframe): []proc.Stackframe
+		-advanceRegs(): (callFrameRegs: op.DwarfRegisters, ret: uint64, retaddr: uint64)
+		-executeFrameRegRule(regnum: uint64, rule: frame.DWRule, cfa: int64): (op.DwarfRegister, error)
+		-readRegisterAt(regnum: uint64, addr: uint64): (op.DwarfRegister, error)
+		-loadG0SchedSP()
+	}
+}
+
+	proc.stackIterator --> proc.Stackframe
+	proc.stackIterator --> proc.BinaryInfo
+	proc.stackIterator --> proc.MemoryReadWriter
+	proc.stackIterator --> error
+	proc.stackIterator --> proc.G
+	proc.stackIterator --> proc.StacktraceOptions
+
+	proc.stackIterator ..> proc.Stackframe : <<return>> 
+	proc.stackIterator ..> error : <<return>> 
+
+package "proc" {
+	class "typeConvErr" as proc.typeConvErr <<V,Orchid>> {
+		-srcType: godwarf.Type
+		-dstType: godwarf.Type
+		+Error(): string
+	}
+}
+
+
+
+package "proc" {
+	class "variableFlags" as proc.variableFlags <<V,Orchid>>
+}
+
+
+
+package "proc" {
+	class "variablesByDepthAndDeclLine" as proc.variablesByDepthAndDeclLine <<E,#FFCC00>> {
+		-vars: []*proc.Variable
+		-depths: []int
+		+Len(): int
+		+Less(i: int, j: int): bool
+		+Swap(i: int, j: int)
+	}
+}
+
+
+
+package "proc" {
+	class "x86Inst" as proc.x86Inst <<V,Orchid>> {
+		+Prefix: x86asm.Prefixes
+		+Op: x86asm.Op
+		+Opcode: uint32
+		+Args: x86asm.Args
+		+Mode: int
+		+AddrSize: int
+		+DataSize: int
+		+MemBytes: int
+		+Len: int
+		+PCRel: int
+		+PCRelOff: int
+		+Text(flavour: proc.AssemblyFlavour, pc: uint64, symLookup: func(uint64) (string, uint64)): string
+		+OpcodeEquals(op: uint64): bool
+	}
+}
+
+
+	proc.x86Inst ..> proc.AssemblyFlavour : <<use>> 
+
+package "amd64util" {
+	class "AMD64PtraceFpRegs" as amd64util.AMD64PtraceFpRegs <<V,Orchid>> {
+		+Cwd: uint16
+		+Swd: uint16
+		+Ftw: uint16
+		+Fop: uint16
+		+Rip: uint64
+		+Rdp: uint64
+		+Mxcsr: uint32
+		+MxcrMask: uint32
+		+StSpace: [32]uint32
+		+XmmSpace: [256]byte
+		+Padding: [24]uint32
+	}
+}
+
+
+
+package "amd64util" {
+	class "AMD64Xstate" as amd64util.AMD64Xstate <<E,#FFCC00>> {
+		+AMD64PtraceFpRegs: amd64util.AMD64PtraceFpRegs
+		+Xsave: []byte
+		+AvxState: bool
+		+YmmSpace: [256]byte
+		+Avx512State: bool
+		+ZmmSpace: [512]byte
+		+Decode(): proc.Register
+		+SetXmmRegister(n: int, value: []byte): error
+	}
+}
+
+	amd64util.AMD64Xstate --> amd64util.AMD64PtraceFpRegs
+
+	amd64util.AMD64Xstate ..> proc.Register : <<return>> 
+	amd64util.AMD64Xstate ..> error : <<return>> 
+
+package "amd64util" {
+	class "DebugRegisters" as amd64util.DebugRegisters <<E,#FFCC00>> {
+		-pAddrs: [4]*uint64
+		-pDR6: *uint64
+		-pDR7: *uint64
+		+Dirty: bool
+		-breakpoint(idx: uint8): (addr: uint64, read: bool, write: bool, sz: int)
+		+SetBreakpoint(idx: uint8, addr: uint64, read: bool, write: bool, sz: int): error
+		+ClearBreakpoint(idx: uint8)
+		+GetActiveBreakpoint(): (ok: bool, idx: uint8)
+	}
+}
+
+
+	amd64util.DebugRegisters ..> error : <<return>> 
+
+package "core" {
+	class "delveRegisters" as core.delveRegisters <<V,Orchid>> {
+		-pc: uint64
+		-sp: uint64
+		-bp: uint64
+		-tls: uint64
+		-hasGAddr: bool
+		-gaddr: uint64
+		-slice: proc.Register
+		+PC(): uint64
+		+BP(): uint64
+		+SP(): uint64
+		+TLS(): uint64
+		+GAddr(): (uint64, bool)
+		+Copy(): (proc.Registers, error)
+		+Slice(: bool): (proc.Register, error)
+	}
+}
+
+	core.delveRegisters --> proc.Register
+
+	core.delveRegisters ..> proc.Registers : <<return>> 
+	core.delveRegisters ..> error : <<return>> 
+	core.delveRegisters ..> proc.Register : <<return>> 
+	core.delveRegisters ..> error : <<return>> 
+
+package "core" {
+	class "delveThread" as core.delveThread <<V,Orchid>> {
+		-id: uint64
+		-regs: *core.delveRegisters
+		-pid(): int
+		-registers(): (proc.Registers, error)
+	}
+}
+
+	core.delveThread --> core.delveRegisters
+
+
+package "core" {
+	class "elfNotesHdr" as core.elfNotesHdr <<V,Orchid>> {
+		+Namesz: uint32
+		+Descsz: uint32
+		+Type: uint32
+	}
+}
+
+
+
+package "core" {
+	class "linuxAMD64Thread" as core.linuxAMD64Thread <<V,Orchid>> {
+		-regs: linutil.AMD64Registers
+		-t: *core.linuxPrStatusAMD64
+		-registers(): (proc.Registers, error)
+		-pid(): int
+	}
+}
+
+	core.linuxAMD64Thread --> linutil.AMD64Registers
+	core.linuxAMD64Thread --> core.linuxPrStatusAMD64
+
+
+package "core" {
+	class "linuxCoreTimeval" as core.linuxCoreTimeval <<V,Orchid>> {
+		+Sec: int64
+		+Usec: int64
+	}
+}
+
+
+
+package "core" {
+	class "linuxNTFile" as core.linuxNTFile <<V,Orchid>> {
+		-linuxNTFileHdr: core.linuxNTFileHdr
+		-entries: []*core.linuxNTFileEntry
+	}
+}
+
+	core.linuxNTFile --> core.linuxNTFileHdr
+
+
+package "core" {
+	class "linuxNTFileEntry" as core.linuxNTFileEntry <<V,Orchid>> {
+		+Start: uint64
+		+End: uint64
+		+FileOfs: uint64
+	}
+}
+
+
+
+package "core" {
+	class "linuxNTFileHdr" as core.linuxNTFileHdr <<V,Orchid>> {
+		+Count: uint64
+		+PageSize: uint64
+	}
+}
+
+
+
+package "core" {
+	class "linuxPrPsInfo" as core.linuxPrPsInfo <<V,Orchid>> {
+		+State: uint8
+		+Sname: int8
+		+Zomb: uint8
+		+Nice: int8
+		-_: [4]uint8
+		+Flag: uint64
+		+Uid: uint32
+		+Gid: uint32
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Fname: [16]uint8
+		+Args: [80]uint8
+	}
+}
+
+
+
+package "core" {
+	class "linuxPrStatusAMD64" as core.linuxPrStatusAMD64 <<V,Orchid>> {
+		+Siginfo: core.linuxSiginfo
+		+Cursig: uint16
+		-_: [2]uint8
+		+Sigpend: uint64
+		+Sighold: uint64
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Utime: core.linuxCoreTimeval
+		+Stime: core.linuxCoreTimeval
+		+CUtime: core.linuxCoreTimeval
+		+CStime: core.linuxCoreTimeval
+		+Reg: linutil.AMD64PtraceRegs
+		+Fpvalid: int32
+	}
+}
+
+	core.linuxPrStatusAMD64 --> core.linuxSiginfo
+	core.linuxPrStatusAMD64 --> core.linuxCoreTimeval
+	core.linuxPrStatusAMD64 --> core.linuxCoreTimeval
+	core.linuxPrStatusAMD64 --> core.linuxCoreTimeval
+	core.linuxPrStatusAMD64 --> core.linuxCoreTimeval
+	core.linuxPrStatusAMD64 --> linutil.AMD64PtraceRegs
+
+
+package "core" {
+	class "linuxSiginfo" as core.linuxSiginfo <<V,Orchid>> {
+		+Signo: int32
+		+Code: int32
+		+Errno: int32
+	}
+}
+
+
+
+package "core" {
+	class "note" as core.note <<V,Orchid>> {
+		+Type: elf.NType
+		+Name: string
+		+Desc: interface{}
+	}
+}
+
+	core.note --> elf.NType
+
+
+package "core" {
+	class "offsetReaderAt" as core.offsetReaderAt <<V,Orchid>> {
+		-reader: io.ReaderAt
+		-offset: uint64
+		+ReadMemory(buf: []byte, addr: uint64): (n: int, err: error)
+	}
+}
+
+
+	core.offsetReaderAt ..> error : <<return>> 
+
+package "core" {
+	class "openFn" as core.openFn <<V,Orchid>> {
+		-openFn(: string, : string): (*core.process, proc.Thread, error)
+	}
+}
+
+
+
+package "core" {
+	interface "osThread" as core.osThread {
+		-pid(): int
+		-registers(): (proc.Registers, error)
+	}
+}
+
+
+
+package "core" {
+	class "process" as core.process <<E,#FFCC00>> {
+		-mem: proc.MemoryReader
+		+Threads: map[int]*core.thread
+		-pid: int
+		-entryPoint: uint64
+		-bi: proc.BinaryInfo
+		-breakpoints: proc.BreakpointMap
+		+BinInfo(): proc.BinaryInfo
+		+EntryPoint(): (uint64, error)
+		+WriteBreakpoint(: proc.Breakpoint): error
+		+Recorded(): (bool, string)
+		+Restart(: string): (proc.Thread, error)
+		+ChangeDirection(: proc.Direction): error
+		+GetDirection(): proc.Direction
+		+When(): (string, error)
+		+Checkpoint(: string): (int, error)
+		+Checkpoints(): (proc.Checkpoint, error)
+		+ClearCheckpoint(: int): error
+		+SupportsBPF(): bool
+		+SetUProbe(fnName: string, goidOffset: int64, args: ebpf.UProbeArgMap): error
+		+StartCallInjection(): (func(), error)
+		+EnableURetProbes(): error
+		+DisableURetProbes(): error
+		+ReadMemory(data: []byte, addr: uint64): (n: int, err: error)
+		+WriteMemory(addr: uint64, data: []byte): (int, error)
+		+Breakpoints(): proc.BreakpointMap
+		+EraseBreakpoint(bp: proc.Breakpoint): error
+		+ClearInternalBreakpoints(): error
+		+ContinueOnce(): (proc.Thread, proc.StopReason, error)
+		+StepInstruction(): error
+		+RequestManualStop(): error
+		+CheckAndClearManualStopRequest(): bool
+		+Memory(): proc.MemoryReadWriter
+		+Detach(: bool): error
+		+Valid(): (bool, error)
+		+ResumeNotify(: chan<- struct{})
+		+ThreadList(): proc.Thread
+		+FindThread(threadID: int): (proc.Thread, bool)
+		+MemoryMap(): (proc.MemoryMapEntry, error)
+		+DumpProcessNotes(notes: elfwriter.Note, threadDone: func()): (threadsDone: bool, out: elfwriter.Note, err: error)
+		+GetBufferedTracepoints(): ebpf.RawUProbeParams
+	}
+}
+
+	core.process --> proc.MemoryReader
+	core.process --> proc.BinaryInfo
+	core.process --> proc.BreakpointMap
+
+	core.process ..> proc.BinaryInfo : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.Breakpoint : <<use>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.Thread : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.Direction : <<use>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.Direction : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.Checkpoint : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> ebpf.UProbeArgMap : <<use>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.BreakpointMap : <<return>> 
+	core.process ..> proc.Breakpoint : <<use>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.Thread : <<return>> 
+	core.process ..> proc.StopReason : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.MemoryReadWriter : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> proc.Thread : <<return>> 
+	core.process ..> proc.Thread : <<return>> 
+	core.process ..> proc.MemoryMapEntry : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> error : <<return>> 
+	core.process ..> ebpf.RawUProbeParams : <<return>> 
+
+package "core" {
+	class "readerEntry" as core.readerEntry <<V,Orchid>> {
+		-offset: uint64
+		-length: uint64
+		-reader: proc.MemoryReader
+	}
+}
+
+	core.readerEntry --> proc.MemoryReader
+
+
+package "core" {
+	class "splicedMemory" as core.splicedMemory <<E,#FFCC00>> {
+		-readers: []core.readerEntry
+		+Add(reader: proc.MemoryReader, off: uint64, length: uint64)
+		+ReadMemory(buf: []byte, addr: uint64): (n: int, err: error)
+	}
+}
+
+	core.splicedMemory --> core.readerEntry
+
+	core.splicedMemory ..> proc.MemoryReader : <<use>> 
+	core.splicedMemory ..> error : <<return>> 
+
+package "core" {
+	class "thread" as core.thread <<E,#FFCC00>> {
+		-th: core.osThread
+		-p: *core.process
+		-common: proc.CommonThread
+		+ProcessMemory(): proc.MemoryReadWriter
+		+Location(): (proc.Location, error)
+		+Breakpoint(): proc.BreakpointState
+		+ThreadID(): int
+		+Registers(): (proc.Registers, error)
+		+RestoreRegisters(: proc.Registers): error
+		+BinInfo(): proc.BinaryInfo
+		+StepInstruction(): error
+		+Blocked(): bool
+		+SetCurrentBreakpoint(adjustPC: bool): error
+		+Common(): proc.CommonThread
+		+SetPC(: uint64): error
+		+SetSP(: uint64): error
+		+SetDX(: uint64): error
+		+SetReg(regNum: uint64, reg: op.DwarfRegister): error
+	}
+}
+
+	core.thread --> core.osThread
+	core.thread --> core.process
+	core.thread --> proc.CommonThread
+
+	core.thread ..> proc.MemoryReadWriter : <<return>> 
+	core.thread ..> proc.Location : <<return>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> proc.BreakpointState : <<return>> 
+	core.thread ..> proc.Registers : <<return>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> proc.Registers : <<use>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> proc.BinaryInfo : <<return>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> proc.CommonThread : <<return>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> error : <<return>> 
+	core.thread ..> error : <<return>> 
+
+package "ebpf" {
+	class "EBPFContext" as ebpf.EBPFContext <<E,#FFCC00>> {
+		-objs: *ebpf.traceObjects
+		-bpfEvents: chan []byte
+		-bpfRingBuf: ringbuf.Reader
+		-executable: link.Executable
+		-bpfArgMap: ebpf.Map
+		-parsedBpfEvents: []ebpf.RawUProbeParams
+		-m: sync.Mutex
+		+Close()
+		+AttachUprobe(pid: int, name: string, offset: uint64): error
+		+UpdateArgMap(key: uint64, goidOffset: int64, args: []ebpf.UProbeArgMap, gAddrOffset: uint64, isret: bool): error
+		+GetBufferedTracepoints(): []ebpf.RawUProbeParams
+		+AttachURetprobe(pid: int, name: string, offset: uint32): error
+	}
+}
+
+	ebpf.EBPFContext --> ebpf.traceObjects
+	ebpf.EBPFContext --> ebpf.RawUProbeParams
+	ebpf.EBPFContext --> sync.Mutex
+
+	ebpf.EBPFContext ..> error : <<return>> 
+	ebpf.EBPFContext ..> ebpf.UProbeArgMap : <<use>> 
+	ebpf.EBPFContext ..> error : <<return>> 
+	ebpf.EBPFContext ..> ebpf.RawUProbeParams : <<return>> 
+	ebpf.EBPFContext ..> error : <<return>> 
+
+package "ebpf" {
+	class "RawUProbeParam" as ebpf.RawUProbeParam <<V,Orchid>> {
+		+Pieces: op.Piece
+		+RealType: godwarf.Type
+		+Kind: reflect.Kind
+		+Len: int64
+		+Base: uint64
+		+Addr: uint64
+		+Data: []byte
+	}
+}
+
+
+
+package "ebpf" {
+	class "RawUProbeParams" as ebpf.RawUProbeParams <<V,Orchid>> {
+		+FnAddr: int
+		+GoroutineID: int
+		+InputParams: []*ebpf.RawUProbeParam
+		+ReturnParams: []*ebpf.RawUProbeParam
+	}
+}
+
+
+
+package "ebpf" {
+	class "UProbeArgMap" as ebpf.UProbeArgMap <<V,Orchid>> {
+		+Offset: int64
+		+Size: int64
+		+Kind: reflect.Kind
+		+Pieces: []int
+		+InReg: bool
+		+Ret: bool
+	}
+}
+
+
+
+package "ebpf" {
+	class "traceMapSpecs" as ebpf.traceMapSpecs <<V,Orchid>> {
+		+ArgMap: ebpf.MapSpec
+		+Events: ebpf.MapSpec
+		+Heap: ebpf.MapSpec
+	}
+}
+
+
+
+package "ebpf" {
+	class "traceMaps" as ebpf.traceMaps <<E,#FFCC00>> {
+		+ArgMap: ebpf.Map
+		+Events: ebpf.Map
+		+Heap: ebpf.Map
+		+Close(): error
+	}
+}
+
+
+	ebpf.traceMaps ..> error : <<return>> 
+
+package "ebpf" {
+	class "traceObjects" as ebpf.traceObjects <<E,#FFCC00>> {
+		-tracePrograms: ebpf.tracePrograms
+		-traceMaps: ebpf.traceMaps
+		+Close(): error
+	}
+}
+
+	ebpf.traceObjects --> ebpf.tracePrograms
+	ebpf.traceObjects --> ebpf.traceMaps
+
+	ebpf.traceObjects ..> error : <<return>> 
+
+package "ebpf" {
+	class "traceProgramSpecs" as ebpf.traceProgramSpecs <<V,Orchid>> {
+		+UprobeDlvTrace: ebpf.ProgramSpec
+	}
+}
+
+
+
+package "ebpf" {
+	class "tracePrograms" as ebpf.tracePrograms <<E,#FFCC00>> {
+		+UprobeDlvTrace: ebpf.Program
+		+Close(): error
+	}
+}
+
+
+	ebpf.tracePrograms ..> error : <<return>> 
+
+package "ebpf" {
+	class "traceSpecs" as ebpf.traceSpecs <<V,Orchid>> {
+		-traceProgramSpecs: ebpf.traceProgramSpecs
+		-traceMapSpecs: ebpf.traceMapSpecs
+	}
+}
+
+	ebpf.traceSpecs --> ebpf.traceProgramSpecs
+	ebpf.traceSpecs --> ebpf.traceMapSpecs
+
+
+	native.nativeThread -up-|> proc.MemoryReadWriter
+	native.nativeThread -up-|> proc.MemoryReader
+	proc.Breakpoint -up-|> proc.cpuArch
+	proc.BreakpointState -up-|> proc.cpuArch
+	proc.MemoryReadWriter -up-|> proc.MemoryReader
+	proc.ProcessInternal -up-|> proc.Process
+	proc.StopReason -up-|> proc.cpuArch
+	proc.Target -up-|> proc.Process
+	proc.compositeMemory -up-|> proc.MemoryReadWriter
+	proc.compositeMemory -up-|> proc.MemoryReader
+	proc.locationExpr -up-|> proc.cpuArch
+	proc.memCache -up-|> proc.MemoryReadWriter
+	proc.memCache -up-|> proc.MemoryReader
+	proc.x86Inst -up-|> proc.archInst
+	core.delveThread -up-|> core.osThread
+	core.linuxAMD64Thread -up-|> core.osThread
+	core.offsetReaderAt -up-|> proc.MemoryReader
+	core.process -up-|> proc.MemoryReadWriter
+	core.process -up-|> proc.MemoryReader
+	core.splicedMemory -up-|> proc.MemoryReader
+
+package "proc" {
+	note as N_proc_BreakpointKind
+		<b>BreakpointKind</b>
+
+		NextBreakpoint
+		NextDeferBreakpoint
+		StackResizeBreakpoint
+		StepBreakpoint
+		UserBreakpoint
+		WatchOutOfScopeBreakpoint
+		steppingMask
+	end note
+}
+N_proc_BreakpointKind --> proc.BreakpointKind
+package "proc" {
+	note as N_proc_StacktraceOptions
+		<b>StacktraceOptions</b>
+
+		StacktraceG
+		StacktraceReadDefers
+		StacktraceSimple
+	end note
+}
+N_proc_StacktraceOptions --> proc.StacktraceOptions
+package "proc" {
+	note as N_proc_StopReason
+		<b>StopReason</b>
+
+		StopAttached
+		StopBreakpoint
+		StopCallReturned
+		StopExited
+		StopHardcodedBreakpoint
+		StopLaunched
+		StopManual
+		StopNextFinished
+		StopUnknown
+		StopWatchpoint
+	end note
+}
+N_proc_StopReason --> proc.StopReason
+package "proc" {
+	note as N_proc_localsFlags
+		<b>localsFlags</b>
+
+		localsNoDeclLineCheck
+		localsTrustArgOrder
+	end note
+}
+N_proc_localsFlags --> proc.localsFlags
+package "proc" {
+	note as N_proc_KeepSteppingBreakpoints
+		<b>KeepSteppingBreakpoints</b>
+
+		HaltKeepsSteppingBreakpoints
+		TracepointKeepsSteppingBreakpoints
+	end note
+}
+N_proc_KeepSteppingBreakpoints --> proc.KeepSteppingBreakpoints
+package "proc" {
+	note as N_proc_variableFlags
+		<b>variableFlags</b>
+
+		VariableArgument
+		VariableCPURegister
+		VariableCPtr
+		VariableConstant
+		VariableEscaped
+		VariableFakeAddress
+		VariableReturnArgument
+		VariableShadowed
+	end note
+}
+N_proc_variableFlags --> proc.variableFlags
+package "native" {
+	note as N_native_trapWaitOptions
+		<b>trapWaitOptions</b>
+
+		trapWaitDontCallExitGuard
+		trapWaitHalt
+		trapWaitNohang
+	end note
+}
+N_native_trapWaitOptions --> native.trapWaitOptions
+package "test" {
+	note as N_test_BuildFlags
+		<b>BuildFlags</b>
+
+		AllNonOptimized
+		BuildModeExternalLinker
+		BuildModePIE
+		BuildModePlugin
+		EnableCGOOptimization
+		EnableDWZCompression
+		EnableInlining
+		EnableOptimization
+		LinkStrip
+	end note
+}
+N_test_BuildFlags --> test.BuildFlags
+package "proc" {
+	note as N_proc_Direction
+		<b>Direction</b>
+
+		Backward
+		Forward
+	end note
+}
+N_proc_Direction --> proc.Direction
+package "proc" {
+	note as N_proc_AssemblyFlavour
+		<b>AssemblyFlavour</b>
+
+		GNUFlavour
+		GoFlavour
+		IntelFlavour
+	end note
+}
+N_proc_AssemblyFlavour --> proc.AssemblyFlavour
+package "proc" {
+	note as N_proc_DumpFlags
+		<b>DumpFlags</b>
+
+		DumpPlatformIndependent
+	end note
+}
+N_proc_DumpFlags --> proc.DumpFlags
+package "proc" {
+	note as N_proc_WatchType
+		<b>WatchType</b>
+
+		WatchRead
+		WatchWrite
+	end note
+}
+N_proc_WatchType --> proc.WatchType
+package "elf" {
+	note as N_elf_NType
+		<b>NType</b>
+
+		_NT_AUXV
+		_NT_AUXV
+		_NT_FILE
+		_NT_FPREGSET
+		_NT_X86_XSTATE
+	end note
+}
+N_elf_NType --> elf.NType
+package "proc" {
+	note as N_proc_AsmInstructionKind
+		<b>AsmInstructionKind</b>
+
+		CallInstruction
+		HardBreakInstruction
+		JmpInstruction
+		OtherInstruction
+		RetInstruction
+	end note
+}
+N_proc_AsmInstructionKind --> proc.AsmInstructionKind
+package "proc" {
+	note as N_proc_floatSpecial
+		<b>floatSpecial</b>
+
+		FloatIsNaN
+		FloatIsNegInf
+		FloatIsNormal
+		FloatIsPosInf
+	end note
+}
+N_proc_floatSpecial --> proc.floatSpecial
+package "proc" {
+	note as N_proc_LaunchFlags
+		<b>LaunchFlags</b>
+
+		LaunchDisableASLR
+		LaunchForeground
+	end note
+}
+N_proc_LaunchFlags --> proc.LaunchFlags
+
+@enduml

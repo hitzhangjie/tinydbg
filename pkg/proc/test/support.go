@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/hitzhangjie/dlv/pkg/goversion"
@@ -213,31 +212,6 @@ func RunTestsWithFixtures(m *testing.M) int {
 		}
 	}
 	return status
-}
-
-var recordingAllowed = map[string]bool{}
-var recordingAllowedMu sync.Mutex
-
-// testName returns the name of the test being run using runtime.Caller.
-// On go1.8 t.Name() could be called instead, this is a workaround to
-// support <=go1.7
-func testName(t testing.TB) string {
-	for i := 1; i < 10; i++ {
-		pc, _, _, ok := runtime.Caller(i)
-		if !ok {
-			break
-		}
-		fn := runtime.FuncForPC(pc)
-		if fn == nil {
-			continue
-		}
-		name := fn.Name()
-		v := strings.Split(name, ".")
-		if strings.HasPrefix(v[len(v)-1], "Test") {
-			return name
-		}
-	}
-	return "unknown"
 }
 
 // SafeRemoveAll removes dir and its contents but only as long as dir does
