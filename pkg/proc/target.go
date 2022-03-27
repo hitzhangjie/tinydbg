@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/constant"
-	"os"
 	"sort"
 	"strings"
 
@@ -152,20 +151,6 @@ type NewTargetConfig struct {
 	CanDump             bool       // Can create core dumps (must implement ProcessInternal.MemoryMap)
 }
 
-// DisableAsyncPreemptEnv returns a process environment (like os.Environ)
-// where asyncpreemptoff is set to 1.
-func DisableAsyncPreemptEnv() []string {
-	env := os.Environ()
-	for i := range env {
-		if strings.HasPrefix(env[i], "GODEBUG=") {
-			// Go 1.14 asynchronous preemption mechanism is incompatible with
-			// debuggers, see: https://github.com/golang/go/issues/36494
-			env[i] += ",asyncpreemptoff=1"
-		}
-	}
-	return env
-}
-
 // NewTarget returns an initialized Target object.
 // The p argument can optionally implement the RecordingManipulation interface.
 func NewTarget(p ProcessInternal, pid int, currentThread Thread, cfg NewTargetConfig) (*Target, error) {
@@ -285,28 +270,28 @@ func (t *Target) SelectedGoroutine() *G {
 }
 
 // SwitchGoroutine will change the selected and active goroutine.
-func (p *Target) SwitchGoroutine(g *G) error {
-	if ok, err := p.Valid(); !ok {
+func (t *Target) SwitchGoroutine(g *G) error {
+	if ok, err := t.Valid(); !ok {
 		return err
 	}
 	if g == nil {
 		return nil
 	}
 	if g.Thread != nil {
-		return p.SwitchThread(g.Thread.ThreadID())
+		return t.SwitchThread(g.Thread.ThreadID())
 	}
-	p.selectedGoroutine = g
+	t.selectedGoroutine = g
 	return nil
 }
 
 // SwitchThread will change the selected and active thread.
-func (p *Target) SwitchThread(tid int) error {
-	if ok, err := p.Valid(); !ok {
+func (t *Target) SwitchThread(tid int) error {
+	if ok, err := t.Valid(); !ok {
 		return err
 	}
-	if th, ok := p.FindThread(tid); ok {
-		p.currentThread = th
-		p.selectedGoroutine, _ = GetG(p.CurrentThread())
+	if th, ok := t.FindThread(tid); ok {
+		t.currentThread = th
+		t.selectedGoroutine, _ = GetG(t.CurrentThread())
 		return nil
 	}
 	return fmt.Errorf("thread %d does not exist", tid)

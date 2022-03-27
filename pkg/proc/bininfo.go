@@ -105,24 +105,18 @@ type BinaryInfo struct {
 	regabi bool
 }
 
-var (
-	// ErrCouldNotDetermineRelocation is an error returned when Delve could not determine the base address of a
-	// position independent executable.
-	ErrCouldNotDetermineRelocation = errors.New("could not determine the base address of a PIE")
+// NewBinaryInfo returns an initialized but unloaded BinaryInfo struct.
+func NewBinaryInfo(goos, goarch string) *BinaryInfo {
+	r := &BinaryInfo{GOOS: goos, nameOfRuntimeType: make(map[uint64]nameOfRuntimeTypeEntry)}
 
-	// ErrNoDebugInfoFound is returned when Delve cannot open the debug_info
-	// section or find an external debug info file.
-	ErrNoDebugInfoFound = errors.New("could not open debug info")
-)
-
-// ErrFunctionNotFound is returned when failing to find the
-// function named 'FuncName' within the binary.
-type ErrFunctionNotFound struct {
-	FuncName string
-}
-
-func (err *ErrFunctionNotFound) Error() string {
-	return fmt.Sprintf("could not find function %s\n", err.FuncName)
+	// TODO: find better way to determine proc arch (perhaps use executable file info).
+	switch goarch {
+	case "amd64":
+		r.Arch = AMD64Arch(goos)
+	default:
+		panic(fmt.Sprintf("unsupported arch: %s", goarch))
+	}
+	return r
 }
 
 // FindFileLocation returns the PC for a given file:line.
@@ -556,20 +550,6 @@ type packageVar struct {
 type ElfDynamicSection struct {
 	Addr uint64 // relocated address of where the .dynamic section is mapped in memory
 	Size uint64 // size of the .dynamic section of the executable
-}
-
-// NewBinaryInfo returns an initialized but unloaded BinaryInfo struct.
-func NewBinaryInfo(goos, goarch string) *BinaryInfo {
-	r := &BinaryInfo{GOOS: goos, nameOfRuntimeType: make(map[uint64]nameOfRuntimeTypeEntry)}
-
-	// TODO: find better way to determine proc arch (perhaps use executable file info).
-	switch goarch {
-	case "amd64":
-		r.Arch = AMD64Arch(goos)
-	default:
-		panic(fmt.Sprintf("unsupported arch: %s", goarch))
-	}
-	return r
 }
 
 // LoadBinaryInfo will load and store the information from the binary at 'path'.
