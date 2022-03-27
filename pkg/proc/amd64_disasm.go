@@ -39,7 +39,7 @@ func init() {
 	}
 }
 
-var amd64s = map[int]asmRegister{
+var amd64AsmRegisters = map[int]asmRegister{
 	// 8-bit
 	int(x86asm.AL):   {regnum.AMD64_Rax, 0, mask8},
 	int(x86asm.CL):   {regnum.AMD64_Rcx, 0, mask8},

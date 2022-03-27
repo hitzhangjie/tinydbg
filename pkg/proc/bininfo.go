@@ -338,13 +338,13 @@ func FindFunctionLocation(p Process, funcName string, lineOffset int) ([]uint64,
 // If sameline is set FirstPCAfterPrologue will always return an
 // address associated with the same line as fn.Entry.
 func FirstPCAfterPrologue(p Process, fn *Function, sameline bool) (uint64, error) {
-	pc, _, line, ok := fn.cu.lineInfo.PrologueEndPC(fn.Entry, fn.End)
+	pc, _, ln, ok := fn.cu.lineInfo.PrologueEndPC(fn.Entry, fn.End)
 	if ok {
 		if !sameline {
 			return pc, nil
 		}
 		_, entryLine := fn.cu.lineInfo.PCToLine(fn.Entry, fn.Entry)
-		if entryLine == line {
+		if entryLine == ln {
 			return pc, nil
 		}
 	}
@@ -364,11 +364,6 @@ func FirstPCAfterPrologue(p Process, fn *Function, sameline bool) (uint64, error
 	}
 
 	return pc, nil
-}
-
-// cpuArch is a stringer interface representing CPU architectures.
-type cpuArch interface {
-	String() string
 }
 
 type compileUnit struct {
@@ -557,12 +552,6 @@ type packageVar struct {
 	addr   uint64
 }
 
-type buildIDHeader struct {
-	Namesz uint32
-	Descsz uint32
-	Type   uint32
-}
-
 // ElfDynamicSection describes the .dynamic section of an ELF executable.
 type ElfDynamicSection struct {
 	Addr uint64 // relocated address of where the .dynamic section is mapped in memory
@@ -607,11 +596,6 @@ func (bi *BinaryInfo) GStructOffset() uint64 {
 // LastModified returns the last modified time of the binary.
 func (bi *BinaryInfo) LastModified() time.Time {
 	return bi.lastModified
-}
-
-// DwarfReader returns a reader for the dwarf data
-func (so *Image) DwarfReader() *reader.Reader {
-	return reader.New(so.dwarf)
 }
 
 // Types returns list of types present in the debugged program.
@@ -719,12 +703,32 @@ type Image struct {
 	loadErr   error
 }
 
-func (image *Image) registerRuntimeTypeToDIE(entry *dwarf.Entry, ardr *reader.Reader) {
+func (img *Image) registerRuntimeTypeToDIE(entry *dwarf.Entry, ardr *reader.Reader) {
 	if off, ok := entry.Val(godwarf.AttrGoRuntimeType).(uint64); ok {
-		if _, ok := image.runtimeTypeToDIE[off]; !ok {
-			image.runtimeTypeToDIE[off] = runtimeTypeDIE{entry.Offset, -1}
+		if _, ok := img.runtimeTypeToDIE[off]; !ok {
+			img.runtimeTypeToDIE[off] = runtimeTypeDIE{entry.Offset, -1}
 		}
 	}
+}
+
+// DwarfReader returns a reader for the dwarf data
+func (img *Image) DwarfReader() *reader.Reader {
+	return reader.New(img.dwarf)
+}
+
+func (img *Image) findCompileUnitForOffset(off dwarf.Offset) *compileUnit {
+	i := sort.Search(len(img.compileUnits), func(i int) bool {
+		return img.compileUnits[i].offset >= off
+	})
+	if i > 0 {
+		i--
+	}
+	return img.compileUnits[i]
+}
+
+// Type returns the Dwarf type entry at `offset`.
+func (img *Image) Type(offset dwarf.Offset) (godwarf.Type, error) {
+	return godwarf.ReadType(img.dwarf, img.index, offset, img.typeCache)
 }
 
 // AddImage adds the specified image to bi, loading data asynchronously.
@@ -811,18 +815,18 @@ func (bi *BinaryInfo) Close() error {
 	}
 }
 
-func (image *Image) Close() error {
+func (img *Image) Close() error {
 	var err1, err2 error
-	if image.sepDebugCloser != nil {
-		err := image.sepDebugCloser.Close()
+	if img.sepDebugCloser != nil {
+		err := img.sepDebugCloser.Close()
 		if err != nil {
-			err1 = fmt.Errorf("closing shared object %q (split dwarf): %v", image.Path, err)
+			err1 = fmt.Errorf("closing shared object %q (split dwarf): %v", img.Path, err)
 		}
 	}
-	if image.closer != nil {
-		err := image.closer.Close()
+	if img.closer != nil {
+		err := img.closer.Close()
 		if err != nil {
-			err2 = fmt.Errorf("closing shared object %q: %v", image.Path, err)
+			err2 = fmt.Errorf("closing shared object %q: %v", img.Path, err)
 		}
 	}
 	if err1 != nil && err2 != nil {
@@ -834,30 +838,30 @@ func (image *Image) Close() error {
 	return err2
 }
 
-func (image *Image) setLoadError(fmtstr string, args ...interface{}) {
-	image.loadErrMu.Lock()
-	image.loadErr = fmt.Errorf(fmtstr, args...)
-	image.loadErrMu.Unlock()
-	log.Error("error loading binary %q: %v", image.Path, image.loadErr)
+func (img *Image) setLoadError(fmtstr string, args ...interface{}) {
+	img.loadErrMu.Lock()
+	img.loadErr = fmt.Errorf(fmtstr, args...)
+	img.loadErrMu.Unlock()
+	log.Error("error loading binary %q: %v", img.Path, img.loadErr)
 }
 
 // LoadError returns any error incurred while loading this image.
-func (image *Image) LoadError() error {
-	return image.loadErr
+func (img *Image) LoadError() error {
+	return img.loadErr
 }
 
-func (image *Image) getDwarfTree(off dwarf.Offset) (*godwarf.Tree, error) {
-	if image.runtimeMallocgcTree != nil && off == image.runtimeMallocgcTree.Offset {
-		return image.runtimeMallocgcTree, nil
+func (img *Image) getDwarfTree(off dwarf.Offset) (*godwarf.Tree, error) {
+	if img.runtimeMallocgcTree != nil && off == img.runtimeMallocgcTree.Offset {
+		return img.runtimeMallocgcTree, nil
 	}
-	if r, ok := image.dwarfTreeCache.Get(off); ok {
+	if r, ok := img.dwarfTreeCache.Get(off); ok {
 		return r.(*godwarf.Tree), nil
 	}
-	r, err := godwarf.LoadTree(off, image.dwarf, image.StaticBase)
+	r, err := godwarf.LoadTree(off, img.dwarf, img.StaticBase)
 	if err != nil {
 		return nil, err
 	}
-	image.dwarfTreeCache.Add(off, r)
+	img.dwarfTreeCache.Add(off, r)
 	return r, nil
 }
 
@@ -942,7 +946,7 @@ func (bi *BinaryInfo) LocationCovers(entry *dwarf.Entry, attr dwarf.Attr) ([][2]
 		return nil, fmt.Errorf("attribute %s not found", attr)
 	}
 	if _, isblock := a.([]byte); isblock {
-		return [][2]uint64{[2]uint64{0, ^uint64(0)}}, nil
+		return [][2]uint64{{0, ^uint64(0)}}, nil
 	}
 
 	off, ok := a.(int64)
@@ -1046,16 +1050,6 @@ func (bi *BinaryInfo) findCompileUnit(pc uint64) *compileUnit {
 	return nil
 }
 
-func (bi *Image) findCompileUnitForOffset(off dwarf.Offset) *compileUnit {
-	i := sort.Search(len(bi.compileUnits), func(i int) bool {
-		return bi.compileUnits[i].offset >= off
-	})
-	if i > 0 {
-		i--
-	}
-	return bi.compileUnits[i]
-}
-
 // Producer returns the value of DW_AT_producer.
 func (bi *BinaryInfo) Producer() string {
 	for _, cu := range bi.Images[0].compileUnits {
@@ -1064,11 +1058,6 @@ func (bi *BinaryInfo) Producer() string {
 		}
 	}
 	return ""
-}
-
-// Type returns the Dwarf type entry at `offset`.
-func (image *Image) Type(offset dwarf.Offset) (godwarf.Type, error) {
-	return godwarf.ReadType(image.dwarf, image.index, offset, image.typeCache)
 }
 
 // funcToImage returns the Image containing function fn, or the
