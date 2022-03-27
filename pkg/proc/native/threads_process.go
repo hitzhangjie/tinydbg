@@ -28,13 +28,6 @@ func (t *nativeThread) stop() (err error) {
 	return
 }
 
-// Stopped returns whether the thread is stopped at
-// the operating system level.
-func (t *nativeThread) Stopped() bool {
-	state := status(t.ID, t.dbp.os.comm)
-	return state == statusTraceStop || state == statusTraceStopT
-}
-
 func (t *nativeThread) resume() error {
 	sig := t.os.delayedSignal
 	t.os.delayedSignal = 0
@@ -82,36 +75,4 @@ func (t *nativeThread) singleStep() (err error) {
 			}
 		}
 	}
-}
-
-func (t *nativeThread) WriteMemory(addr uint64, data []byte) (written int, err error) {
-	if t.dbp.exited {
-		return 0, proc.ErrProcessExited{Pid: t.dbp.pid}
-	}
-	if len(data) == 0 {
-		return
-	}
-	// ProcessVmWrite can't poke read-only memory like ptrace, so don't
-	// even bother for small writes -- likely breakpoints and such.
-	if len(data) > sys.SizeofPtr {
-		written, _ = processVmWrite(t.ID, uintptr(addr), data)
-	}
-	if written == 0 {
-		t.dbp.execPtraceFunc(func() { written, err = sys.PtracePokeData(t.ID, uintptr(addr), data) })
-	}
-	return
-}
-
-func (t *nativeThread) ReadMemory(data []byte, addr uint64) (n int, err error) {
-	if t.dbp.exited {
-		return 0, proc.ErrProcessExited{Pid: t.dbp.pid}
-	}
-	if len(data) == 0 {
-		return
-	}
-	n, _ = processVmRead(t.ID, uintptr(addr), data)
-	if n == 0 {
-		t.dbp.execPtraceFunc(func() { n, err = sys.PtracePeekData(t.ID, uintptr(addr), data) })
-	}
-	return
 }

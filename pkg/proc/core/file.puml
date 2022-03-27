@@ -1,0 +1,186 @@
+@startuml
+
+package "core" {
+	class "delveRegisters" as delveRegisters <<V,Orchid>> {
+		-pc: uint64
+		-sp: uint64
+		-bp: uint64
+		-tls: uint64
+		-hasGAddr: bool
+		-gaddr: uint64
+		-slice: proc.Register
+		+PC(): uint64
+		+BP(): uint64
+		+SP(): uint64
+		+TLS(): uint64
+		+GAddr(): (uint64, bool)
+		+Copy(): (proc.Registers, error)
+		+Slice(: bool): (proc.Register, error)
+	}
+
+	class "delveThread" as delveThread <<V,Orchid>> {
+		-id: uint64
+		-regs: *delveRegisters
+		-pid(): int
+		-registers(): (proc.Registers, error)
+	}
+
+delveThread --> delveRegisters
+
+	class "linuxAMD64Thread" as linuxAMD64Thread <<V,Orchid>> {
+		-regs: linutil.AMD64Registers
+		-t: *linuxPrStatusAMD64
+		-registers(): (proc.Registers, error)
+		-pid(): int
+	}
+
+linuxAMD64Thread --> linuxPrStatusAMD64
+
+	class "linuxCoreTimeval" as linuxCoreTimeval <<V,Orchid>> {
+		+Sec: int64
+		+Usec: int64
+	}
+
+	class "linuxPrPsInfo" as linuxPrPsInfo <<V,Orchid>> {
+		+State: uint8
+		+Sname: int8
+		+Zomb: uint8
+		+Nice: int8
+		-_: [4]uint8
+		+Flag: uint64
+		+Uid: uint32
+		+Gid: uint32
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Fname: [16]uint8
+		+Args: [80]uint8
+	}
+
+	class "linuxPrStatusAMD64" as linuxPrStatusAMD64 <<V,Orchid>> {
+		+Siginfo: linuxSiginfo
+		+Cursig: uint16
+		-_: [2]uint8
+		+Sigpend: uint64
+		+Sighold: uint64
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Utime: linuxCoreTimeval
+		+Stime: linuxCoreTimeval
+		+CUtime: linuxCoreTimeval
+		+CStime: linuxCoreTimeval
+		+Reg: linutil.AMD64PtraceRegs
+		+Fpvalid: int32
+	}
+
+	linuxPrStatusAMD64 --> linuxSiginfo
+	linuxPrStatusAMD64 --> linuxCoreTimeval
+
+	class "linuxSiginfo" as linuxSiginfo <<V,Orchid>> {
+		+Signo: int32
+		+Code: int32
+		+Errno: int32
+	}
+
+	interface "osThread" as osThread {
+		-pid(): int
+		-registers(): (proc.Registers, error)
+	}
+
+	class "process" as process <<E,#FFCC00>> {
+		-mem: proc.MemoryReader
+		+Threads: map[int]*thread
+		-pid: int
+		-entryPoint: uint64
+		-bi: proc.BinaryInfo
+		-breakpoints: proc.BreakpointMap
+		+BinInfo(): proc.BinaryInfo
+		+EntryPoint(): (uint64, error)
+		+WriteBreakpoint(: proc.Breakpoint): error
+		+Recorded(): (bool, string)
+		+Restart(: string): (proc.Thread, error)
+		+ChangeDirection(: proc.Direction): error
+		+GetDirection(): proc.Direction
+		+When(): (string, error)
+		+Checkpoint(: string): (int, error)
+		+Checkpoints(): (proc.Checkpoint, error)
+		+ClearCheckpoint(: int): error
+		+SupportsBPF(): bool
+		+SetUProbe(fnName: string, goidOffset: int64, args: ebpf.UProbeArgMap): error
+		+StartCallInjection(): (func(), error)
+		+EnableURetProbes(): error
+		+DisableURetProbes(): error
+		+ReadMemory(data: []byte, addr: uint64): (n: int, err: error)
+		+WriteMemory(addr: uint64, data: []byte): (int, error)
+		+Breakpoints(): proc.BreakpointMap
+		+EraseBreakpoint(bp: proc.Breakpoint): error
+		+ClearInternalBreakpoints(): error
+		+ContinueOnce(): (proc.Thread, proc.StopReason, error)
+		+StepInstruction(): error
+		+RequestManualStop(): error
+		+CheckAndClearManualStopRequest(): bool
+		+Memory(): proc.MemoryReadWriter
+		+Detach(: bool): error
+		+Valid(): (bool, error)
+		+ResumeNotify(: chan<- struct{})
+		+ThreadList(): proc.Thread
+		+FindThread(threadID: int): (proc.Thread, bool)
+		+MemoryMap(): (proc.MemoryMapEntry, error)
+		+DumpProcessNotes(notes: elfwriter.Note, threadDone: func()): (threadsDone: bool, out: elfwriter.Note, err: error)
+		+GetBufferedTracepoints(): ebpf.RawUProbeParams
+	}
+
+	class "thread" as thread <<E,#FFCC00>> {
+		-th: osThread
+		-p: *process
+		-common: proc.CommonThread
+		+ProcessMemory(): proc.MemoryReadWriter
+		+Location(): (proc.Location, error)
+		+Breakpoint(): proc.BreakpointState
+		+ThreadID(): int
+		+Registers(): (proc.Registers, error)
+		+RestoreRegisters(: proc.Registers): error
+		+BinInfo(): proc.BinaryInfo
+		+StepInstruction(): error
+		+Blocked(): bool
+		+SetCurrentBreakpoint(adjustPC: bool): error
+		+Common(): proc.CommonThread
+		+SetPC(: uint64): error
+		+SetSP(: uint64): error
+		+SetDX(: uint64): error
+		+SetReg(regNum: uint64, reg: op.DwarfRegister): error
+	}
+
+	thread --> osThread
+	thread --> process
+	thread -up-|> proc.Thread
+	thread -up-> proc.CommonThread
+
+	delveThread -up-|> osThread
+	linuxAMD64Thread -up-|> osThread
+}
+
+package "proc" {
+	interface Thread {
+		Location() (*Location, error)
+    	Breakpoint() *BreakpointState
+    	ThreadID() int
+    	Registers() (Registers, error)
+    	RestoreRegisters(Registers) error
+    	BinInfo() *BinaryInfo
+    	ProcessMemory() MemoryReadWriter
+    	StepInstruction() error
+    	SetCurrentBreakpoint(adjustPC bool) error
+    	Common() *CommonThread
+    	SetReg(uint64, *op.DwarfRegister) error
+	}
+
+	class CommonThread {
+		ReturnValues(cfg LoadConfig) []*Variable
+	}
+}
+
+@enduml

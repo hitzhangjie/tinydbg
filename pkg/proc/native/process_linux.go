@@ -8,12 +8,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
-	"os/signal"
 	"path/filepath"
-	"regexp"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -23,163 +19,6 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc/internal/ebpf"
 	"github.com/hitzhangjie/dlv/pkg/proc/linutil"
 )
-
-// Process statuses
-const (
-	statusSleeping  = 'S'
-	statusRunning   = 'R'
-	statusTraceStop = 't'
-	statusZombie    = 'Z'
-
-	// Kernel 2.6 has TraceStop as T
-	// TODO(derekparker) Since this means something different based on the
-	// version of the kernel ('T' is job control stop on modern 3.x+ kernels) we
-	// may want to differentiate at some point.
-	statusTraceStopT = 'T'
-
-	personalityGetPersonality = 0xffffffff // argument to pass to personality syscall to get the current personality
-	_ADDR_NO_RANDOMIZE        = 0x0040000  // ADDR_NO_RANDOMIZE linux constant
-)
-
-// osProcessDetails contains Linux specific
-// process details.
-type osProcessDetails struct {
-	comm string
-
-	ebpf *ebpf.EBPFContext
-}
-
-func (os *osProcessDetails) Close() {
-	if os.ebpf != nil {
-		os.ebpf.Close()
-	}
-}
-
-// Launch creates and begins debugging a new process. First entry in
-// `cmd` is the program to run, and then rest are the arguments
-// to be supplied to that process. `wd` is working directory of the program.
-// If the DWARF information cannot be found in the binary, Delve will look
-// for external debug files in the directories passed in.
-func Launch(cmd []string, wd string, flags proc.LaunchFlags) (*proc.Target, error) {
-	var (
-		process *exec.Cmd
-		err     error
-	)
-
-	foreground := flags&proc.LaunchForeground != 0
-
-	dbp := newProcess(0)
-	defer func() {
-		if err != nil && dbp.pid != 0 {
-			_ = dbp.Detach(true)
-		}
-	}()
-	dbp.execPtraceFunc(func() {
-		if flags&proc.LaunchDisableASLR != 0 {
-			oldPersonality, _, err := syscall.Syscall(sys.SYS_PERSONALITY, personalityGetPersonality, 0, 0)
-			if err == syscall.Errno(0) {
-				newPersonality := oldPersonality | _ADDR_NO_RANDOMIZE
-				syscall.Syscall(sys.SYS_PERSONALITY, newPersonality, 0, 0)
-				defer syscall.Syscall(sys.SYS_PERSONALITY, oldPersonality, 0, 0)
-			}
-		}
-
-		process = exec.Command(cmd[0])
-		process.Args = cmd
-		process.Stdin = os.Stdin
-		process.Stdout = os.Stdout
-		process.Stderr = os.Stderr
-		process.SysProcAttr = &syscall.SysProcAttr{
-			Ptrace:     true,
-			Setpgid:    true,
-			Foreground: foreground,
-		}
-		if foreground {
-			signal.Ignore(syscall.SIGTTOU, syscall.SIGTTIN)
-		}
-		if err := attachProcessToTTY(process); err != nil {
-			return
-		}
-		if wd != "" {
-			process.Dir = wd
-		}
-		err = process.Start()
-	})
-	if err != nil {
-		return nil, err
-	}
-	dbp.pid = process.Process.Pid
-	dbp.childProcess = true
-	_, _, err = dbp.wait(process.Process.Pid, 0)
-	if err != nil {
-		return nil, fmt.Errorf("waiting for target execve failed: %s", err)
-	}
-	tgt, err := dbp.initialize(cmd[0])
-	if err != nil {
-		return nil, err
-	}
-	return tgt, nil
-}
-
-// Attach to an existing process with the given PID.
-// Usually, go compiler/linker generate DWARF in the binary on Linux.
-// While on Darwin, DWARF may be generated into separate files.
-// here, we only care about the 1st occasion.
-func Attach(pid int) (*proc.Target, error) {
-	dbp := newProcess(pid)
-
-	var err error
-	dbp.execPtraceFunc(func() { err = ptraceAttach(dbp.pid) })
-	if err != nil {
-		return nil, err
-	}
-	_, _, err = dbp.wait(dbp.pid, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	tgt, err := dbp.initialize(findExecutable("", dbp.pid))
-	if err != nil {
-		_ = dbp.Detach(false)
-		return nil, err
-	}
-
-	// ElfUpdateSharedObjects can only be done after we initialize because it
-	// needs an initialized BinaryInfo object to work.
-	err = linutil.ElfUpdateSharedObjects(dbp)
-	if err != nil {
-		return nil, err
-	}
-	return tgt, nil
-}
-
-func initialize(dbp *nativeProcess) error {
-	comm, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/comm", dbp.pid))
-	if err == nil {
-		// removes newline character
-		comm = bytes.TrimSuffix(comm, []byte("\n"))
-	}
-
-	if comm == nil || len(comm) <= 0 {
-		stat, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/stat", dbp.pid))
-		if err != nil {
-			return fmt.Errorf("could not read proc stat: %v", err)
-		}
-		expr := fmt.Sprintf("%d\\s*\\((.*)\\)", dbp.pid)
-		rexp, err := regexp.Compile(expr)
-		if err != nil {
-			return fmt.Errorf("regexp compile error: %v", err)
-		}
-		match := rexp.FindSubmatch(stat)
-		if match == nil {
-			return fmt.Errorf("no match found using regexp '%s' in /proc/%d/stat", expr, dbp.pid)
-		}
-		comm = match[1]
-	}
-	dbp.os.comm = strings.ReplaceAll(string(comm), "%", "%%")
-
-	return nil
-}
 
 func (dbp *nativeProcess) GetBufferedTracepoints() []ebpf.RawUProbeParams {
 	if dbp.os.ebpf == nil {
@@ -296,13 +135,6 @@ func (dbp *nativeProcess) updateThreadList() error {
 		}
 	}
 	return linutil.ElfUpdateSharedObjects(dbp)
-}
-
-func findExecutable(path string, pid int) string {
-	if path == "" {
-		path = fmt.Sprintf("/proc/%d/exe", pid)
-	}
-	return path
 }
 
 func (dbp *nativeProcess) trapWait(pid int) (*nativeThread, error) {
@@ -772,8 +604,4 @@ func (dbp *nativeProcess) SetUProbe(fnName string, goidOffset int64, args []ebpf
 	}
 
 	return dbp.os.ebpf.AttachUprobe(dbp.pid, debugname, off)
-}
-
-func killProcess(pid int) error {
-	return sys.Kill(pid, sys.SIGINT)
 }

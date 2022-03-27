@@ -9,6 +9,34 @@ import (
 	"github.com/hitzhangjie/dlv/pkg/proc/amd64util"
 )
 
+// ptraceAttach executes the sys.PtraceAttach call.
+func ptraceAttach(pid int) error {
+	return sys.PtraceAttach(pid)
+}
+
+// ptraceDetach calls ptrace(PTRACE_DETACH).
+func ptraceDetach(tid, sig int) error {
+	_, _, err := sys.Syscall6(sys.SYS_PTRACE, sys.PTRACE_DETACH, uintptr(tid), 1, uintptr(sig), 0, 0)
+	if err != syscall.Errno(0) {
+		return err
+	}
+	return nil
+}
+
+// ptraceCont executes ptrace PTRACE_CONT
+func ptraceCont(tid, sig int) error {
+	return sys.PtraceCont(tid, sig)
+}
+
+// ptraceSingleStep executes ptrace PTRACE_SINGLESTEP
+func ptraceSingleStep(pid, sig int) error {
+	_, _, e1 := sys.Syscall6(sys.SYS_PTRACE, uintptr(sys.PTRACE_SINGLESTEP), uintptr(pid), uintptr(0), uintptr(sig), 0, 0)
+	if e1 != 0 {
+		return e1
+	}
+	return nil
+}
+
 // ptraceGetRegset returns floating point registers of the specified thread using PTRACE.
 //
 // See amd64_linux_fetch_inferior_registers in gdb/amd64-linux-nat.c.html

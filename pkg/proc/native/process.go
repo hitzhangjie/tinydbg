@@ -1,10 +1,35 @@
 package native
 
 import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
+	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 
+	sys "golang.org/x/sys/unix"
+
 	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/internal/ebpf"
+)
+
+// Process statuses
+const (
+	statusSleeping  = 'S'
+	statusRunning   = 'R'
+	statusTraceStop = 't'
+	statusZombie    = 'Z'
+
+	// Kernel 2.6 has TraceStop as T
+	// TODO(derekparker) Since this means something different based on the
+	// version of the kernel ('T' is job control stop on modern 3.x+ kernels) we
+	// may want to differentiate at some point.
+	statusTraceStopT = 'T'
+
+	personalityGetPersonality = 0xffffffff // argument to pass to personality syscall to get the current personality
+	_ADDR_NO_RANDOMIZE        = 0x0040000  // ADDR_NO_RANDOMIZE linux constant
 )
 
 // Process represents all of the information the debugger
@@ -60,6 +85,54 @@ func newProcess(pid int) *nativeProcess {
 	return dbp
 }
 
+// initialize will ensure that all relevant information is loaded
+// so the process is ready to be debugged.
+func (dbp *nativeProcess) initialize(path string) (*proc.Target, error) {
+	if err := initialize(dbp); err != nil {
+		return nil, err
+	}
+	if err := dbp.updateThreadList(); err != nil {
+		return nil, err
+	}
+	stopReason := proc.StopLaunched
+	if !dbp.childProcess {
+		stopReason = proc.StopAttached
+	}
+	return proc.NewTarget(dbp, dbp.pid, dbp.memthread, proc.NewTargetConfig{
+		Path:                path,
+		DisableAsyncPreempt: false,
+		StopReason:          stopReason,
+		CanDump:             true})
+}
+
+func initialize(dbp *nativeProcess) error {
+	comm, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/comm", dbp.pid))
+	if err == nil {
+		// removes newline character
+		comm = bytes.TrimSuffix(comm, []byte("\n"))
+	}
+
+	if comm == nil || len(comm) <= 0 {
+		stat, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/stat", dbp.pid))
+		if err != nil {
+			return fmt.Errorf("could not read proc stat: %v", err)
+		}
+		expr := fmt.Sprintf("%d\\s*\\((.*)\\)", dbp.pid)
+		rexp, err := regexp.Compile(expr)
+		if err != nil {
+			return fmt.Errorf("regexp compile error: %v", err)
+		}
+		match := rexp.FindSubmatch(stat)
+		if match == nil {
+			return fmt.Errorf("no match found using regexp '%s' in /proc/%d/stat", expr, dbp.pid)
+		}
+		comm = match[1]
+	}
+	dbp.os.comm = strings.ReplaceAll(string(comm), "%", "%%")
+
+	return nil
+}
+
 // BinInfo will return the binary info struct associated with this process.
 func (dbp *nativeProcess) BinInfo() *proc.BinaryInfo {
 	return dbp.bi
@@ -93,6 +166,10 @@ func (dbp *nativeProcess) Detach(kill bool) (err error) {
 	dbp.detached = true
 	dbp.postExit()
 	return
+}
+
+func killProcess(pid int) error {
+	return sys.Kill(pid, sys.SIGINT)
 }
 
 // Valid returns whether the process is still attached to and
@@ -247,26 +324,6 @@ func (dbp *nativeProcess) FindBreakpoint(pc uint64, adjustPC bool) (*proc.Breakp
 	return nil, false
 }
 
-// initialize will ensure that all relevant information is loaded
-// so the process is ready to be debugged.
-func (dbp *nativeProcess) initialize(path string) (*proc.Target, error) {
-	if err := initialize(dbp); err != nil {
-		return nil, err
-	}
-	if err := dbp.updateThreadList(); err != nil {
-		return nil, err
-	}
-	stopReason := proc.StopLaunched
-	if !dbp.childProcess {
-		stopReason = proc.StopAttached
-	}
-	return proc.NewTarget(dbp, dbp.pid, dbp.memthread, proc.NewTargetConfig{
-		Path:                path,
-		DisableAsyncPreempt: false,
-		StopReason:          stopReason,
-		CanDump:             true})
-}
-
 func (dbp *nativeProcess) handlePtraceFuncs() {
 	// We must ensure here that we are running on the same thread during
 	// while invoking the ptrace(2) syscall. This is due to the fact that ptrace(2) expects
@@ -295,4 +352,22 @@ func (dbp *nativeProcess) postExit() {
 func (dbp *nativeProcess) writeSoftwareBreakpoint(thread *nativeThread, addr uint64) error {
 	_, err := thread.WriteMemory(addr, dbp.bi.Arch.BreakpointInstruction())
 	return err
+}
+
+// linux && amd64 && cgo && go1.16
+func (dbp *nativeProcess) SupportsBPF() bool {
+	return true
+}
+
+// osProcessDetails contains Linux specific process details.
+type osProcessDetails struct {
+	comm string
+
+	ebpf *ebpf.EBPFContext
+}
+
+func (os *osProcessDetails) Close() {
+	if os.ebpf != nil {
+		os.ebpf.Close()
+	}
 }

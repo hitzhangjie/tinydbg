@@ -1,0 +1,70 @@
+@startuml
+
+package "linutil" {
+	class "AMD64PtraceRegs" as linutil.AMD64PtraceRegs <<V,Orchid>> {
+		+R15: uint64
+		+R14: uint64
+		+R13: uint64
+		+R12: uint64
+		+Rbp: uint64
+		+Rbx: uint64
+		+R11: uint64
+		+R10: uint64
+		+R9: uint64
+		+R8: uint64
+		+Rax: uint64
+		+Rcx: uint64
+		+Rdx: uint64
+		+Rsi: uint64
+		+Rdi: uint64
+		+Orig_rax: uint64
+		+Rip: uint64
+		+Cs: uint64
+		+Eflags: uint64
+		+Rsp: uint64
+		+Ss: uint64
+		+Fs_base: uint64
+		+Gs_base: uint64
+		+Ds: uint64
+		+Es: uint64
+		+Fs: uint64
+		+Gs: uint64
+	}
+}
+
+
+
+package "linutil" {
+	class "AMD64Registers" as linutil.AMD64Registers <<V,Orchid>> {
+		+Regs: *linutil.AMD64PtraceRegs
+		+Fpregs: proc.Register
+		+Fpregset: amd64util.AMD64Xstate
+		-loadFpRegs: func(*linutil.AMD64Registers) error
+		+Slice(floatingPoint: bool): (proc.Register, error)
+		+PC(): uint64
+		+SP(): uint64
+		+BP(): uint64
+		+TLS(): uint64
+		+GAddr(): (uint64, bool)
+		+Copy(): (proc.Registers, error)
+		+SetReg(regNum: uint64, reg: op.DwarfRegister): (bool, error)
+	}
+}
+
+	linutil.AMD64Registers --> linutil.AMD64PtraceRegs
+
+package "linutil" {
+	class "linkMap" as linutil.linkMap <<V,Orchid>> {
+		-addr: uint64
+		-name: string
+		-ld: uint64
+		-next: uint64
+		-prev: uint64
+	}
+}
+
+
+
+
+
+@enduml

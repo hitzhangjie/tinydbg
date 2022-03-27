@@ -1,0 +1,250 @@
+@startuml
+
+package "native" {
+	class "linuxPrPsInfo" as native.linuxPrPsInfo <<V,Orchid>> {
+		+State: uint8
+		+Sname: int8
+		+Zomb: uint8
+		+Nice: int8
+		-_: [4]uint8
+		+Flag: uint64
+		+Uid: uint32
+		+Gid: uint32
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Fname: [16]uint8
+		+Args: [80]uint8
+	}
+}
+
+
+
+package "native" {
+	class "linuxPrStatusAMD64" as native.linuxPrStatusAMD64 <<V,Orchid>> {
+		+Siginfo: native.linuxSiginfo
+		+Cursig: uint16
+		-_: [2]uint8
+		+Sigpend: uint64
+		+Sighold: uint64
+		+Pid: int32
+		+Ppid: int32
+		+Pgrp: int32
+		+Sid: int32
+		+Utime: unix.Timeval
+		+Stime: unix.Timeval
+		+CUtime: unix.Timeval
+		+CStime: unix.Timeval
+		+Reg: linutil.AMD64PtraceRegs
+		+Fpvalid: int64
+	}
+}
+
+	native.linuxPrStatusAMD64 --> native.linuxSiginfo
+
+
+package "native" {
+	class "linuxSiginfo" as native.linuxSiginfo <<V,Orchid>> {
+		+Signo: int32
+		+Code: int32
+		+Errno: int32
+	}
+}
+
+
+
+package "native" {
+	class "nativeProcess" as native.nativeProcess <<E,#FFCC00>> {
+		-bi: proc.BinaryInfo
+		-pid: int
+		-breakpoints: proc.BreakpointMap
+		-threads: map[int]*native.nativeThread
+		-memthread: *native.nativeThread
+		-os: *native.osProcessDetails
+		-firstStart: bool
+		-resumeChan: chan<- struct{}
+		-ptraceChan: chan func()
+		-ptraceDoneChan: chan interface{}
+		-childProcess: bool
+		-stopMu: sync.Mutex
+		-manualStopRequested: bool
+		-iscgo: bool
+		-exited: bool
+		-detached: bool
+		+MemoryMap(): (proc.MemoryMapEntry, error)
+		+DumpProcessNotes(notes: elfwriter.Note, threadDone: func()): (threadsDone: bool, out: elfwriter.Note, err: error)
+		+SupportsBPF(): bool
+		+BinInfo(): proc.BinaryInfo
+		+StartCallInjection(): (func(), error)
+		+Detach(kill: bool): err: error
+		+Valid(): (bool, error)
+		+ResumeNotify(ch: chan<- struct{})
+		+ThreadList(): proc.Thread
+		+FindThread(threadID: int): (proc.Thread, bool)
+		+Memory(): proc.MemoryReadWriter
+		+Breakpoints(): proc.BreakpointMap
+		+RequestManualStop(): error
+		+CheckAndClearManualStopRequest(): bool
+		+WriteBreakpoint(bp: proc.Breakpoint): error
+		+EraseBreakpoint(bp: proc.Breakpoint): error
+		+ContinueOnce(): (proc.Thread, proc.StopReason, error)
+		+FindBreakpoint(pc: uint64, adjustPC: bool): (proc.Breakpoint, bool)
+		-initialize(path: string): (proc.Target, error)
+		-handlePtraceFuncs()
+		-execPtraceFunc(fn: func())
+		-postExit()
+		-writeSoftwareBreakpoint(thread: *native.nativeThread, addr: uint64): error
+		+GetBufferedTracepoints(): ebpf.RawUProbeParams
+		-kill(): error
+		-requestManualStop(): err: error
+		-addThread(tid: int, attach: bool): (*native.nativeThread, error)
+		-updateThreadList(): error
+		-trapWait(pid: int): (*native.nativeThread, error)
+		-trapWaitInternal(pid: int, options: native.trapWaitOptions): (*native.nativeThread, error)
+		-waitFast(pid: int): (int, unix.WaitStatus, error)
+		-wait(pid: int, options: int): (int, unix.WaitStatus, error)
+		-exitGuard(err: error): error
+		-resume(): error
+		-stop(trapthread: *native.nativeThread): (*native.nativeThread, error)
+		-detach(kill: bool): error
+		+EntryPoint(): (uint64, error)
+		+SetUProbe(fnName: string, goidOffset: int64, args: ebpf.UProbeArgMap): error
+	}
+}
+
+	native.nativeProcess --> native.nativeThread
+	native.nativeProcess --> native.osProcessDetails
+
+	native.nativeProcess --> proc.Process
+
+
+package "native" {
+	class "nativeThread" as native.nativeThread <<E,#FFCC00>> {
+		+ID: int
+		+Status: *native.waitStatus
+		+CurrentBreakpoint: proc.BreakpointState
+		-dbp: *native.nativeProcess
+		-singleStepping: bool
+		-os: *native.osSpecificDetails
+		-common: proc.CommonThread
+		-writeHardwareBreakpoint(addr: uint64, wtype: proc.WatchType, idx: uint8): error
+		-clearHardwareBreakpoint(addr: uint64, wtype: proc.WatchType, idx: uint8): error
+		-findHardwareBreakpoint(): (proc.Breakpoint, error)
+		-restoreRegisters(savedRegs: proc.Registers): error
+		-withDebugRegisters(f: amd64util.DebugRegisters) error): error
+		-setPC(pc: uint64): error
+		+SetReg(regNum: uint64, reg: op.DwarfRegister): error
+		-fpRegisters(): (regs: proc.Register, fpregs: amd64util.AMD64Xstate, err: error)
+		+Continue(): error
+		+StepInstruction(): err: error
+		+Location(): (proc.Location, error)
+		+BinInfo(): proc.BinaryInfo
+		+Common(): proc.CommonThread
+		+SetCurrentBreakpoint(adjustPC: bool): error
+		+Breakpoint(): proc.BreakpointState
+		+ThreadID(): int
+		-clearSoftwareBreakpoint(bp: proc.Breakpoint): error
+		+Registers(): (proc.Registers, error)
+		+RestoreRegisters(savedRegs: proc.Registers): error
+		+PC(): (uint64, error)
+		+ProcessMemory(): proc.MemoryReadWriter
+		-stop(): err: error
+		+Stopped(): bool
+		-resume(): error
+		-resumeWithSig(sig: int): err: error
+		-singleStep(): err: error
+		+WriteMemory(addr: uint64, data: []byte): (written: int, err: error)
+		+ReadMemory(data: []byte, addr: uint64): (n: int, err: error)
+	}
+}
+
+	native.nativeThread --> native.waitStatus
+	native.nativeThread --> native.nativeProcess
+	native.nativeThread --> native.osSpecificDetails
+
+	native.nativeThread --> proc.Thread
+
+
+package "native" {
+	class "osProcessDetails" as native.osProcessDetails <<E,#FFCC00>> {
+		-comm: string
+		-ebpf: ebpf.EBPFContext
+		+Close()
+	}
+}
+
+
+
+package "native" {
+	class "osSpecificDetails" as native.osSpecificDetails <<V,Orchid>> {
+		-delayedSignal: int
+		-running: bool
+		-setbp: bool
+		-phantomBreakpointPC: uint64
+	}
+}
+
+
+
+package "native" {
+	class "trapWaitOptions" as native.trapWaitOptions <<V,Orchid>>
+}
+
+
+
+package "native" {
+	class "waitStatus" as native.waitStatus <<V,Orchid>>
+}
+
+
+
+
+package "elf" {
+	note as N_elf_NType
+		<b>NType</b>
+
+		_NT_AUXV
+	end note
+}
+N_elf_NType --> elf.NType
+package "native" {
+	note as N_native_trapWaitOptions
+		<b>trapWaitOptions</b>
+
+		trapWaitDontCallExitGuard
+		trapWaitHalt
+		trapWaitNohang
+	end note
+}
+N_native_trapWaitOptions --> native.trapWaitOptions
+
+package "proc" {
+	interface Process {
+    	ResumeNotify(chan<- struct{})
+    	BinInfo() *BinaryInfo
+    	EntryPoint() (uint64, error)
+    	RequestManualStop() error
+    	CheckAndClearManualStopRequest() bool
+    	FindThread(threadID int) (Thread, bool)
+    	ThreadList() []Thread
+    	Breakpoints() *BreakpointMap
+    	Memory() MemoryReadWriter
+	}
+
+	interface Thread {
+		Location() (*Location, error)
+       	Breakpoint() *BreakpointState
+       	ThreadID() int
+       	Registers() (Registers, error)
+       	RestoreRegisters(Registers) error
+       	BinInfo() *BinaryInfo
+       	ProcessMemory() MemoryReadWriter
+       	StepInstruction() error
+       	SetCurrentBreakpoint(adjustPC bool) error
+       	Common() *CommonThread
+       	SetReg(uint64, *op.DwarfRegister) error
+	}
+}
+
+@enduml

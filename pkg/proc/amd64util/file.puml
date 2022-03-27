@@ -1,0 +1,42 @@
+@startuml
+
+package "amd64util" {
+	class AMD64PtraceFpRegs {
+		+Cwd: uint16
+		+Swd: uint16
+		+Ftw: uint16
+		+Fop: uint16
+		+Rip: uint64
+		+Rdp: uint64
+		+Mxcsr: uint32
+		+MxcrMask: uint32
+		+StSpace: [32]uint32
+		+XmmSpace: [256]byte
+		+Padding: [24]uint32
+	}
+
+	class AMD64Xstate {
+		+AMD64PtraceFpRegs: amd64util.AMD64PtraceFpRegs
+		+Xsave: []byte
+		+AvxState: bool
+		+YmmSpace: [256]byte
+		+Avx512State: bool
+		+ZmmSpace: [512]byte
+		+Decode(): proc.Register
+		+SetXmmRegister(n: int, value: []byte): error
+	}
+
+	class DebugRegisters {
+   		-pAddrs: [4]*uint64
+   		-pDR6: *uint64
+   		-pDR7: *uint64
+   		+Dirty: bool
+   		-breakpoint(idx: uint8): (addr: uint64, read: bool, write: bool, sz: int)
+   		+SetBreakpoint(idx: uint8, addr: uint64, read: bool, write: bool, sz: int): error
+   		+ClearBreakpoint(idx: uint8)
+   		+GetActiveBreakpoint(): (ok: bool, idx: uint8)
+   	}
+	AMD64Xstate --> AMD64PtraceFpRegs
+}
+
+@enduml

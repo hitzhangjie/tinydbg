@@ -2,8 +2,14 @@ package native
 
 import (
 	"fmt"
+	"syscall"
+	"unsafe"
 
+	sys "golang.org/x/sys/unix"
+
+	"github.com/hitzhangjie/dlv/pkg/dwarf/op"
 	"github.com/hitzhangjie/dlv/pkg/proc"
+	"github.com/hitzhangjie/dlv/pkg/proc/linutil"
 )
 
 // Thread represents a single thread in the traced process
@@ -198,4 +204,98 @@ func (t *nativeThread) PC() (uint64, error) {
 // ProcessMemory returns this thread's process memory.
 func (t *nativeThread) ProcessMemory() proc.MemoryReadWriter {
 	return t.dbp.Memory()
+}
+
+func (t *nativeThread) WriteMemory(addr uint64, data []byte) (written int, err error) {
+	if t.dbp.exited {
+		return 0, proc.ErrProcessExited{Pid: t.dbp.pid}
+	}
+	if len(data) == 0 {
+		return
+	}
+	// ProcessVmWrite can't poke read-only memory like ptrace, so don't
+	// even bother for small writes -- likely breakpoints and such.
+	if len(data) > sys.SizeofPtr {
+		written, _ = processVmWrite(t.ID, uintptr(addr), data)
+	}
+	if written == 0 {
+		t.dbp.execPtraceFunc(func() { written, err = sys.PtracePokeData(t.ID, uintptr(addr), data) })
+	}
+	return
+}
+
+func (t *nativeThread) ReadMemory(data []byte, addr uint64) (n int, err error) {
+	if t.dbp.exited {
+		return 0, proc.ErrProcessExited{Pid: t.dbp.pid}
+	}
+	if len(data) == 0 {
+		return
+	}
+	n, _ = processVmRead(t.ID, uintptr(addr), data)
+	if n == 0 {
+		t.dbp.execPtraceFunc(func() { n, err = sys.PtracePeekData(t.ID, uintptr(addr), data) })
+	}
+	return
+}
+
+// SetReg changes the value of the specified register.
+func (thread *nativeThread) SetReg(regNum uint64, reg *op.DwarfRegister) error {
+	ir, err := registers(thread)
+	if err != nil {
+		return err
+	}
+	r := ir.(*linutil.AMD64Registers)
+	fpchanged, err := r.SetReg(regNum, reg)
+	if err != nil {
+		return err
+	}
+	thread.dbp.execPtraceFunc(func() {
+		err = sys.PtraceSetRegs(thread.ID, (*sys.PtraceRegs)(r.Regs))
+		if err != nil {
+			return
+		}
+		if fpchanged && r.Fpregset != nil && r.Fpregset.Xsave != nil {
+			iov := sys.Iovec{Base: &r.Fpregset.Xsave[0], Len: uint64(len(r.Fpregset.Xsave))}
+			_, _, err = syscall.Syscall6(syscall.SYS_PTRACE, sys.PTRACE_SETREGSET, uintptr(thread.ID), _NT_X86_XSTATE, uintptr(unsafe.Pointer(&iov)), 0, 0)
+			if err == syscall.Errno(0) {
+				err = nil
+			}
+		}
+	})
+	return err
+}
+
+// Stopped returns whether the thread is stopped at
+// the operating system level.
+func (t *nativeThread) Stopped() bool {
+	state := status(t.ID, t.dbp.os.comm)
+	return state == statusTraceStop || state == statusTraceStopT
+}
+
+// processVmRead calls process_vm_readv
+func processVmRead(tid int, addr uintptr, data []byte) (int, error) {
+	len_iov := uint64(len(data))
+	local_iov := sys.Iovec{Base: &data[0], Len: len_iov}
+	remote_iov := sys.Iovec{Base: (*byte)(unsafe.Pointer(addr)), Len: len_iov}
+	p_local := uintptr(unsafe.Pointer(&local_iov))
+	p_remote := uintptr(unsafe.Pointer(&remote_iov))
+	n, _, err := syscall.Syscall6(sys.SYS_PROCESS_VM_READV, uintptr(tid), p_local, 1, p_remote, 1, 0)
+	if err != syscall.Errno(0) {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// processVmWrite calls process_vm_writev
+func processVmWrite(tid int, addr uintptr, data []byte) (int, error) {
+	len_iov := uint64(len(data))
+	local_iov := sys.Iovec{Base: &data[0], Len: len_iov}
+	remote_iov := sys.Iovec{Base: (*byte)(unsafe.Pointer(addr)), Len: len_iov}
+	p_local := uintptr(unsafe.Pointer(&local_iov))
+	p_remote := uintptr(unsafe.Pointer(&remote_iov))
+	n, _, err := syscall.Syscall6(sys.SYS_PROCESS_VM_WRITEV, uintptr(tid), p_local, 1, p_remote, 1, 0)
+	if err != syscall.Errno(0) {
+		return 0, err
+	}
+	return int(n), nil
 }
