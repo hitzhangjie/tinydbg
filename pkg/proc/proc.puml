@@ -1,0 +1,100 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+package "proc" {
+
+class Arch {
+	Name string
+	PCRegNum uint64
+	SPRegNum uint64
+	BPRegNum uint64
+	ContextRegNum uint64
+	RegistersToDwarfRegisters func(uint64, Registers) *op.DwarfRegisters
+	DwarfRegisterToString func(int, *op.DwarfRegister) (string, bool, string)
+	RegisterNameToDwarf func(s string) (int, bool)
+	PtrSize() int
+	MaxInstructionLength() int
+	BreakpointInstruction() []byte
+	AltBreakpointInstruction() []byte
+	BreakInstrMovesPC() bool
+	BreakpointSize() int
+	DerefTLS() bool
+}
+
+Arch -> op.DwarfRegisters
+
+class BinaryInfo {
+	Arch *Arch
+	GOOS string
+
+	PackageMap map[string][]string
+	types map[string]dwarfRef
+	packageVars []packageVar
+	Functions []Function
+	Sources []string
+	LookupFunc map[string]*Function
+	lookupGenericFunc map[string][]*Function
+	SymNames map[uint64]*elf.Symbol
+	frameEntries frame.FrameDescriptionEntries
+
+	Image []*Image
+
+	ElfDynamicSection ElfDynamicSection
+	lastModified time.Time
+	gStructOffset uint64
+
+	nameOfRuntimeType map[uint64]nameOfRuntimeTypeEntry
+
+	consts constantsMap
+
+	inlinedCallLines map[fileLine][]uint64
+	dwrapUnwrapCache map[uint64]*Function
+
+	regabi bool
+}
+
+BinaryInfo -up-> Arch
+BinaryInfo -left-> Image
+BinaryInfo "1" -left-> "N" Function
+BinaryInfo -down-> ElfDynamicSection: ".dynamic section"
+BinaryInfo -down-> constantsMap
+BinaryInfo "1" -> "N" dwarfRef
+BinaryInfo -right-> nameOfRuntimeTypeEntry
+
+class constantsMap as "map[dwarfRef]*constantType"
+
+constantsMap -down-> dwarfRef
+constantsMap -right-> constantType
+
+class dwarfRef {
+	imageIndex int
+	offset     dwarf.Offset
+}
+
+class ElfDynamicSection {
+	Addr uint64
+	Size uint64
+}
+
+class nameOfRuntimeTypeEntry {
+	typename string
+	kind int64
+}
+
+class constantType {
+	initialized bool
+	values      []constantValue
+}
+
+constantType "1" -down-> "N" constantValue
+
+class constantValue {
+	name      string
+	fullName  string
+	value     int64
+	singleBit bool
+}
+
+}
+
+@enduml
