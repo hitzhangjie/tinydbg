@@ -1,3 +1,9 @@
+# README
+
+Note: 该项目fork自go-delve/delve，本项目做了一些功能删减，以使其适合作为电子书《go符号级调试器设计开发》的示例，方便读者朋友能更方便快速地了解调试器设计开发的核心知识点。
+
+---
+
 ![Delve](https://raw.githubusercontent.com/go-delve/delve/master/assets/delve_horizontal.png)
 
 [![license](http://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/go-delve/delve/master/LICENSE)

@@ -4,6 +4,31 @@
 All notable changes to this project will be documented in this file.
 This project adheres to Semantic Versioning.
 
+## 2022.1.9~ 出于学习目的，精简代码设计实现
+- 删除与linux,x86无关代码
+- 删除与调试器核心功能无关命令字，如version、dap
+- 删除配置加载逻辑
+- 删除各组件的日志跟踪逻辑
+- 删除非终端交互、重定向、自定义文件作为tty逻辑
+- 删除自定义的支持go build flags逻辑
+- 删除执行初始化文件逻辑
+- 删除自定义调试器backend逻辑，如rr
+- 删除调试器连接endpoints属于同一用户uid逻辑
+- 删除delve issues对应的测试用例逻辑
+- 删除在独立目录中搜索DWARF信息的逻辑，linux下dwarf写入二进制文件中
+- 删除mozilla rr相关的逻辑
+- 删除无用的starlark脚本
+- ...
+
+另外，我们为了开发测试方便，也增加了些配置：
+- 补充了vscode devcontainer配置，含dockerfile、vscode插件
+- 补充了goland开发测试需要的docker-build.sh/docker-start.sh
+- ...
+
+目标，这里的目标全力转向介绍清楚如何开发一款go符号级调试器而努力，尽快完成电子书。
+
+Note: 不要在工作中使用该调试器，该项目已经被修改作为教程示例使用。
+
 ## [1.7.3] 2021-11-16
 
 ### Added
