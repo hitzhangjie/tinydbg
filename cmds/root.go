@@ -60,7 +60,7 @@ evaluating variables, and providing information of thread / goroutine state, CPU
 The goal of this tool is to provide a simple yet powerful interface for debugging Go programs.
 
 Pass flags to the program you are debugging using "--",  for example:
-"dlv exec ./hello -- server --config conf/config.toml"`,
+"dlv exec ./hello -- [args] [--config conf/config.toml]"`,
 	DisableAutoGenTag: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if verbose {
