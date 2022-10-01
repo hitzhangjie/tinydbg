@@ -32,7 +32,8 @@
 			"quillaja.goasm",
 			"yzhang.markdown-all-in-one",
 			"jebbs.plantuml",
-			"esbenp.prettier-vscode"
+			"esbenp.prettier-vscode",
+			"ms-vscode.makefile-tools"
 		]
 	}
 }
