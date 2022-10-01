@@ -33,7 +33,10 @@
 			"yzhang.markdown-all-in-one",
 			"jebbs.plantuml",
 			"esbenp.prettier-vscode",
-			"ms-vscode.makefile-tools"
+			"ms-vscode.makefile-tools",
+			"PKief.material-icon-theme",
+			"redhat.vscode-yaml",
+			"alefragnani.Bookmarks"
 		]
 	}
 }
