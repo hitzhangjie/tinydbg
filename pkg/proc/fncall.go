@@ -1253,11 +1253,6 @@ func debugCallProtocolReg(archName string, version int) (uint64, bool) {
 			return 0, false
 		}
 		return protocolReg, true
-	case "arm64", "ppc64le":
-		if version == 2 {
-			return regnum.ARM64_X0 + 20, true
-		}
-		return 0, false
 	default:
 		return 0, false
 	}

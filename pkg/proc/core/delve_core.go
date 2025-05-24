@@ -12,21 +12,6 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 )
 
-func platformFromNotes(notes []*note) (goos, goarch string, err error) {
-	for _, note := range notes {
-		if note.Type != elfwriter.DelveHeaderNoteType {
-			continue
-		}
-		lines := strings.Split(string(note.Desc.([]byte)), "\n")
-		v := strings.Split(lines[0], "/")
-		if len(v) != 2 {
-			return "", "", fmt.Errorf("malformed delve header note: %q", string(note.Desc.([]byte)))
-		}
-		return v[0], v[1], nil
-	}
-	panic("internal error")
-}
-
 func threadsFromDelveNotes(p *process, notes []*note) (proc.Thread, error) {
 	var currentThread proc.Thread
 	for _, note := range notes {

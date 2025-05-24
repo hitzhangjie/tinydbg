@@ -195,7 +195,7 @@ var (
 
 type openFn func(string, string) (*process, proc.Thread, error)
 
-var openFns = []openFn{readLinuxOrPlatformIndependentCore, readAMD64Minidump}
+var openFns = []openFn{readLinuxOrPlatformIndependentCore}
 
 // ErrUnrecognizedFormat is returned when the core file is not recognized as
 // any of the supported formats.
@@ -205,15 +205,7 @@ var ErrUnrecognizedFormat = errors.New("unrecognized core format")
 // If the DWARF information cannot be found in the binary, Delve will look
 // for external debug files in the directories passed in.
 func OpenCore(corePath, exePath string, debugInfoDirs []string) (*proc.TargetGroup, error) {
-	var p *process
-	var currentThread proc.Thread
-	var err error
-	for _, openFn := range openFns {
-		p, currentThread, err = openFn(corePath, exePath)
-		if err != ErrUnrecognizedFormat {
-			break
-		}
-	}
+	p, currentThread, err := readLinuxOrPlatformIndependentCore(corePath, exePath)
 	if err != nil {
 		return nil, err
 	}

@@ -3,11 +3,8 @@ package debugger
 import (
 	"debug/dwarf"
 	"debug/elf"
-	"debug/macho"
-	"debug/pe"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -162,6 +159,10 @@ type Config struct {
 // New creates a new Debugger. ProcessArgs specify the commandline arguments for the
 // new process.
 func New(config *Config, processArgs []string) (*Debugger, error) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		return nil, fmt.Errorf("unsupported platform - only linux/amd64 is supported")
+	}
+
 	logger := logflags.DebuggerLogger()
 	d := &Debugger{
 		config:      config,
@@ -283,7 +284,7 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.TargetGroup, e
 	case "native":
 		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
 	case "lldb":
-		return betterGdbserialLaunchError(gdbserial.LLDBLaunch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, [3]string{d.config.Stdin, d.config.Stdout.Path, d.config.Stderr.Path}))
+		return nil, fmt.Errorf("lldb backend is not supported on linux/amd64")
 	case "rr":
 		if d.target != nil {
 			// restart should not call us if the backend is 'rr'
@@ -324,9 +325,6 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.TargetGroup, e
 		return nil, nil
 
 	case "default":
-		if runtime.GOOS == "darwin" {
-			return betterGdbserialLaunchError(gdbserial.LLDBLaunch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, [3]string{d.config.Stdin, d.config.Stdout.Path, d.config.Stderr.Path}))
-		}
 		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
 	default:
 		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
@@ -366,28 +364,12 @@ func (d *Debugger) Attach(pid int, path string, waitFor *proc.WaitFor) (*proc.Ta
 	case "native":
 		return native.Attach(pid, waitFor, d.config.DebugInfoDirectories)
 	case "lldb":
-		return betterGdbserialLaunchError(gdbserial.LLDBAttach(pid, path, waitFor, d.config.DebugInfoDirectories))
+		return nil, fmt.Errorf("lldb backend is not supported on linux/amd64")
 	case "default":
-		if runtime.GOOS == "darwin" {
-			return betterGdbserialLaunchError(gdbserial.LLDBAttach(pid, path, waitFor, d.config.DebugInfoDirectories))
-		}
 		return native.Attach(pid, waitFor, d.config.DebugInfoDirectories)
 	default:
 		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
 	}
-}
-
-var errMacOSBackendUnavailable = errors.New("debugserver or lldb-server not found: install Xcode's command line tools or lldb-server")
-
-func betterGdbserialLaunchError(p *proc.TargetGroup, err error) (*proc.TargetGroup, error) {
-	if runtime.GOOS != "darwin" {
-		return p, err
-	}
-	if !errors.Is(err, &gdbserial.ErrBackendUnavailable{}) {
-		return p, err
-	}
-
-	return p, errMacOSBackendUnavailable
 }
 
 // ProcessPid returns the PID of the process
@@ -2084,11 +2066,7 @@ func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
 		}
 	} else {
 		if d.config.Backend == "default" {
-			if runtime.GOOS == "darwin" {
-				out.Backend = "lldb"
-			} else {
-				out.Backend = "native"
-			}
+			out.Backend = "native"
 		} else {
 			out.Backend = d.config.Backend
 		}
@@ -2361,22 +2339,19 @@ func verifyBinaryFormat(exePath string) (string, error) {
 		}
 	}
 
-	// check that the binary format is what we expect for the host system
-	var exe io.Closer
-	switch runtime.GOOS {
-	case "darwin":
-		exe, err = macho.NewFile(f)
-	case "linux", "freebsd":
-		exe, err = elf.NewFile(f)
-	case "windows":
-		exe, err = pe.NewFile(f)
-	default:
-		panic("attempting to open file Delve cannot parse")
+	// Only support linux/amd64 for now
+	if runtime.GOOS != "linux" {
+		return "", fmt.Errorf("unsupported operating system - only linux/amd64 is supported")
 	}
 
+	exe, err := elf.NewFile(f)
 	if err != nil {
 		return "", api.ErrNotExecutable
 	}
+	if exe.Machine != elf.EM_X86_64 {
+		return "", fmt.Errorf("unsupported architecture - only linux/amd64 is supported")
+	}
+
 	exe.Close()
 	return fullpath, nil
 }

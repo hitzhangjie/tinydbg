@@ -58,30 +58,12 @@ func linuxThreadsFromNotes(p *process, notes []*note, machineType elf.Machine) p
 			case _EM_X86_64:
 				t := note.Desc.(*linuxPrStatusAMD64)
 				lastThread = &linuxAMD64Thread{linutil.AMD64Registers{Regs: &t.Reg}, t}
-			case _EM_AARCH64:
-				t := note.Desc.(*linuxPrStatusARM64)
-				lastThread = &linuxARM64Thread{linutil.ARM64Registers{Regs: &t.Reg}, t}
-			case _EM_RISCV:
-				t := note.Desc.(*linuxPrStatusRISCV64)
-				lastThread = &linuxRISCV64Thread{linutil.RISCV64Registers{Regs: &t.Reg}, t}
-			case _EM_LOONGARCH:
-				t := note.Desc.(*linuxPrStatusLOONG64)
-				lastThread = &linuxLOONG64Thread{linutil.LOONG64Registers{Regs: &t.Reg}, t}
 			default:
 				continue
 			}
 			p.Threads[lastThread.ThreadID()] = &thread{lastThread, p, proc.CommonThread{}}
 			if currentThread == nil {
 				currentThread = p.Threads[lastThread.ThreadID()]
-			}
-		case _NT_FPREGSET:
-			switch th := lastThread.(type) {
-			case *linuxARM64Thread:
-				th.regs.Fpregs = note.Desc.(*linutil.ARM64PtraceFpRegs).Decode()
-			case *linuxRISCV64Thread:
-				th.regs.Fpregs = note.Desc.(*linutil.RISCV64PtraceFpRegs).Decode()
-			case *linuxLOONG64Thread:
-				th.regs.Fpregs = note.Desc.(*linutil.LOONG64PtraceFpRegs).Decode()
 			}
 		case _NT_X86_XSTATE:
 			if lastThread != nil {
@@ -92,13 +74,6 @@ func linuxThreadsFromNotes(p *process, notes []*note, machineType elf.Machine) p
 		}
 	}
 	return currentThread
-}
-
-var supportedLinuxMachines = map[elf.Machine]string{
-	_EM_X86_64:    "amd64",
-	_EM_AARCH64:   "arm64",
-	_EM_RISCV:     "riscv64",
-	_EM_LOONGARCH: "loong64",
 }
 
 // readLinuxOrPlatformIndependentCore reads a core file from corePath
@@ -148,20 +123,11 @@ func readLinuxOrPlatformIndependentCore(corePath, exePath string) (*process, pro
 
 	memory := buildMemory(coreFile, exeELF, exe, notes)
 
-	// TODO support 386
-	var bi *proc.BinaryInfo
-	if platformIndependentDelveCore {
-		goos, goarch, err := platformFromNotes(notes)
-		if err != nil {
-			return nil, nil, err
-		}
-		bi = proc.NewBinaryInfo(goos, goarch)
-	} else if goarch, ok := supportedLinuxMachines[machineType]; ok {
-		bi = proc.NewBinaryInfo("linux", goarch)
-	} else {
-		return nil, nil, errors.New("unsupported machine type")
+	// Only support amd64 architecture
+	if machineType != elf.EM_X86_64 {
+		return nil, nil, fmt.Errorf("unsupported architecture - only linux/amd64 is supported")
 	}
-
+	bi := proc.NewBinaryInfo("linux", "amd64")
 	entryPoint := findEntryPoint(notes, bi.Arch.PtrSize())
 
 	p := &process{
@@ -186,21 +152,6 @@ type linuxAMD64Thread struct {
 	t    *linuxPrStatusAMD64
 }
 
-type linuxARM64Thread struct {
-	regs linutil.ARM64Registers
-	t    *linuxPrStatusARM64
-}
-
-type linuxRISCV64Thread struct {
-	regs linutil.RISCV64Registers
-	t    *linuxPrStatusRISCV64
-}
-
-type linuxLOONG64Thread struct {
-	regs linutil.LOONG64Registers
-	t    *linuxPrStatusLOONG64
-}
-
 func (t *linuxAMD64Thread) Registers() (proc.Registers, error) {
 	var r linutil.AMD64Registers
 	r.Regs = t.regs.Regs
@@ -208,40 +159,7 @@ func (t *linuxAMD64Thread) Registers() (proc.Registers, error) {
 	return &r, nil
 }
 
-func (t *linuxARM64Thread) Registers() (proc.Registers, error) {
-	var r linutil.ARM64Registers
-	r.Regs = t.regs.Regs
-	r.Fpregs = t.regs.Fpregs
-	return &r, nil
-}
-
-func (t *linuxRISCV64Thread) Registers() (proc.Registers, error) {
-	var r linutil.RISCV64Registers
-	r.Regs = t.regs.Regs
-	r.Fpregs = t.regs.Fpregs
-	return &r, nil
-}
-
-func (t *linuxLOONG64Thread) Registers() (proc.Registers, error) {
-	var r linutil.LOONG64Registers
-	r.Regs = t.regs.Regs
-	r.Fpregs = t.regs.Fpregs
-	return &r, nil
-}
-
 func (t *linuxAMD64Thread) ThreadID() int {
-	return int(t.t.Pid)
-}
-
-func (t *linuxARM64Thread) ThreadID() int {
-	return int(t.t.Pid)
-}
-
-func (t *linuxRISCV64Thread) ThreadID() int {
-	return int(t.t.Pid)
-}
-
-func (t *linuxLOONG64Thread) ThreadID() int {
 	return int(t.t.Pid)
 }
 
@@ -326,12 +244,6 @@ func readNote(r io.ReadSeeker, machineType elf.Machine) (*note, error) {
 		switch machineType {
 		case _EM_X86_64:
 			note.Desc = &linuxPrStatusAMD64{}
-		case _EM_AARCH64:
-			note.Desc = &linuxPrStatusARM64{}
-		case _EM_RISCV:
-			note.Desc = &linuxPrStatusRISCV64{}
-		case _EM_LOONGARCH:
-			note.Desc = &linuxPrStatusLOONG64{}
 		default:
 			return nil, errors.New("unsupported machine type")
 		}
@@ -370,31 +282,11 @@ func readNote(r io.ReadSeeker, machineType elf.Machine) (*note, error) {
 		}
 	case _NT_AUXV, elfwriter.DelveHeaderNoteType, elfwriter.DelveThreadNodeType:
 		note.Desc = desc
-	case _NT_FPREGSET:
-		if machineType == _EM_AARCH64 {
-			err = readFpregsetNote(note, &linutil.ARM64PtraceFpRegs{}, desc[:_ARM_FP_HEADER_START])
-		} else if machineType == _EM_RISCV {
-			err = readFpregsetNote(note, &linutil.RISCV64PtraceFpRegs{}, desc)
-		} else if machineType == _EM_LOONGARCH {
-			err = readFpregsetNote(note, &linutil.LOONG64PtraceFpRegs{}, desc)
-		}
-		if err != nil {
-			return nil, err
-		}
 	}
 	if err := skipPadding(r, 4); err != nil {
 		return nil, fmt.Errorf("aligning after desc: %v", err)
 	}
 	return note, nil
-}
-
-func readFpregsetNote(note *note, fpregs interface{ Byte() []byte }, desc []byte) error {
-	rdr := bytes.NewReader(desc)
-	if err := binary.Read(rdr, binary.LittleEndian, fpregs.Byte()); err != nil {
-		return err
-	}
-	note.Desc = fpregs
-	return nil
 }
 
 // skipPadding moves r to the next multiple of pad.
@@ -487,45 +379,6 @@ type linuxPrStatusAMD64 struct {
 	Pid, Ppid, Pgrp, Sid         int32
 	Utime, Stime, CUtime, CStime linuxCoreTimeval
 	Reg                          linutil.AMD64PtraceRegs
-	Fpvalid                      int32
-}
-
-// LinuxPrStatusARM64 is a copy of the prstatus kernel struct.
-type linuxPrStatusARM64 struct {
-	Siginfo                      linuxSiginfo
-	Cursig                       uint16
-	_                            [2]uint8
-	Sigpend                      uint64
-	Sighold                      uint64
-	Pid, Ppid, Pgrp, Sid         int32
-	Utime, Stime, CUtime, CStime linuxCoreTimeval
-	Reg                          linutil.ARM64PtraceRegs
-	Fpvalid                      int32
-}
-
-// LinuxPrStatusRISCV64 is a copy of the prstatus kernel struct.
-type linuxPrStatusRISCV64 struct {
-	Siginfo                      linuxSiginfo
-	Cursig                       uint16
-	_                            [2]uint8
-	Sigpend                      uint64
-	Sighold                      uint64
-	Pid, Ppid, Pgrp, Sid         int32
-	Utime, Stime, CUtime, CStime linuxCoreTimeval
-	Reg                          linutil.RISCV64PtraceRegs
-	Fpvalid                      int32
-}
-
-// LinuxPrStatusLOONG64 is a copy of the prstatus kernel struct.
-type linuxPrStatusLOONG64 struct {
-	Siginfo                      linuxSiginfo
-	Cursig                       uint16
-	_                            [2]uint8
-	Sigpend                      uint64
-	Sighold                      uint64
-	Pid, Ppid, Pgrp, Sid         int32
-	Utime, Stime, CUtime, CStime linuxCoreTimeval
-	Reg                          linutil.LOONG64PtraceRegs
 	Fpvalid                      int32
 }
 

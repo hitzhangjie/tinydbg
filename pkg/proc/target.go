@@ -249,10 +249,9 @@ func (t *Target) Valid() (bool, error) {
 
 // SupportsFunctionCalls returns whether or not the backend supports
 // calling functions during a debug session.
-// Currently only non-recorded processes running on AMD64 support
-// function calls.
+// Currently only linux/amd64 is supported.
 func (t *Target) SupportsFunctionCalls() bool {
-	return t.Process.BinInfo().Arch.Name == "amd64" || (t.Process.BinInfo().Arch.Name == "arm64" && t.Process.BinInfo().GOOS != "windows") || t.Process.BinInfo().Arch.Name == "ppc64le"
+	return t.Process.BinInfo().Arch.Name == "amd64" && t.Process.BinInfo().GOOS == "linux"
 }
 
 // ClearCaches clears internal caches that should not survive a restart.

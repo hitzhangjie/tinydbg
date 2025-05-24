@@ -85,7 +85,6 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/internal/ebpf"
 	"github.com/go-delve/delve/pkg/proc/linutil"
-	"github.com/go-delve/delve/pkg/proc/macutil"
 )
 
 const (
@@ -244,29 +243,17 @@ func newProcess(process *os.Process) *gdbProcess {
 		process:        process,
 	}
 
-	switch p.bi.Arch.Name {
-	default:
-		fallthrough
-	case "amd64":
-		p.breakpointKind = 1
-	case "arm64":
-		p.breakpointKind = 4
+	// Only support amd64 architecture
+	if p.bi.Arch.Name != "amd64" {
+		return nil
 	}
 
+	p.breakpointKind = 1
 	p.regnames.PC = registerName(p.bi.Arch, p.bi.Arch.PCRegNum)
 	p.regnames.SP = registerName(p.bi.Arch, p.bi.Arch.SPRegNum)
 	p.regnames.BP = registerName(p.bi.Arch, p.bi.Arch.BPRegNum)
-
-	switch p.bi.Arch.Name {
-	case "arm64":
-		p.regnames.BP = "fp"
-		p.regnames.CX = "x0"
-	case "amd64":
-		p.regnames.CX = "rcx"
-		p.regnames.FsBase = "fs_base"
-	default:
-		panic("not implemented")
-	}
+	p.regnames.CX = "rcx"
+	p.regnames.FsBase = "fs_base"
 
 	if process != nil {
 		p.waitChan = make(chan *os.ProcessState)
@@ -459,11 +446,8 @@ func getLdEnvVars() []string {
 // it to launch the specified target program with the specified arguments
 // (cmd) on the specified directory wd.
 func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []string, tty string, redirects [3]string) (*proc.TargetGroup, error) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS != "linux" {
 		return nil, ErrUnsupportedOS
-	}
-	if err := macutil.CheckRosetta(); err != nil {
-		return nil, err
 	}
 
 	foreground := flags&proc.LaunchForeground != 0
@@ -597,11 +581,8 @@ func LLDBLaunch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs [
 // for some stubs that do not provide an automated way of determining it
 // (for example debugserver).
 func LLDBAttach(pid int, path string, waitFor *proc.WaitFor, debugInfoDirs []string) (*proc.TargetGroup, error) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "linux" {
 		return nil, ErrUnsupportedOS
-	}
-	if err := macutil.CheckRosetta(); err != nil {
-		return nil, err
 	}
 
 	var (
