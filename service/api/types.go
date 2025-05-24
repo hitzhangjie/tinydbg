@@ -531,15 +531,6 @@ type GetVersionOut struct {
 	MaxSupportedVersionOfGo string
 }
 
-// SetAPIVersionIn is the input for SetAPIVersion.
-type SetAPIVersionIn struct {
-	APIVersion int
-}
-
-// SetAPIVersionOut is the output for SetAPIVersion.
-type SetAPIVersionOut struct {
-}
-
 // Register holds information on a CPU register.
 type Register struct {
 	Name        string

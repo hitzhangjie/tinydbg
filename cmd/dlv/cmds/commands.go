@@ -150,8 +150,6 @@ func New(docCall bool) *cobra.Command {
 
 	rootCommand.PersistentFlags().BoolVarP(&headless, "headless", "", false, "Run debug server only, in headless mode. Server will accept both JSON-RPC or DAP client connections.")
 	rootCommand.PersistentFlags().BoolVarP(&acceptMulti, "accept-multiclient", "", false, "Allows a headless server to accept multiple client connections via JSON-RPC or DAP.")
-	rootCommand.PersistentFlags().IntVar(&apiVersion, "api-version", 2, "Selects JSON-RPC API version when headless. The only valid value is 2. Can be reset via RPCServer.SetApiVersion. See Documentation/api/json-rpc/README.md.")
-	must(rootCommand.RegisterFlagCompletionFunc("api-version", cobra.FixedCompletions([]string{"1", "2"}, cobra.ShellCompDirectiveNoFileComp)))
 	rootCommand.PersistentFlags().StringVar(&initFile, "init", "", "Init file, executed by the terminal client.")
 	must(rootCommand.MarkPersistentFlagFilename("init"))
 	rootCommand.PersistentFlags().StringVar(&buildFlags, "build-flags", buildFlagsDefault, "Build flags, to be passed to the compiler. For example: --build-flags=\"-tags=integration -mod=vendor -cover -v\"")
@@ -1110,41 +1108,34 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 	}
 
 	// Create and start a debugger server
-	switch apiVersion {
-	case 1, 2:
-		server = rpccommon.NewServer(&service.Config{
-			Listener:           listener,
-			ProcessArgs:        processArgs,
-			AcceptMulti:        acceptMulti,
-			APIVersion:         apiVersion,
-			CheckLocalConnUser: checkLocalConnUser,
-			DisconnectChan:     disconnectChan,
-			Debugger: debugger.Config{
-				AttachPid:             attachPid,
-				WorkingDir:            workingDir,
-				Backend:               backend,
-				CoreFile:              coreFile,
-				Foreground:            headless && tty == "",
-				Packages:              dlvArgs,
-				BuildFlags:            buildFlags,
-				ExecuteKind:           kind,
-				DebugInfoDirectories:  conf.DebugInfoDirectories,
-				CheckGoVersion:        checkGoVersion,
-				TTY:                   tty,
-				Stdin:                 redirects[0],
-				Stdout:                proc.OutputRedirect{Path: redirects[1]},
-				Stderr:                proc.OutputRedirect{Path: redirects[2]},
-				DisableASLR:           disableASLR,
-				RrOnProcessPid:        rrOnProcessPid,
-				AttachWaitFor:         attachWaitFor,
-				AttachWaitForInterval: attachWaitForInterval,
-				AttachWaitForDuration: attachWaitForDuration,
-			},
-		})
-	default:
-		fmt.Printf("Unknown API version: %d\n", apiVersion)
-		return 1
-	}
+	server = rpccommon.NewServer(&service.Config{
+		Listener:           listener,
+		ProcessArgs:        processArgs,
+		AcceptMulti:        acceptMulti,
+		CheckLocalConnUser: checkLocalConnUser,
+		DisconnectChan:     disconnectChan,
+		Debugger: debugger.Config{
+			AttachPid:             attachPid,
+			WorkingDir:            workingDir,
+			Backend:               backend,
+			CoreFile:              coreFile,
+			Foreground:            headless && tty == "",
+			Packages:              dlvArgs,
+			BuildFlags:            buildFlags,
+			ExecuteKind:           kind,
+			DebugInfoDirectories:  conf.DebugInfoDirectories,
+			CheckGoVersion:        checkGoVersion,
+			TTY:                   tty,
+			Stdin:                 redirects[0],
+			Stdout:                proc.OutputRedirect{Path: redirects[1]},
+			Stderr:                proc.OutputRedirect{Path: redirects[2]},
+			DisableASLR:           disableASLR,
+			RrOnProcessPid:        rrOnProcessPid,
+			AttachWaitFor:         attachWaitFor,
+			AttachWaitForInterval: attachWaitForInterval,
+			AttachWaitForDuration: attachWaitForDuration,
+		},
+	})
 
 	if err := server.Run(); err != nil {
 		if errors.Is(err, api.ErrNotExecutable) {

@@ -64,5 +64,4 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 
 func suitableMethodsCommon(s *RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.GetVersion"] = &methodType{method: reflect.ValueOf(s.GetVersion)}
-	methods["RPCServer.SetApiVersion"] = &methodType{method: reflect.ValueOf(s.SetApiVersion)}
 }

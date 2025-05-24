@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -40,9 +39,9 @@ type ServerImpl struct {
 	debugger *debugger.Debugger
 	// s2 is APIv2 server.
 	s2 *rpc2.RPCServer
-	// maps of served methods, one for each supported API.
-	methodMaps []map[string]*methodType
-	log        logflags.Logger
+	// maps of served methods
+	methodMap map[string]*methodType
+	log       logflags.Logger
 }
 
 type RPCCallback struct {
@@ -71,9 +70,6 @@ type methodType struct {
 // NewServer creates a new RPCServer.
 func NewServer(config *service.Config) *ServerImpl {
 	logger := logflags.RPCLogger()
-	if config.APIVersion < 2 {
-		logger.Info("Using API v1")
-	}
 	if config.Debugger.Foreground {
 		// Print listener address
 		logflags.WriteAPIListeningMessage(config.Listener.Addr())
@@ -106,14 +102,6 @@ func (s *ServerImpl) Stop() error {
 func (s *ServerImpl) Run() error {
 	var err error
 
-	if s.config.APIVersion == 0 {
-		s.config.APIVersion = 2
-	}
-
-	if s.config.APIVersion != 2 {
-		return errors.New("unknown API version")
-	}
-
 	// Create and start the debugger
 	config := s.config.Debugger
 	if s.debugger, err = debugger.New(&config, s.config.ProcessArgs); err != nil {
@@ -124,13 +112,11 @@ func (s *ServerImpl) Run() error {
 
 	rpcServer := &RPCServer{s}
 
-	s.methodMaps = make([]map[string]*methodType, 2)
+	s.methodMap = make(map[string]*methodType)
 
-	s.methodMaps[1] = map[string]*methodType{}
-
-	suitableMethods2(s.s2, s.methodMaps[1])
-	suitableMethodsCommon(rpcServer, s.methodMaps[1])
-	finishMethodsMapInit(s.methodMaps[1])
+	suitableMethods2(s.s2, s.methodMap)
+	suitableMethodsCommon(rpcServer, s.methodMap)
+	finishMethodsMapInit(s.methodMap)
 
 	go func() {
 		defer s.listener.Close()
@@ -219,7 +205,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 			break
 		}
 
-		mtype, ok := s.methodMaps[s.config.APIVersion-1][req.ServiceMethod]
+		mtype, ok := s.methodMap[req.ServiceMethod]
 		if !ok {
 			s.log.Errorf("rpc: can't find method %s", req.ServiceMethod)
 			s.sendResponse(sending, &req, &rpc.Response{}, nil, codec, fmt.Sprintf("unknown method: %s", req.ServiceMethod))
@@ -364,17 +350,7 @@ func (cb *RPCCallback) SetupDoneChan() chan struct{} {
 // currently served.
 func (s *RPCServer) GetVersion(args api.GetVersionIn, out *api.GetVersionOut) error {
 	out.DelveVersion = version.DelveVersion.String()
-	out.APIVersion = s.s.config.APIVersion
 	return s.s.debugger.GetVersion(out)
-}
-
-// SetApiVersion changes version of the API being served.
-func (s *RPCServer) SetApiVersion(args api.SetAPIVersionIn, out *api.SetAPIVersionOut) error {
-	if args.APIVersion != 2 {
-		return errors.New("unknown API version")
-	}
-	s.s.config.APIVersion = args.APIVersion
-	return nil
 }
 
 type internalError struct {

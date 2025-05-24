@@ -2263,7 +2263,6 @@ func (c *brokenRPCClient) call(method string, args, reply interface{}) error {
 func TestUnknownMethodCall(t *testing.T) {
 	clientConn, _ := startServer("continuetestprog", 0, t, [3]string{}, nil)
 	client := &brokenRPCClient{jsonrpc.NewClient(clientConn)}
-	client.call("SetApiVersion", api.SetAPIVersionIn{APIVersion: 2}, &api.SetAPIVersionOut{})
 	defer client.Detach(true)
 	var out int
 	err := client.call("NonexistentRPCCall", nil, &out)
