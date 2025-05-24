@@ -1,6 +1,11 @@
 # README
 
-Note: 该项目fork自go-delve/delve，本项目做了一些功能删减，以使其适合作为电子书《go符号级调试器设计开发》的示例，方便读者朋友能更方便快速地了解调试器设计开发的核心知识点。
+Note: 该项目 fork 自 go-delve/delve，本项目做了一些功能删减，以使其适合作为电子书《go 符号级调试器设计开发》的示例，方便读者朋友能更方便快速地了解调试器设计开发的核心知识点。
+
+...
+
+2025/05/24，这个 delve 版本太久了(3.5 年前的版本），最多支持到 go1.17。但是我希望读者朋友使用较新的 go 版本 1.24 也可以正常使用。
+所以这个项目要先暂时 archieve 一下。然后我重新从最新 delve 最新版拉一个分支出来。
 
 ---
 
@@ -8,7 +13,7 @@ Note: 该项目fork自go-delve/delve，本项目做了一些功能删减，以�
 
 [![license](http://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/go-delve/delve/master/LICENSE)
 [![GoDoc](https://godoc.org/github.com/go-delve/delve?status.svg)](https://godoc.org/github.com/go-delve/delve)
-[![Build Status](https://delve.beta.teamcity.com/app/rest/builds/buildType:(id:Delve_AggregatorBuild)/statusIcon.svg)](https://delve.beta.teamcity.com/viewType.html?buildTypeId=Delve_AggregatorBuild&guest=1)
+[![Build Status](<https://delve.beta.teamcity.com/app/rest/builds/buildType:(id:Delve_AggregatorBuild)/statusIcon.svg>)](https://delve.beta.teamcity.com/viewType.html?buildTypeId=Delve_AggregatorBuild&guest=1)
 
 The GitHub issue tracker is for **bugs** only. Please use the [developer mailing list](https://groups.google.com/forum/#!forum/delve-dev) for any feature proposals and discussions.
 
