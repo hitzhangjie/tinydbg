@@ -18,7 +18,6 @@ import (
 	"github.com/go-delve/delve/pkg/version"
 	"github.com/go-delve/delve/service"
 	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/dap"
 	"github.com/go-delve/delve/service/debugger"
 	"github.com/go-delve/delve/service/internal/sameuser"
 	"github.com/go-delve/delve/service/rpc2"
@@ -139,7 +138,7 @@ func (s *ServerImpl) Run() error {
 				}
 			}
 
-			go s.serveConnectionDemux(c)
+			go s.serveConnection(c)
 			if !s.config.AcceptMulti {
 				break
 			}
@@ -153,21 +152,10 @@ type bufReadWriteCloser struct {
 	io.WriteCloser
 }
 
-func (s *ServerImpl) serveConnectionDemux(c io.ReadWriteCloser) {
+func (s *ServerImpl) serveConnection(c io.ReadWriteCloser) {
 	conn := &bufReadWriteCloser{bufio.NewReader(c), c}
-	b, err := conn.Peek(1)
-	if err != nil {
-		s.log.Warnf("error determining new connection protocol: %v", err)
-		return
-	}
-	if b[0] == 'C' { // C is for DAP's Content-Length
-		s.log.Debugf("serving DAP on new connection")
-		ds := dap.NewSession(conn, &dap.Config{Config: s.config, StopTriggered: s.stopChan}, s.debugger)
-		go ds.ServeDAPCodec()
-	} else {
-		s.log.Debugf("serving JSON-RPC on new connection")
-		go s.serveJSONCodec(conn)
-	}
+	s.log.Debugf("serving JSON-RPC on new connection")
+	go s.serveJSONCodec(conn)
 }
 
 func finishMethodsMapInit(methods map[string]*methodType) {

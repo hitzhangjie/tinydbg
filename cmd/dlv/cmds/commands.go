@@ -25,7 +25,6 @@ import (
 	"github.com/go-delve/delve/pkg/terminal"
 	"github.com/go-delve/delve/service"
 	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/dap"
 	"github.com/go-delve/delve/service/debugger"
 	"github.com/go-delve/delve/service/rpc2"
 	"github.com/go-delve/delve/service/rpccommon"
@@ -61,11 +60,6 @@ var (
 	tty string
 	// disableASLR is used to disable ASLR
 	disableASLR bool
-
-	// dapClientAddr is dap subcommand's flag that specifies the address of a DAP client.
-	// If it is specified, the dap server starts a debug session by dialing to the client.
-	// The dap server will serve only for the debug session.
-	dapClientAddr string
 
 	// checkGoVersion is true if the debugger should check the version of Go
 	// used to compile the executable and refuse to work on incompatible
@@ -135,12 +129,12 @@ func New(docCall bool) *cobra.Command {
 
 	rootCommand.PersistentFlags().BoolVarP(&logFlag, "log", "", false, "Enable debugging server logging.")
 	rootCommand.PersistentFlags().StringVarP(&logOutput, "log-output", "", "", `Comma separated list of components that should produce debug output (see 'dlv help log')`)
-	must(rootCommand.RegisterFlagCompletionFunc("log-output", cobra.FixedCompletions([]string{"debugger", "gdbwire", "lldbout", "debuglineerr", "rpc", "dap", "fncall", "minidump", "stack"}, cobra.ShellCompDirectiveNoFileComp)))
+	must(rootCommand.RegisterFlagCompletionFunc("log-output", cobra.FixedCompletions([]string{"debugger", "debuglineerr", "rpc", "fncall", "stack"}, cobra.ShellCompDirectiveNoFileComp)))
 	rootCommand.PersistentFlags().StringVarP(&logDest, "log-dest", "", "", "Writes logs to the specified file or file descriptor (see 'dlv help log').")
 	must(rootCommand.MarkPersistentFlagFilename("log-dest", "log"))
 
-	rootCommand.PersistentFlags().BoolVarP(&headless, "headless", "", false, "Run debug server only, in headless mode. Server will accept both JSON-RPC or DAP client connections.")
-	rootCommand.PersistentFlags().BoolVarP(&acceptMulti, "accept-multiclient", "", false, "Allows a headless server to accept multiple client connections via JSON-RPC or DAP.")
+	rootCommand.PersistentFlags().BoolVarP(&headless, "headless", "", false, "Run debug server only, in headless mode. Server will accept JSON-RPC client connections.")
+	rootCommand.PersistentFlags().BoolVarP(&acceptMulti, "accept-multiclient", "", false, "Allows a headless server to accept multiple client connections via JSON-RPC.")
 	rootCommand.PersistentFlags().StringVar(&initFile, "init", "", "Init file, executed by the terminal client.")
 	must(rootCommand.MarkPersistentFlagFilename("init"))
 	rootCommand.PersistentFlags().StringVar(&buildFlags, "build-flags", buildFlagsDefault, "Build flags, to be passed to the compiler. For example: --build-flags=\"-tags=integration -mod=vendor -cover -v\"")
@@ -202,38 +196,6 @@ option to let the process continue or kill it.
 		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	rootCommand.AddCommand(connectCommand)
-
-	// 'dap' subcommand.
-	dapCommand := &cobra.Command{
-		Use:   "dap",
-		Short: "Starts a headless TCP server communicating via Debug Adaptor Protocol (DAP).",
-		Long: `Starts a headless TCP server communicating via Debug Adaptor Protocol (DAP).
-
-The server is always headless and requires a DAP client like VS Code to connect and request a binary
-to be launched or a process to be attached to. The following modes can be specified via the client's launch config:
-- launch + exec   (executes precompiled binary, like 'dlv exec')
-- launch + debug  (builds and launches, like 'dlv debug')
-- launch + core   (replays a core dump file, like 'dlv core')
-- attach + local  (attaches to a running process, like 'dlv attach')
-
-Program and output binary paths will be interpreted relative to dlv's working directory.
-
-This server does not accept multiple client connections (--accept-multiclient).
-Use 'dlv [command] --headless' instead and a DAP client with attach + remote config.
-While --continue is not supported, stopOnEntry launch/attach attribute can be used to control if
-execution is resumed at the start of the debug session.
-
-The --client-addr flag is a special flag that makes the server initiate a debug session
-by dialing in to the host:port where a DAP client is waiting. This server process
-will exit when the debug session ends.`,
-		Run:               dapCmd,
-		ValidArgsFunction: cobra.NoFileCompletions,
-	}
-	dapCommand.Flags().StringVar(&dapClientAddr, "client-addr", "", "Address where the DAP client is waiting for the DAP server to dial in. Prefix with 'unix:' to use a unix domain socket.")
-	must(dapCommand.RegisterFlagCompletionFunc("client-addr", cobra.NoFileCompletions))
-
-	// TODO(polina): support --tty when dlv dap allows to launch a program from command-line
-	rootCommand.AddCommand(dapCommand)
 
 	// 'debug' subcommand.
 	debugCommand := &cobra.Command{
@@ -362,7 +324,6 @@ names selected from this list:
 	debugger	Log debugger commands
 	debuglineerr	Log recoverable errors reading .debug_line
 	rpc		Log all RPC messages
-	dap		Log all DAP messages
 	fncall		Log function call protocol
 	stack           Log stacktracer
 
@@ -429,80 +390,6 @@ File redirects can also be changed using the 'restart' command.
 	configUsageFunc(rootCommand)
 
 	return rootCommand
-}
-
-func dapCmd(cmd *cobra.Command, args []string) {
-	status := func() int {
-		if err := logflags.Setup(logFlag, logOutput, logDest); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
-		}
-		defer logflags.Close()
-
-		if loadConfErr != nil {
-			logflags.DebuggerLogger().Errorf("%v", loadConfErr)
-		}
-
-		if cmd.Flag("headless").Changed {
-			fmt.Fprintf(os.Stderr, "Warning: dap mode is always headless\n")
-		}
-		if acceptMulti {
-			fmt.Fprintf(os.Stderr, "Warning: accept-multiclient mode not supported with dap\n")
-		}
-		if initFile != "" {
-			fmt.Fprint(os.Stderr, "Warning: init file ignored with dap\n")
-		}
-		if continueOnStart {
-			fmt.Fprintf(os.Stderr, "Warning: continue ignored with dap; specify via launch/attach request instead\n")
-		}
-		if buildFlags != "" {
-			fmt.Fprintf(os.Stderr, "Warning: build flags ignored with dap; specify via launch/attach request instead\n")
-		}
-		if workingDir != "" {
-			fmt.Fprintf(os.Stderr, "Warning: working directory ignored with dap: specify via launch request instead\n")
-		}
-		dlvArgs, targetArgs := splitArgs(cmd, args)
-		if len(dlvArgs) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: debug arguments ignored with dap; specify via launch/attach request instead\n")
-		}
-		if len(targetArgs) > 0 {
-			fmt.Fprintf(os.Stderr, "Warning: program flags ignored with dap; specify via launch/attach request instead\n")
-		}
-
-		disconnectChan := make(chan struct{})
-		cfg := &service.Config{
-			DisconnectChan: disconnectChan,
-			Debugger: debugger.Config{
-				Foreground:           true, // server always runs without terminal client
-				DebugInfoDirectories: conf.DebugInfoDirectories,
-				CheckGoVersion:       checkGoVersion,
-				DisableASLR:          disableASLR,
-			},
-			CheckLocalConnUser: checkLocalConnUser,
-		}
-		var conn net.Conn
-		if dapClientAddr == "" {
-			listener, err := netListen(addr)
-			if err != nil {
-				fmt.Printf("couldn't start listener: %s\n", err)
-				return 1
-			}
-			cfg.Listener = listener
-		} else { // with a predetermined client.
-			conn = netDial(dapClientAddr)
-		}
-
-		server := dap.NewServer(cfg)
-		defer server.Stop()
-		if conn == nil {
-			server.Run()
-		} else { // work with a predetermined client.
-			server.RunWithClient(conn)
-		}
-		waitForDisconnectSignal(disconnectChan)
-		return 0
-	}()
-	os.Exit(status)
 }
 
 func buildBinary(cmd *cobra.Command, args []string, isTest bool) (string, bool) {

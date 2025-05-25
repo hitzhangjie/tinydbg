@@ -24,7 +24,7 @@ import (
 // called.
 func Prepare(cmd *cobra.Command) {
 	switch cmd.Name() {
-	case "dlv", "help", "run", "version":
+	case "dlv", "help", "version":
 		hideAllFlags(cmd)
 	case "attach":
 		hideFlag(cmd, "build-flags")
@@ -43,26 +43,10 @@ func Prepare(cmd *cobra.Command) {
 		hideFlag(cmd, "only-same-user")
 		hideFlag(cmd, "redirect")
 		hideFlag(cmd, "wd")
-	case "dap":
-		hideFlag(cmd, "headless")
-		hideFlag(cmd, "accept-multiclient")
-		hideFlag(cmd, "init")
-		hideFlag(cmd, "backend")
-		hideFlag(cmd, "build-flags")
-		hideFlag(cmd, "wd")
-		hideFlag(cmd, "redirect")
-		hideFlag(cmd, "api-version")
-		hideFlag(cmd, "allow-non-terminal-interactive")
-	case "debug", "test":
+	case "debug":
 		// All flags apply
 	case "exec":
 		hideFlag(cmd, "build-flags")
-	case "replay", "core":
-		hideFlag(cmd, "backend")
-		hideFlag(cmd, "build-flags")
-		hideFlag(cmd, "disable-aslr")
-		hideFlag(cmd, "redirect")
-		hideFlag(cmd, "wd")
 	case "trace":
 		hideFlag(cmd, "accept-multiclient")
 		hideFlag(cmd, "allow-non-terminal-interactive")

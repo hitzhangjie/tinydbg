@@ -92,16 +92,6 @@ func rpcLogger(flag bool) Logger {
 	return makeLogger(flag, "layer", "rpc")
 }
 
-// DAP returns true if dap package should log.
-func DAP() bool {
-	return dap
-}
-
-// DAPLogger returns a logger for dap package.
-func DAPLogger() Logger {
-	return makeLogger(dap, "layer", "dap")
-}
-
 // FnCall returns true if the function call protocol should be logged.
 func FnCall() bool {
 	return fnCall
@@ -118,11 +108,6 @@ func Stack() bool {
 
 func StackLogger() Logger {
 	return makeLogger(stack, "layer", "core", "kind", "stack")
-}
-
-// WriteDAPListeningMessage writes the "DAP server listening" message in dap mode.
-func WriteDAPListeningMessage(addr net.Addr) {
-	writeListeningMessage("DAP", addr)
 }
 
 // WriteAPIListeningMessage writes the "API server listening" message in headless mode.
@@ -198,8 +183,6 @@ func Setup(logFlag bool, logstr, logDest string) error {
 			debugLineErrors = true
 		case "rpc":
 			rpc = true
-		case "dap":
-			dap = true
 		case "fncall":
 			fnCall = true
 		case "stack":
