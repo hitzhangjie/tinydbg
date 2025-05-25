@@ -349,19 +349,6 @@ File redirects can also be changed using the 'restart' command.
 `,
 	})
 
-	// Move completion and help commands to Other Commands group
-	rootCommand.AddCommand(&cobra.Command{
-		Use:    "completion",
-		Short:  "Output shell completion code",
-		Hidden: true,
-	})
-
-	rootCommand.AddCommand(&cobra.Command{
-		Use:    "help",
-		Short:  "Help about any command",
-		Hidden: true,
-	})
-
 	rootCommand.AddCommand(&cobra.Command{
 		Use:    "substitute-path-guess-helper",
 		Hidden: true,
