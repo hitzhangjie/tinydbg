@@ -1046,7 +1046,6 @@ func (stack *evalStack) executeOp() {
 	scope, ops, curthread := stack.scope, stack.ops, stack.curthread
 	defer func() {
 		err := recover()
-		logflags.Bug.Inc()
 		if err != nil {
 			stack.err = fmt.Errorf("internal debugger error: %v (recovered)\n%s", err, string(debug.Stack()))
 		}

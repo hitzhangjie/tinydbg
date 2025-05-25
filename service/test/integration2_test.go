@@ -2534,12 +2534,11 @@ func TestStopServerWithClosedListener(t *testing.T) {
 	assertNoError(err, t, "listener")
 	fixture := protest.BuildFixture("math", 0)
 	server := rpccommon.NewServer(&service.Config{
-		Listener:           listener,
-		AcceptMulti:        false,
-		APIVersion:         2,
-		CheckLocalConnUser: true,
-		DisconnectChan:     make(chan struct{}),
-		ProcessArgs:        []string{fixture.Path},
+		Listener:       listener,
+		AcceptMulti:    false,
+		APIVersion:     2,
+		DisconnectChan: make(chan struct{}),
+		ProcessArgs:    []string{fixture.Path},
 		Debugger: debugger.Config{
 			WorkingDir:  ".",
 			Foreground:  false,

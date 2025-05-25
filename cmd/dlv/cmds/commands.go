@@ -393,9 +393,13 @@ File redirects can also be changed using the 'restart' command.
 }
 
 func buildBinary(cmd *cobra.Command, args []string, isTest bool) (string, bool) {
-	outputFlag := cmd.Flag("output").Value.String()
+	if isTest {
+		panic("not supported mode: test")
+	}
+	var outputFlag = cmd.Flag("output").Value.String()
 	var debugname string
 	var err error
+
 	if outputFlag == "" {
 		if isTest {
 			debugname = gobuild.DefaultDebugBinaryPath("debug.test")
@@ -410,11 +414,7 @@ func buildBinary(cmd *cobra.Command, args []string, isTest bool) (string, bool) 
 		}
 	}
 
-	if isTest {
-		err = gobuild.GoTestBuild(debugname, args, buildFlags)
-	} else {
-		err = gobuild.GoBuild(debugname, args, buildFlags)
-	}
+	err = gobuild.GoBuild(debugname, args, buildFlags)
 	if err != nil {
 		if outputFlag == "" {
 			gobuild.Remove(debugname)
@@ -849,11 +849,10 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 
 	// Create and start a debugger server
 	server = rpccommon.NewServer(&service.Config{
-		Listener:           listener,
-		ProcessArgs:        processArgs,
-		AcceptMulti:        acceptMulti,
-		CheckLocalConnUser: checkLocalConnUser,
-		DisconnectChan:     disconnectChan,
+		Listener:       listener,
+		ProcessArgs:    processArgs,
+		AcceptMulti:    acceptMulti,
+		DisconnectChan: disconnectChan,
 		Debugger: debugger.Config{
 			AttachPid:             attachPid,
 			WorkingDir:            workingDir,

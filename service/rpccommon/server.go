@@ -19,7 +19,6 @@ import (
 	"github.com/go-delve/delve/service"
 	"github.com/go-delve/delve/service/api"
 	"github.com/go-delve/delve/service/debugger"
-	"github.com/go-delve/delve/service/internal/sameuser"
 	"github.com/go-delve/delve/service/rpc2"
 )
 
@@ -128,13 +127,6 @@ func (s *ServerImpl) Run() error {
 					return
 				default:
 					panic(err)
-				}
-			}
-
-			if s.config.CheckLocalConnUser {
-				if !sameuser.CanAccept(s.listener.Addr(), c.LocalAddr(), c.RemoteAddr()) {
-					c.Close()
-					continue
 				}
 			}
 
@@ -354,7 +346,6 @@ type internalErrorFrame struct {
 }
 
 func newInternalError(ierr interface{}, skip int) *internalError {
-	logflags.Bug.Inc()
 	r := &internalError{ierr, nil}
 	for i := skip; ; i++ {
 		pc, file, line, ok := runtime.Caller(i)

@@ -30,10 +30,6 @@ type Config struct {
 	// APIVersion selects which version of the API to serve (default: 1).
 	APIVersion int
 
-	// CheckLocalConnUser is true if the debugger should check that local
-	// connections come from the same user that started the headless server
-	CheckLocalConnUser bool
-
 	// DisconnectChan will be closed by the server when the client disconnects
 	DisconnectChan chan<- struct{}
 }

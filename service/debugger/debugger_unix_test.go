@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/creack/pty"
@@ -23,21 +22,9 @@ func TestDebugger_LaunchNoExecutablePerm(t *testing.T) {
 	buildtestdir := filepath.Join(fixturesDir, "buildtest")
 	debugname := "debug"
 	switchOS := map[string]string{
-		"darwin":  "linux",
-		"windows": "linux",
-		"freebsd": "windows",
-		"linux":   "windows",
+		"linux": "windows",
 	}
 	if runtime.GOARCH == "arm64" && runtime.GOOS == "linux" {
-		t.Setenv("GOARCH", "amd64")
-	}
-	if runtime.GOARCH == "ppc64le" && runtime.GOOS == "linux" {
-		t.Setenv("GOARCH", "amd64")
-	}
-	if runtime.GOARCH == "riscv64" && runtime.GOOS == "linux" {
-		t.Setenv("GOARCH", "amd64")
-	}
-	if runtime.GOARCH == "loong64" && runtime.GOOS == "linux" {
 		t.Setenv("GOARCH", "amd64")
 	}
 	t.Setenv("GOOS", switchOS[runtime.GOOS])
@@ -60,11 +47,6 @@ func TestDebugger_LaunchNoExecutablePerm(t *testing.T) {
 }
 
 func TestDebugger_LaunchWithTTY(t *testing.T) {
-	if os.Getenv("CI") == "true" {
-		if _, err := exec.LookPath("lsof"); err != nil {
-			t.Skip("skipping test in CI, system does not contain lsof")
-		}
-	}
 	// Ensure no env meddling is leftover from previous tests.
 	t.Setenv("GOOS", runtime.GOOS)
 	t.Setenv("GOARCH", runtime.GOARCH)
@@ -93,10 +75,6 @@ func TestDebugger_LaunchWithTTY(t *testing.T) {
 		t.Fatal(err)
 	}
 	openFileCmd, wantTTYName := "lsof", tty.Name()
-	if runtime.GOOS == "freebsd" {
-		openFileCmd = "fstat"
-		wantTTYName = strings.TrimPrefix(wantTTYName, "/dev/")
-	}
 	cmd := exec.Command(openFileCmd, "-p", fmt.Sprintf("%d", d.ProcessPid()))
 	result, err := cmd.CombinedOutput()
 	if err != nil {
