@@ -18,7 +18,6 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.ClearCheckpoint"] = &methodType{method: reflect.ValueOf(s.ClearCheckpoint)}
 	methods["RPCServer.Command"] = &methodType{method: reflect.ValueOf(s.Command)}
 	methods["RPCServer.CreateBreakpoint"] = &methodType{method: reflect.ValueOf(s.CreateBreakpoint)}
-	methods["RPCServer.CreateEBPFTracepoint"] = &methodType{method: reflect.ValueOf(s.CreateEBPFTracepoint)}
 	methods["RPCServer.CreateWatchpoint"] = &methodType{method: reflect.ValueOf(s.CreateWatchpoint)}
 	methods["RPCServer.DebugInfoDirectories"] = &methodType{method: reflect.ValueOf(s.DebugInfoDirectories)}
 	methods["RPCServer.Detach"] = &methodType{method: reflect.ValueOf(s.Detach)}
@@ -33,7 +32,6 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.FollowExecEnabled"] = &methodType{method: reflect.ValueOf(s.FollowExecEnabled)}
 	methods["RPCServer.FunctionReturnLocations"] = &methodType{method: reflect.ValueOf(s.FunctionReturnLocations)}
 	methods["RPCServer.GetBreakpoint"] = &methodType{method: reflect.ValueOf(s.GetBreakpoint)}
-	methods["RPCServer.GetBufferedTracepoints"] = &methodType{method: reflect.ValueOf(s.GetBufferedTracepoints)}
 	methods["RPCServer.GetThread"] = &methodType{method: reflect.ValueOf(s.GetThread)}
 	methods["RPCServer.GuessSubstitutePath"] = &methodType{method: reflect.ValueOf(s.GuessSubstitutePath)}
 	methods["RPCServer.IsMulticlient"] = &methodType{method: reflect.ValueOf(s.IsMulticlient)}

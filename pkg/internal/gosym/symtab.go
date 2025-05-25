@@ -9,7 +9,6 @@ package gosym
 import (
 	"bytes"
 	"debug/elf"
-	"debug/macho"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -145,15 +144,6 @@ func ProgContaining(elfFile *elf.File, addr uint64) *elf.Prog {
 	for _, p := range elfFile.Progs {
 		if addr >= p.Vaddr && addr < p.Vaddr+p.Filesz {
 			return p
-		}
-	}
-	return nil
-}
-
-func SegmentContaining(exe *macho.File, addr uint64) *macho.Segment {
-	for _, l := range exe.Loads {
-		if s, ok := l.(*macho.Segment); ok && s.Addr <= addr && addr < s.Addr+s.Filesz {
-			return s
 		}
 	}
 	return nil

@@ -3,7 +3,6 @@ module github.com/hitzhangjie/tinydbg
 go 1.21
 
 require (
-	github.com/cilium/ebpf v0.11.0
 	github.com/cosiner/argv v0.1.0
 	github.com/creack/pty v1.1.20
 	github.com/derekparker/trie v0.0.0-20230829180723-39f4de51ef7d
@@ -20,10 +19,10 @@ require (
 )
 
 require (
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 )

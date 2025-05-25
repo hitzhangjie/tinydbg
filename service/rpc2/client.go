@@ -226,12 +226,6 @@ func (c *RPCClient) Halt() (*api.DebuggerState, error) {
 	return &out.State, err
 }
 
-func (c *RPCClient) GetBufferedTracepoints() ([]api.TracepointResult, error) {
-	var out GetBufferedTracepointsOut
-	err := c.call("GetBufferedTracepoints", GetBufferedTracepointsIn{}, &out)
-	return out.TracepointResults, err
-}
-
 func (c *RPCClient) GetBreakpoint(id int) (*api.Breakpoint, error) {
 	var out GetBreakpointOut
 	err := c.call("GetBreakpoint", GetBreakpointIn{id, ""}, &out)
@@ -261,11 +255,6 @@ func (c *RPCClient) CreateBreakpointWithExpr(breakPoint *api.Breakpoint, locExpr
 	var out CreateBreakpointOut
 	err := c.call("CreateBreakpoint", CreateBreakpointIn{*breakPoint, locExpr, substitutePathRules, suspended}, &out)
 	return &out.Breakpoint, err
-}
-
-func (c *RPCClient) CreateEBPFTracepoint(fnName string) error {
-	var out CreateEBPFTracepointOut
-	return c.call("CreateEBPFTracepoint", CreateEBPFTracepointIn{FunctionName: fnName}, &out)
 }
 
 func (c *RPCClient) CreateWatchpoint(scope api.EvalScope, expr string, wtype api.WatchType) (*api.Breakpoint, error) {

@@ -209,7 +209,7 @@ func TestExecuteFile(t *testing.T) {
 	}
 
 	fixturesDir := test.FindFixturesDir()
-	err := c.executeFile(nil, filepath.Join(fixturesDir, "bpfile"))
+	err := c.executeFile(nil, filepath.Join(fixturesDir, "sourcefile"))
 	if err != nil {
 		t.Fatalf("executeFile: %v", err)
 	}

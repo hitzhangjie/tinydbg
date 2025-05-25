@@ -11,7 +11,6 @@ import (
 	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
 	"github.com/hitzhangjie/tinydbg/pkg/goversion"
 	"github.com/hitzhangjie/tinydbg/pkg/logflags"
-	"github.com/hitzhangjie/tinydbg/pkg/proc/internal/ebpf"
 )
 
 var (
@@ -420,50 +419,6 @@ type UProbeTraceResult struct {
 	IsRet        bool
 	InputParams  []*Variable
 	ReturnParams []*Variable
-}
-
-func (t *Target) GetBufferedTracepoints() []*UProbeTraceResult {
-	var results []*UProbeTraceResult
-	tracepoints := t.proc.GetBufferedTracepoints()
-	convertInputParamToVariable := func(ip *ebpf.RawUProbeParam) *Variable {
-		v := &Variable{}
-		v.RealType = ip.RealType
-		v.Len = ip.Len
-		v.Base = ip.Base
-		v.Addr = ip.Addr
-		v.Kind = ip.Kind
-
-		if v.RealType == nil {
-			v.Unreadable = errors.New("type not supported by ebpf")
-			return v
-		}
-
-		cachedMem := CreateLoadedCachedMemory(ip.Data)
-		compMem, _ := CreateCompositeMemory(cachedMem, t.BinInfo().Arch, op.DwarfRegisters{}, ip.Pieces, ip.RealType.Common().ByteSize)
-		v.mem = compMem
-
-		// Load the value here so that we don't have to export
-		// loadValue outside of proc.
-		v.loadValue(loadFullValue)
-
-		return v
-	}
-	for _, tp := range tracepoints {
-		r := &UProbeTraceResult{}
-		r.FnAddr = tp.FnAddr
-		r.GoroutineID = tp.GoroutineID
-		r.IsRet = tp.IsRet
-		for _, ip := range tp.InputParams {
-			v := convertInputParamToVariable(ip)
-			r.InputParams = append(r.InputParams, v)
-		}
-		for _, ip := range tp.ReturnParams {
-			v := convertInputParamToVariable(ip)
-			r.ReturnParams = append(r.ReturnParams, v)
-		}
-		results = append(results, r)
-	}
-	return results
 }
 
 // ResumeNotify specifies a channel that will be closed the next time

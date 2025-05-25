@@ -9,12 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/hitzhangjie/tinydbg/pkg/config"
 	"github.com/hitzhangjie/tinydbg/pkg/gobuild"
@@ -72,7 +70,6 @@ var (
 	traceExecFile      string
 	traceTestBinary    bool
 	traceStackDepth    int
-	traceUseEBPF       bool
 	traceShowTimestamp bool
 	traceFollowCalls   int
 
@@ -271,7 +268,6 @@ only see the output of the trace operations you can redirect stdout.`,
 	traceCommand.Flags().StringVarP(&traceExecFile, "exec", "e", "", "Binary file to exec and trace.")
 	must(traceCommand.MarkFlagFilename("exec"))
 	traceCommand.Flags().BoolVarP(&traceTestBinary, "test", "t", false, "Trace a test binary.")
-	traceCommand.Flags().BoolVarP(&traceUseEBPF, "ebpf", "", false, "Trace using eBPF (experimental).")
 	traceCommand.Flags().BoolVarP(&traceShowTimestamp, "timestamp", "", false, "Show timestamp in the output")
 	traceCommand.Flags().IntVarP(&traceStackDepth, "stack", "s", 0, "Show stack trace with given depth. (Ignored with --ebpf)")
 	must(traceCommand.RegisterFlagCompletionFunc("stack", cobra.NoFileCompletions))
@@ -539,57 +535,48 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 		}
 		success := false
 		for i := range funcs {
-			if traceUseEBPF {
-				err := client.CreateEBPFTracepoint(funcs[i])
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "unable to set tracepoint on function %s: %#v\n", funcs[i], err)
-				} else {
-					success = true
-				}
+			// Fall back to breakpoint based tracing if we get an error.
+			var stackdepth int
+			// Default size of stackdepth to trace function calls and descendants=20
+			stackdepth = traceStackDepth
+			if traceFollowCalls > 0 && stackdepth == 0 {
+				stackdepth = 20
+			}
+			_, err = client.CreateBreakpoint(&api.Breakpoint{
+				FunctionName:     funcs[i],
+				Tracepoint:       true,
+				Line:             -1,
+				Stacktrace:       stackdepth,
+				LoadArgs:         &terminal.ShortLoadConfig,
+				TraceFollowCalls: traceFollowCalls,
+				RootFuncName:     regexp,
+			})
+
+			if err != nil && !isBreakpointExistsErr(err) {
+				fmt.Fprintf(os.Stderr, "unable to set tracepoint on function %s: %#v\n", funcs[i], err)
+				continue
 			} else {
-				// Fall back to breakpoint based tracing if we get an error.
-				var stackdepth int
-				// Default size of stackdepth to trace function calls and descendants=20
-				stackdepth = traceStackDepth
-				if traceFollowCalls > 0 && stackdepth == 0 {
-					stackdepth = 20
-				}
+				success = true
+			}
+			addrs, err := client.FunctionReturnLocations(funcs[i])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "unable to set tracepoint on function %s: %#v\n", funcs[i], err)
+				continue
+			}
+			for i := range addrs {
 				_, err = client.CreateBreakpoint(&api.Breakpoint{
-					FunctionName:     funcs[i],
-					Tracepoint:       true,
-					Line:             -1,
+					Addr:             addrs[i],
+					TraceReturn:      true,
 					Stacktrace:       stackdepth,
+					Line:             -1,
 					LoadArgs:         &terminal.ShortLoadConfig,
 					TraceFollowCalls: traceFollowCalls,
 					RootFuncName:     regexp,
 				})
-
 				if err != nil && !isBreakpointExistsErr(err) {
 					fmt.Fprintf(os.Stderr, "unable to set tracepoint on function %s: %#v\n", funcs[i], err)
-					continue
 				} else {
 					success = true
-				}
-				addrs, err := client.FunctionReturnLocations(funcs[i])
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "unable to set tracepoint on function %s: %#v\n", funcs[i], err)
-					continue
-				}
-				for i := range addrs {
-					_, err = client.CreateBreakpoint(&api.Breakpoint{
-						Addr:             addrs[i],
-						TraceReturn:      true,
-						Stacktrace:       stackdepth,
-						Line:             -1,
-						LoadArgs:         &terminal.ShortLoadConfig,
-						TraceFollowCalls: traceFollowCalls,
-						RootFuncName:     regexp,
-					})
-					if err != nil && !isBreakpointExistsErr(err) {
-						fmt.Fprintf(os.Stderr, "unable to set tracepoint on function %s: %#v\n", funcs[i], err)
-					} else {
-						success = true
-					}
 				}
 			}
 		}
@@ -605,48 +592,7 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 		t.SetTraceNonInteractive()
 		t.RedirectTo(os.Stderr)
 		defer t.Close()
-		if traceUseEBPF {
-			done := make(chan struct{})
-			defer close(done)
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					default:
-						tracepoints, err := client.GetBufferedTracepoints()
-						if err != nil {
-							panic(err)
-						}
-						for _, t := range tracepoints {
-							var params strings.Builder
-							for _, p := range t.InputParams {
-								if params.Len() > 0 {
-									params.WriteString(", ")
-								}
-								if p.Kind == reflect.String {
-									params.WriteString(fmt.Sprintf("%q", p.Value))
-								} else {
-									params.WriteString(p.Value)
-								}
-							}
 
-							if traceShowTimestamp {
-								fmt.Fprintf(os.Stderr, "%s ", time.Now().Format(time.RFC3339Nano))
-							}
-
-							if t.IsRet {
-								for _, p := range t.ReturnParams {
-									fmt.Fprintf(os.Stderr, "=> %#v\n", p.Value)
-								}
-							} else {
-								fmt.Fprintf(os.Stderr, "> (%d) %s(%s)\n", t.GoroutineID, t.FunctionName, params.String())
-							}
-						}
-					}
-				}
-			}()
-		}
 		err = cmds.Call("continue", t)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

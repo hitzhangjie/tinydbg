@@ -2,7 +2,6 @@ package proc
 
 import (
 	"bytes"
-	"debug/dwarf"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -14,12 +13,7 @@ import (
 	"strconv"
 
 	"github.com/hitzhangjie/tinydbg/pkg/astutil"
-	"github.com/hitzhangjie/tinydbg/pkg/dwarf/godwarf"
-	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
-	"github.com/hitzhangjie/tinydbg/pkg/dwarf/reader"
-	"github.com/hitzhangjie/tinydbg/pkg/goversion"
 	"github.com/hitzhangjie/tinydbg/pkg/proc/evalop"
-	"github.com/hitzhangjie/tinydbg/pkg/proc/internal/ebpf"
 )
 
 const (
@@ -528,99 +522,6 @@ func (t *Target) SetBreakpoint(logicalID int, addr uint64, kind BreakpointKind, 
 
 // SetEBPFTracepoint will attach a uprobe to the function
 // specified by 'fnName'.
-func (t *Target) SetEBPFTracepoint(fnName string) error {
-	// Not every OS/arch that we support has support for eBPF,
-	// so check early and return an error if this is called on an
-	// unsupported system.
-	if !t.proc.SupportsBPF() {
-		return errors.New("eBPF is not supported")
-	}
-	fns, err := t.BinInfo().FindFunction(fnName)
-	if err != nil {
-		return err
-	}
-
-	// Get information on the Goroutine so we can tell the
-	// eBPF program where to find it in order to get the
-	// goroutine ID.
-	rdr := t.BinInfo().Images[0].DwarfReader()
-	rdr.SeekToTypeNamed("runtime.g")
-	typ, err := t.BinInfo().findType("runtime.g")
-	if err != nil {
-		return errors.New("could not find type for runtime.g")
-	}
-	var goidOffset int64
-	switch t := typ.(type) {
-	case *godwarf.StructType:
-		for _, field := range t.Field {
-			if field.Name == "goid" {
-				goidOffset = field.ByteOffset
-				break
-			}
-		}
-	}
-
-	for _, fn := range fns {
-		err := t.setEBPFTracepointOnFunc(fn, goidOffset)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *Target) setEBPFTracepointOnFunc(fn *Function, goidOffset int64) error {
-	// Start putting together the argument map. This will tell the eBPF program
-	// all of the arguments we want to trace and how to find them.
-
-	// Start looping through each argument / return parameter for the function we
-	// are setting the uprobe on. Parse location information so that we can pass it
-	// along to the eBPF program.
-	dwarfTree, err := fn.cu.image.getDwarfTree(fn.offset)
-	if err != nil {
-		return err
-	}
-	variablesFlags := reader.VariablesOnlyVisible
-	if t.BinInfo().Producer() != "" && goversion.ProducerAfterOrEqual(t.BinInfo().Producer(), 1, 15) {
-		variablesFlags |= reader.VariablesTrustDeclLine
-	}
-	_, l := t.BinInfo().EntryLineForFunc(fn)
-
-	var args []ebpf.UProbeArgMap
-	varEntries := reader.Variables(dwarfTree, fn.Entry, l, variablesFlags)
-	for _, entry := range varEntries {
-		_, dt, err := readVarEntry(entry.Tree, fn.cu.image)
-		if err != nil {
-			return err
-		}
-
-		offset, pieces, _, err := t.BinInfo().Location(entry, dwarf.AttrLocation, fn.Entry, op.DwarfRegisters{}, nil)
-		if err != nil {
-			return err
-		}
-		paramPieces := make([]int, 0, len(pieces))
-		for _, piece := range pieces {
-			if piece.Kind == op.RegPiece {
-				paramPieces = append(paramPieces, int(piece.Val))
-			}
-		}
-		isret, _ := entry.Val(dwarf.AttrVarParam).(bool)
-		offset += int64(t.BinInfo().Arch.PtrSize())
-		args = append(args, ebpf.UProbeArgMap{
-			Offset: offset,
-			Size:   dt.Size(),
-			Kind:   dt.Common().ReflectKind,
-			Pieces: paramPieces,
-			InReg:  len(pieces) > 0,
-			Ret:    isret,
-		})
-	}
-
-	//TODO(aarzilli): inlined calls?
-
-	// Finally, set the uprobe on the function.
-	return t.proc.SetUProbe(fn.Name, goidOffset, args)
-}
 
 // SetWatchpoint sets a data breakpoint at addr and stores it in the
 // process wide break point table.

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/hitzhangjie/tinydbg/pkg/elfwriter"
-	"github.com/hitzhangjie/tinydbg/pkg/proc/internal/ebpf"
 )
 
 // ProcessGroup is a group of processes that are resumed at the same time.
@@ -52,10 +51,6 @@ type ProcessInternal interface {
 
 	WriteBreakpoint(*Breakpoint) error
 	EraseBreakpoint(*Breakpoint) error
-
-	SupportsBPF() bool
-	SetUProbe(string, int64, []ebpf.UProbeArgMap) error
-	GetBufferedTracepoints() []ebpf.RawUProbeParams
 
 	// DumpProcessNotes returns ELF core notes describing the process and its threads.
 	// Implementing this method is optional.

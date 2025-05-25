@@ -8,7 +8,6 @@ import (
 	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
 	"github.com/hitzhangjie/tinydbg/pkg/elfwriter"
 	"github.com/hitzhangjie/tinydbg/pkg/proc"
-	"github.com/hitzhangjie/tinydbg/pkg/proc/internal/ebpf"
 )
 
 // ErrNoThreads core file did not contain any threads.
@@ -269,10 +268,6 @@ func (p *process) SupportsBPF() bool {
 	return false
 }
 
-func (p *process) SetUProbe(fnName string, goidOffset int64, args []ebpf.UProbeArgMap) error {
-	panic("not implemented")
-}
-
 // StartCallInjection notifies the backend that we are about to inject a function call.
 func (p *process) StartCallInjection() (func(), error) { return func() {}, nil }
 
@@ -470,8 +465,4 @@ func (p *process) MemoryMap() ([]proc.MemoryMapEntry, error) {
 
 func (p *process) DumpProcessNotes(notes []elfwriter.Note, threadDone func()) (threadsDone bool, out []elfwriter.Note, err error) {
 	return false, notes, nil
-}
-
-func (p *process) GetBufferedTracepoints() []ebpf.RawUProbeParams {
-	return nil
 }

@@ -360,37 +360,6 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 		return env.interfaceToStarlarkValue(&rpcRet), nil
 	})
 	doc["create_breakpoint"] = "builtin create_breakpoint(Breakpoint, LocExpr, SubstitutePathRules, Suspended)\n\ncreate_breakpoint creates a new breakpoint. The client is expected to populate `CreateBreakpointIn`\nwith an `api.Breakpoint` struct describing where to set the breakpoint. For more information on\nhow to properly request a breakpoint via the `api.Breakpoint` struct see the documentation for\n`debugger.CreateBreakpoint` here: https://pkg.go.dev/github.com/hitzhangjie/tinydbg/service/debugger#Debugger.CreateBreakpoint."
-	r["create_ebpf_tracepoint"] = starlark.NewBuiltin("create_ebpf_tracepoint", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		if err := isCancelled(thread); err != nil {
-			return starlark.None, decorateError(thread, err)
-		}
-		var rpcArgs rpc2.CreateEBPFTracepointIn
-		var rpcRet rpc2.CreateEBPFTracepointOut
-		if len(args) > 0 && args[0] != starlark.None {
-			err := unmarshalStarlarkValue(args[0], &rpcArgs.FunctionName, "FunctionName")
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		for _, kv := range kwargs {
-			var err error
-			switch kv[0].(starlark.String) {
-			case "FunctionName":
-				err = unmarshalStarlarkValue(kv[1], &rpcArgs.FunctionName, "FunctionName")
-			default:
-				err = fmt.Errorf("unknown argument %q", kv[0])
-			}
-			if err != nil {
-				return starlark.None, decorateError(thread, err)
-			}
-		}
-		err := env.ctx.Client().CallAPI("CreateEBPFTracepoint", &rpcArgs, &rpcRet)
-		if err != nil {
-			return starlark.None, err
-		}
-		return env.interfaceToStarlarkValue(&rpcRet), nil
-	})
-	doc["create_ebpf_tracepoint"] = "builtin create_ebpf_tracepoint(FunctionName)"
 	r["create_watchpoint"] = starlark.NewBuiltin("create_watchpoint", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)
@@ -912,19 +881,6 @@ func (env *Env) starlarkPredeclare() (starlark.StringDict, map[string]string) {
 		return env.interfaceToStarlarkValue(&rpcRet), nil
 	})
 	doc["get_breakpoint"] = "builtin get_breakpoint(Id, Name)\n\nget_breakpoint gets a breakpoint by Name (if Name is not an empty string) or by ID."
-	r["get_buffered_tracepoints"] = starlark.NewBuiltin("get_buffered_tracepoints", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		if err := isCancelled(thread); err != nil {
-			return starlark.None, decorateError(thread, err)
-		}
-		var rpcArgs rpc2.GetBufferedTracepointsIn
-		var rpcRet rpc2.GetBufferedTracepointsOut
-		err := env.ctx.Client().CallAPI("GetBufferedTracepoints", &rpcArgs, &rpcRet)
-		if err != nil {
-			return starlark.None, err
-		}
-		return env.interfaceToStarlarkValue(&rpcRet), nil
-	})
-	doc["get_buffered_tracepoints"] = "builtin get_buffered_tracepoints()"
 	r["get_thread"] = starlark.NewBuiltin("get_thread", func(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		if err := isCancelled(thread); err != nil {
 			return starlark.None, decorateError(thread, err)

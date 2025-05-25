@@ -691,16 +691,6 @@ func (d *Debugger) ConvertThreadBreakpoint(thread proc.Thread) *api.Breakpoint {
 	return nil
 }
 
-func (d *Debugger) CreateEBPFTracepoint(fnName string) error {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	if len(d.target.Targets()) != 1 {
-		return ErrNotImplementedWithMultitarget
-	}
-	p := d.target.Selected
-	return p.SetEBPFTracepoint(fnName)
-}
-
 // amendBreakpoint will update the breakpoint with the matching ID.
 // It also enables or disables the breakpoint.
 // We can consume this function to avoid locking a goroutine.
@@ -2087,32 +2077,6 @@ func (d *Debugger) BuildID() string {
 
 func (d *Debugger) AttachPid() int {
 	return d.config.AttachPid
-}
-
-func (d *Debugger) GetBufferedTracepoints() []api.TracepointResult {
-	traces := d.target.Selected.GetBufferedTracepoints()
-	if traces == nil {
-		return nil
-	}
-	results := make([]api.TracepointResult, len(traces))
-	for i, trace := range traces {
-		results[i].IsRet = trace.IsRet
-
-		f, l, fn := d.target.Selected.BinInfo().PCToLine(uint64(trace.FnAddr))
-
-		results[i].FunctionName = fn.Name
-		results[i].Line = l
-		results[i].File = f
-		results[i].GoroutineID = trace.GoroutineID
-
-		for _, p := range trace.InputParams {
-			results[i].InputParams = append(results[i].InputParams, *api.ConvertVar(p))
-		}
-		for _, p := range trace.ReturnParams {
-			results[i].ReturnParams = append(results[i].ReturnParams, *api.ConvertVar(p))
-		}
-	}
-	return results
 }
 
 // FollowExec enabled or disables follow exec mode.
