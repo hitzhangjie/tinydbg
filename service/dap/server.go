@@ -940,28 +940,12 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		return
 	}
 
-	if args.Program == "" && args.Mode != "replay" { // Only fail on modes requiring a program
+	if args.Program == "" { // Only fail on modes requiring a program
 		s.sendShowUserErrorResponse(request.Request, FailedToLaunch, "Failed to launch",
 			"The program attribute is missing in debug configuration.")
 		return
 	}
 
-	if args.Backend == "" {
-		args.Backend = "default"
-	}
-
-	if args.Mode == "replay" {
-		// Validate trace directory
-		if args.TraceDirPath == "" {
-			s.sendShowUserErrorResponse(request.Request, FailedToLaunch, "Failed to launch",
-				"The 'traceDirPath' attribute is missing in debug configuration.")
-			return
-		}
-
-		// Assign the rr trace directory path to debugger configuration
-		s.config.Debugger.CoreFile = args.TraceDirPath
-		args.Backend = "rr"
-	}
 	if args.Mode == "core" {
 		// Validate core dump path
 		if args.CoreFilePath == "" {
@@ -974,8 +958,6 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 		s.config.Debugger.CoreFile = args.CoreFilePath
 		args.Backend = "core"
 	}
-
-	s.config.Debugger.Backend = args.Backend
 
 	// Prepare the debug executable filename, building it if necessary
 	debugbinary := args.Program
@@ -1177,10 +1159,6 @@ func (s *Session) onLaunchRequest(request *dap.LaunchRequest) {
 			closeAll()
 		}
 		return
-	}
-	// Enable StepBack controls on supported backends
-	if s.config.Debugger.Backend == "rr" {
-		s.send(&dap.CapabilitiesEvent{Event: *newEvent("capabilities"), Body: dap.CapabilitiesEventBody{Capabilities: dap.Capabilities{SupportsStepBack: true}}})
 	}
 
 	// Notify the client that the debugger is ready to start accepting
@@ -1936,10 +1914,6 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 				"The 'processId' or 'waitFor' attribute is missing in debug configuration")
 			return
 		}
-		if args.Backend == "" {
-			args.Backend = "default"
-		}
-		s.config.Debugger.Backend = args.Backend
 		var err error
 		func() {
 			s.mu.Lock()
@@ -1965,10 +1939,6 @@ func (s *Session) onAttachRequest(request *dap.AttachRequest) {
 		if _, err := s.halt(); err != nil {
 			s.sendShowUserErrorResponse(request.Request, FailedToAttach, "Failed to attach", err.Error())
 			return
-		}
-		// Enable StepBack controls on supported backends
-		if s.config.Debugger.Backend == "rr" {
-			s.send(&dap.CapabilitiesEvent{Event: *newEvent("capabilities"), Body: dap.CapabilitiesEventBody{Capabilities: dap.Capabilities{SupportsStepBack: true}}})
 		}
 		// Customize termination options for debugger and debuggee
 		if s.config.AcceptMulti {

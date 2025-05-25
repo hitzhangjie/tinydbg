@@ -80,7 +80,7 @@ func TestCallInjectionFlagCorruption(t *testing.T) {
 	// debugCallV2, we work around this problem by restoring FLAGS, one extra
 	// time, after stepping out of debugCallV2.
 	// Fixes issue https://github.com/go-delve/delve/issues/2985
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 
 	withTestProcessArgs("badflags", t, ".", []string{"0"}, 0, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		mainfn := p.BinInfo().LookupFunc()["main.main"][0]

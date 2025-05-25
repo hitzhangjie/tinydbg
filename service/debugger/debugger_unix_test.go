@@ -86,7 +86,7 @@ func TestDebugger_LaunchWithTTY(t *testing.T) {
 	defer os.Remove(exepath)
 	var backend string
 	protest.DefaultTestBackend(&backend)
-	conf := &Config{TTY: tty.Name(), Backend: backend}
+	conf := &Config{TTY: tty.Name()}
 	pArgs := []string{exepath}
 	d, err := New(conf, pArgs)
 	if err != nil {

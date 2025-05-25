@@ -24,7 +24,6 @@ import (
 	"github.com/go-delve/delve/pkg/logflags"
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/core"
-	"github.com/go-delve/delve/pkg/proc/gdbserial"
 	"github.com/go-delve/delve/pkg/proc/native"
 	"github.com/go-delve/delve/service/api"
 )
@@ -113,9 +112,6 @@ type Config struct {
 	// CoreFile specifies the path to the core dump to open.
 	CoreFile string
 
-	// Backend specifies the debugger backend.
-	Backend string
-
 	// Foreground lets target process access stdin.
 	Foreground bool
 
@@ -196,14 +192,8 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 
 	case d.config.CoreFile != "":
 		var err error
-		switch d.config.Backend {
-		case "rr":
-			d.log.Infof("opening trace %s", d.config.CoreFile)
-			d.target, err = gdbserial.Replay(d.config.CoreFile, false, false, d.config.DebugInfoDirectories, d.config.RrOnProcessPid, "")
-		default:
-			d.log.Infof("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
-			d.target, err = core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
-		}
+		d.log.Infof("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
+		d.target, err = core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
 		if err != nil {
 			err = go11DecodeErrorCheck(err)
 			return nil, err
@@ -247,10 +237,6 @@ func (d *Debugger) canRestart() bool {
 }
 
 func (d *Debugger) checkGoVersion() error {
-	if d.isRecording() {
-		// do not do anything if we are still recording
-		return nil
-	}
 	producer := d.target.Selected.BinInfo().Producer()
 	if producer == "" {
 		return nil
@@ -280,96 +266,12 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.TargetGroup, e
 		launchFlags |= proc.LaunchDisableASLR
 	}
 
-	switch d.config.Backend {
-	case "native":
-		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
-	case "lldb":
-		return nil, fmt.Errorf("lldb backend is not supported on linux/amd64")
-	case "rr":
-		if d.target != nil {
-			// restart should not call us if the backend is 'rr'
-			panic("internal error: call to Launch with rr backend and target already exists")
-		}
-
-		run, stop, err := gdbserial.RecordAsync(processArgs, wd, false, d.config.Stdin, d.config.Stdout, d.config.Stderr)
-		if err != nil {
-			return nil, err
-		}
-
-		// let the initialization proceed but hold the targetMutex lock so that
-		// any other request to debugger will block except State(nowait=true) and
-		// Command(halt).
-		d.targetMutex.Lock()
-		d.recordingStart(stop)
-
-		go func() {
-			defer d.targetMutex.Unlock()
-
-			grp, err := d.recordingRun(run)
-			if err != nil {
-				d.log.Errorf("could not record target: %v", err)
-				// this is ugly, but we can't respond to any client requests at this
-				// point, so it's better if we die.
-				os.Exit(1)
-			}
-			d.recordingDone()
-			d.target = grp
-			if err := d.checkGoVersion(); err != nil {
-				d.log.Error(err)
-				err := d.target.Detach(true)
-				if err != nil {
-					d.log.Errorf("Error detaching from target: %v", err)
-				}
-			}
-		}()
-		return nil, nil
-
-	case "default":
-		return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
-	default:
-		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
-	}
-}
-
-func (d *Debugger) recordingStart(stop func() error) {
-	d.recordMutex.Lock()
-	d.stopRecording = stop
-	d.recordMutex.Unlock()
-}
-
-func (d *Debugger) recordingDone() {
-	d.recordMutex.Lock()
-	d.stopRecording = nil
-	d.recordMutex.Unlock()
-}
-
-func (d *Debugger) isRecording() bool {
-	d.recordMutex.Lock()
-	defer d.recordMutex.Unlock()
-	return d.stopRecording != nil
-}
-
-func (d *Debugger) recordingRun(run func() (string, error)) (*proc.TargetGroup, error) {
-	tracedir, err := run()
-	if err != nil && tracedir == "" {
-		return nil, err
-	}
-
-	return gdbserial.Replay(tracedir, false, true, d.config.DebugInfoDirectories, 0, strings.Join(d.processArgs, " "))
+	return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
 }
 
 // Attach will attach to the process specified by 'pid'.
 func (d *Debugger) Attach(pid int, path string, waitFor *proc.WaitFor) (*proc.TargetGroup, error) {
-	switch d.config.Backend {
-	case "native":
-		return native.Attach(pid, waitFor, d.config.DebugInfoDirectories)
-	case "lldb":
-		return nil, fmt.Errorf("lldb backend is not supported on linux/amd64")
-	case "default":
-		return native.Attach(pid, waitFor, d.config.DebugInfoDirectories)
-	default:
-		return nil, fmt.Errorf("unknown backend %q", d.config.Backend)
-	}
+	return native.Attach(pid, waitFor, d.config.DebugInfoDirectories)
 }
 
 // ProcessPid returns the PID of the process
@@ -508,14 +410,7 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 	}
 
 	if recorded {
-		run, stop, err2 := gdbserial.RecordAsync(d.processArgs, d.config.WorkingDir, false, d.config.Stdin, d.config.Stdout, d.config.Stderr)
-		if err2 != nil {
-			return nil, err2
-		}
-
-		d.recordingStart(stop)
-		grp, err = d.recordingRun(run)
-		d.recordingDone()
+		return nil, fmt.Errorf("recording is not supported with native backend")
 	} else {
 		grp, err = d.Launch(d.processArgs, d.config.WorkingDir)
 	}
@@ -535,10 +430,6 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 func (d *Debugger) State(nowait bool) (*api.DebuggerState, error) {
 	if d.IsRunning() && nowait {
 		return &api.DebuggerState{Running: true}, nil
-	}
-
-	if d.isRecording() && nowait {
-		return &api.DebuggerState{Recording: true}, nil
 	}
 
 	d.dumpState.Mutex.Lock()
@@ -2059,20 +1950,12 @@ func (d *Debugger) ExamineMemory(address uint64, length int) ([]byte, error) {
 
 func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
 	if d.config.CoreFile != "" {
-		if d.config.Backend == "rr" {
-			out.Backend = "rr"
-		} else {
-			out.Backend = "core"
-		}
+		out.Backend = "core"
 	} else {
-		if d.config.Backend == "default" {
-			out.Backend = "native"
-		} else {
-			out.Backend = d.config.Backend
-		}
+		out.Backend = "native"
 	}
 
-	if !d.isRecording() && !d.IsRunning() {
+	if !d.IsRunning() {
 		out.TargetGoVersion = d.target.Selected.BinInfo().Producer()
 	}
 

@@ -2312,7 +2312,7 @@ func TestVariablesLoading(t *testing.T) {
 					}
 
 					// Auto-loading works with call return variables as well
-					protest.MustSupportFunctionCalls(t, testBackend)
+					protest.MustSupportFunctionCalls(t)
 					client.EvaluateRequest("call rettm()", 1000, "repl")
 					got := client.ExpectEvaluateResponse(t)
 					ref = checkEval(t, got, "main.truncatedMap {v: []map[string]main.astruct len: 1, cap: 1, [[...]]}", hasChildren)
@@ -4350,7 +4350,7 @@ func TestVariableValueTruncation(t *testing.T) {
 // TestVariableLoadingOfLongStrings tests that different string loading limits
 // apply that depending on the context.
 func TestVariableLoadingOfLongStrings(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	runTest(t, "longstrings", func(client *daptest.Client, fixture protest.Fixture) {
 		runDebugSessionWithBPs(t, client, "launch",
 			// Launch
@@ -4423,7 +4423,7 @@ func TestVariableLoadingOfLongStrings(t *testing.T) {
 }
 
 func TestEvaluateCallRequest(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	runTest(t, "fncall", func(client *daptest.Client, fixture protest.Fixture) {
 		runDebugSessionWithBPs(t, client, "launch",
 			// Launch
@@ -4940,67 +4940,6 @@ func checkStopOnNextWhileNextingError(t *testing.T, client *daptest.Client, thre
 	if eInfo.Body.ExceptionId != "invalid command" || eInfo.Body.Description != BetterNextWhileNextingError {
 		t.Errorf("\ngot  %#v\nwant ExceptionId=\"invalid command\" Text=\"%s\"", eInfo, BetterNextWhileNextingError)
 	}
-}
-
-func TestBadAccess(t *testing.T) {
-	if runtime.GOOS != "darwin" || testBackend != "lldb" {
-		t.Skip("not applicable")
-	}
-	runTest(t, "issue2078", func(client *daptest.Client, fixture protest.Fixture) {
-		runDebugSessionWithBPs(t, client, "launch",
-			// Launch
-			func() {
-				client.LaunchRequest("exec", fixture.Path, !stopOnEntry)
-			},
-			// Set breakpoints
-			fixture.Source, []int{4},
-			[]onBreakpoint{{ // Stop at line 4
-				execute: func() {
-					checkStop(t, client, 1, "main.main", 4)
-
-					expectStoppedOnError := func(errorPrefix string) {
-						t.Helper()
-						se := client.ExpectStoppedEvent(t)
-						if se.Body.ThreadId != 1 || se.Body.Reason != "exception" || (se.Body.Description != "runtime error" && se.Body.Description != "panic") || !strings.Contains(se.Body.Text, errorPrefix) {
-							t.Errorf("\ngot  %#v\nwant ThreadId=1 Reason=\"exception\" Description=\"runtime error\" Text=\"%s\"", se, errorPrefix)
-						}
-						client.ExceptionInfoRequest(1)
-						eInfo := client.ExpectExceptionInfoResponse(t)
-						if (eInfo.Body.ExceptionId != "runtime error" && eInfo.Body.ExceptionId != "panic") || !strings.Contains(eInfo.Body.Description, errorPrefix) {
-							t.Errorf("\ngot  %#v\nwant ExceptionId=\"runtime error\" Text=\"%s\"", eInfo, errorPrefix)
-						}
-					}
-
-					client.ContinueRequest(1)
-					client.ExpectContinueResponse(t)
-					expectStoppedOnError("invalid memory address or nil pointer dereference")
-
-					client.StackTraceRequest(1, 0, 2)
-					st := client.ExpectStackTraceResponse(t)
-					if len(st.Body.StackFrames) > 0 && st.Body.StackFrames[0].Name == "runtime.fatalpanic" {
-						// this debugserver has --unmask-signals and it works correctly
-						return
-					}
-
-					client.NextRequest(1)
-					client.ExpectNextResponse(t)
-					expectStoppedOnError("invalid memory address or nil pointer dereference")
-
-					client.NextRequest(1)
-					client.ExpectNextResponse(t)
-					checkStopOnNextWhileNextingError(t, client, 1)
-
-					client.StepInRequest(1)
-					client.ExpectStepInResponse(t)
-					checkStopOnNextWhileNextingError(t, client, 1)
-
-					client.StepOutRequest(1)
-					client.ExpectStepOutResponse(t)
-					checkStopOnNextWhileNextingError(t, client, 1)
-				},
-				disconnect: true,
-			}})
-	})
 }
 
 // TestNextWhileNexting is inspired by command_test.TestIssue387 and tests
@@ -6303,7 +6242,7 @@ func TestSetVariable(t *testing.T) {
 
 // TestSetVariableWithCall tests SetVariable features that do not depend on function calls support.
 func TestSetVariableWithCall(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 
 	runTest(t, "testvariables", func(client *daptest.Client, fixture protest.Fixture) {
 		runDebugSessionWithBPs(t, client, "launch",
@@ -6774,7 +6713,7 @@ func launchDebuggerWithTargetHalted(t *testing.T, fixture string) (*protest.Fixt
 	fixbin := protest.BuildFixture(fixture, protest.AllNonOptimized)
 	cfg := service.Config{
 		ProcessArgs: []string{fixbin.Path},
-		Debugger:    debugger.Config{Backend: "default"},
+		Debugger:    debugger.Config{},
 	}
 	dbg, err := debugger.New(&cfg.Debugger, cfg.ProcessArgs) // debugger halts process on entry
 	if err != nil {
@@ -6787,7 +6726,7 @@ func attachDebuggerWithTargetHalted(t *testing.T, fixture string) (*exec.Cmd, *d
 	t.Helper()
 	fixbin := protest.BuildFixture(fixture, protest.AllNonOptimized)
 	cmd := execFixture(t, fixbin)
-	cfg := service.Config{Debugger: debugger.Config{Backend: "default", AttachPid: cmd.Process.Pid}}
+	cfg := service.Config{Debugger: debugger.Config{AttachPid: cmd.Process.Pid}}
 	dbg, err := debugger.New(&cfg.Debugger, nil) // debugger halts process on entry
 	if err != nil {
 		t.Fatal("failed to start debugger:", err)

@@ -76,14 +76,7 @@ func assertVariable(t testing.TB, variable *proc.Variable, expected varTest) {
 }
 
 func evalScope(p *proc.Target) (*proc.EvalScope, error) {
-	if testBackend != "rr" {
-		return proc.GoroutineScope(p, p.CurrentThread())
-	}
-	frame, err := findFirstNonRuntimeFrame(p)
-	if err != nil {
-		return nil, err
-	}
-	return proc.FrameToScope(p, p.Memory(), nil, p.CurrentThread().ThreadID(), frame), nil
+	return proc.GoroutineScope(p, p.CurrentThread())
 }
 
 func evalVariableWithCfg(p *proc.Target, symbol string, cfg proc.LoadConfig) (*proc.Variable, error) {
@@ -1274,7 +1267,7 @@ type testCaseCallFunction struct {
 func TestCallFunction(t *testing.T) {
 	skipOn(t, "broken - pie mode", "linux", "ppc64le", "native", "pie")
 
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	protest.AllowRecording(t)
 
 	var testcases = []testCaseCallFunction{
@@ -1962,7 +1955,7 @@ func TestClassicMap(t *testing.T) {
 }
 
 func TestCallFunctionRegisterArg(t *testing.T) {
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 23) {
 		t.Skip("not supported")
 	}

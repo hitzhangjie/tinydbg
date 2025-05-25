@@ -68,9 +68,7 @@ var (
 type LaunchConfig struct {
 	// Acceptable values are:
 	//   "debug": compiles your program with optimizations disabled, starts and attaches to it.
-	//   "test": compiles your unit test program with optimizations disabled, starts and attaches to it.
 	//   "exec": executes a precompiled binary and begins a debug session.
-	//   "replay": replays an rr trace.
 	//   "core": examines a core dump.
 	//
 	// Default is "debug".

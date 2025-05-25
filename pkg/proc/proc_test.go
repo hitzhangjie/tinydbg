@@ -31,8 +31,6 @@ import (
 	"github.com/go-delve/delve/pkg/goversion"
 	"github.com/go-delve/delve/pkg/logflags"
 	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/core"
-	"github.com/go-delve/delve/pkg/proc/gdbserial"
 	"github.com/go-delve/delve/pkg/proc/native"
 	protest "github.com/go-delve/delve/pkg/proc/test"
 	"github.com/go-delve/delve/service/api"
@@ -47,7 +45,6 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	flag.StringVar(&testBackend, "backend", "", "selects backend")
 	flag.StringVar(&buildMode, "test-buildmode", "", "selects build mode")
 	var logConf string
 	flag.StringVar(&logConf, "log", "", "configures logging")
@@ -111,18 +108,10 @@ func withTestProcessArgs(name string, t testing.TB, wd string, args []string, bu
 func startTestProcessArgs(fixture protest.Fixture, t testing.TB, wd string, args []string) *proc.TargetGroup {
 	var grp *proc.TargetGroup
 	var err error
-	var tracedir string
 
 	switch testBackend {
 	case "native":
 		grp, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", "", proc.OutputRedirect{}, proc.OutputRedirect{})
-	case "lldb":
-		grp, err = gdbserial.LLDBLaunch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", [3]string{})
-	case "rr":
-		protest.MustHaveRecordingAllowed(t)
-		t.Log("recording")
-		grp, tracedir, err = gdbserial.RecordAndReplay(append([]string{fixture.Path}, args...), wd, true, []string{}, "", proc.OutputRedirect{}, proc.OutputRedirect{})
-		t.Logf("replaying %q", tracedir)
 	default:
 		t.Fatal("unknown backend")
 	}
@@ -995,19 +984,7 @@ func findFirstNonRuntimeFrame(p *proc.Target) (proc.Stackframe, error) {
 }
 
 func evalVariableOrError(p *proc.Target, symbol string) (*proc.Variable, error) {
-	var scope *proc.EvalScope
-	var err error
-
-	if testBackend == "rr" {
-		var frame proc.Stackframe
-		frame, err = findFirstNonRuntimeFrame(p)
-		if err == nil {
-			scope = proc.FrameToScope(p, p.Memory(), nil, 0, frame)
-		}
-	} else {
-		scope, err = proc.GoroutineScope(p, p.CurrentThread())
-	}
-
+	scope, err := proc.GoroutineScope(p, p.CurrentThread())
 	if err != nil {
 		return nil, err
 	}
@@ -1978,8 +1955,6 @@ func TestUnsupportedArch(t *testing.T) {
 	switch testBackend {
 	case "native":
 		p, err = native.Launch([]string{outfile}, ".", 0, []string{}, "", "", proc.OutputRedirect{}, proc.OutputRedirect{})
-	case "lldb":
-		p, err = gdbserial.LLDBLaunch([]string{outfile}, ".", 0, []string{}, "", [3]string{})
 	default:
 		t.Skip("test not valid for this backend")
 	}
@@ -2336,15 +2311,7 @@ func TestIssue594(t *testing.T) {
 	protest.AllowRecording(t)
 	withTestProcess("issue594", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
-		var f string
-		var ln int
-		if testBackend == "rr" {
-			frame, err := findFirstNonRuntimeFrame(p)
-			assertNoError(err, t, "findFirstNonRuntimeFrame")
-			f, ln = frame.Current.File, frame.Current.Line
-		} else {
-			f, ln = currentLineNumber(p, t)
-		}
+		f, ln := currentLineNumber(p, t)
 		if ln != 21 {
 			t.Fatalf("Program stopped at %s:%d, expected :21", f, ln)
 		}
@@ -2473,16 +2440,6 @@ func TestNextInDeferReturn(t *testing.T) {
 }
 
 func TestAttachDetach(t *testing.T) {
-	if testBackend == "lldb" && runtime.GOOS == "linux" {
-		bs, _ := os.ReadFile("/proc/sys/kernel/yama/ptrace_scope")
-		if bs == nil || strings.TrimSpace(string(bs)) != "0" {
-			t.Logf("can not run TestAttachDetach: %v\n", bs)
-			return
-		}
-	}
-	if testBackend == "rr" {
-		return
-	}
 	var buildFlags protest.BuildFlags
 	if buildMode == "pie" {
 		buildFlags |= protest.BuildModePIE
@@ -2513,12 +2470,6 @@ func TestAttachDetach(t *testing.T) {
 	switch testBackend {
 	case "native":
 		p, err = native.Attach(cmd.Process.Pid, nil, []string{})
-	case "lldb":
-		path := ""
-		if runtime.GOOS == "darwin" {
-			path = fixture.Path
-		}
-		p, err = gdbserial.LLDBAttach(cmd.Process.Pid, path, nil, []string{})
 	default:
 		err = fmt.Errorf("unknown backend %q", testBackend)
 	}
@@ -2636,9 +2587,6 @@ func TestRecursiveNext(t *testing.T) {
 // TestIssue877 ensures that the environment variables starting with DYLD_ and LD_
 // are passed when executing the binary on OSX via debugserver
 func TestIssue877(t *testing.T) {
-	if runtime.GOOS != "darwin" && testBackend == "lldb" {
-		return
-	}
 	const envval = "/usr/local/lib"
 	t.Setenv("DYLD_LIBRARY_PATH", envval)
 	withTestProcess("issue877", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
@@ -2689,17 +2637,7 @@ func TestIssue871(t *testing.T) {
 	withTestProcess("issue871", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue")
 
-		var scope *proc.EvalScope
-		var err error
-		if testBackend == "rr" {
-			var frame proc.Stackframe
-			frame, err = findFirstNonRuntimeFrame(p)
-			if err == nil {
-				scope = proc.FrameToScope(p, p.Memory(), nil, 0, frame)
-			}
-		} else {
-			scope, err = proc.GoroutineScope(p, p.CurrentThread())
-		}
+		scope, err := proc.GoroutineScope(p, p.CurrentThread())
 		assertNoError(err, t, "scope")
 
 		locals, err := scope.LocalVariables(normalLoadConfig)
@@ -3304,7 +3242,7 @@ func TestIssue1101(t *testing.T) {
 			exitErr = grp.Continue()
 		}
 		if pexit, exited := exitErr.(proc.ErrProcessExited); exited {
-			if pexit.Status != 2 && testBackend != "lldb" && (runtime.GOOS != "linux" || runtime.GOARCH != "386") {
+			if pexit.Status != 2 && (runtime.GOOS != "linux" || runtime.GOARCH != "386") {
 				// Looks like there's a bug with debugserver on macOS that sometimes
 				// will report exit status 0 instead of the proper exit status.
 				//
@@ -3901,7 +3839,7 @@ func TestIssue1374(t *testing.T) {
 	// Continue did not work when stopped at a breakpoint immediately after calling CallFunction.
 	skipOn(t, "broken - pie mode", "linux", "ppc64le", "native", "pie")
 
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	withTestProcess("issue1374", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 7)
 		assertNoError(grp.Continue(), t, "First Continue")
@@ -4129,7 +4067,7 @@ func testCallConcurrentCheckReturns(p *proc.Target, t *testing.T, gid1, gid2 int
 func TestCallConcurrent(t *testing.T) {
 	skipOn(t, "broken - pie mode", "linux", "ppc64le", "native", "pie")
 
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	withTestProcess("teststepconcurrent", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 24)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -4346,7 +4284,7 @@ func TestIssue1925(t *testing.T) {
 	// 'call' procedure should clean the G cache like every other function
 	// altering the state of the target process.
 	skipOn(t, "broken - pie mode", "linux", "ppc64le", "native", "pie")
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		assertNoError(proc.EvalExpressionWithCalls(grp, p.SelectedGoroutine(), "afunc(2)", normalLoadConfig, true), t, "Call")
@@ -4503,167 +4441,6 @@ func TestIssue2319(t *testing.T) {
 	// Load up the binary and make sure there are no crashes.
 	bi := proc.NewBinaryInfo("linux", "amd64")
 	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0, nil), t, "LoadBinaryInfo")
-}
-
-func TestDump(t *testing.T) {
-	if (runtime.GOOS == "darwin" && testBackend == "native") || (runtime.GOOS == "windows" && runtime.GOARCH != "amd64") {
-		t.Skip("not supported")
-	}
-	skipOn(t, "not implemented", "ppc64le")
-
-	convertRegisters := func(arch *proc.Arch, dregs op.DwarfRegisters) string {
-		dregs.Reg(^uint64(0))
-		buf := new(bytes.Buffer)
-		for i := 0; i < dregs.CurrentSize(); i++ {
-			reg := dregs.Reg(uint64(i))
-			if reg == nil {
-				continue
-			}
-			name, _, repr := arch.DwarfRegisterToString(i, reg)
-			fmt.Fprintf(buf, " %s=%s", name, repr)
-		}
-		return buf.String()
-	}
-
-	convertThread := func(thread proc.Thread) string {
-		regs, err := thread.Registers()
-		assertNoError(err, t, fmt.Sprintf("Thread registers %d", thread.ThreadID()))
-		arch := thread.BinInfo().Arch
-		dregs := arch.RegistersToDwarfRegisters(0, regs)
-		return fmt.Sprintf("%08d %s", thread.ThreadID(), convertRegisters(arch, *dregs))
-	}
-
-	convertThreads := func(threads []proc.Thread) []string {
-		r := make([]string, len(threads))
-		for i := range threads {
-			r[i] = convertThread(threads[i])
-		}
-		sort.Strings(r)
-		return r
-	}
-
-	convertGoroutine := func(g *proc.G) string {
-		threadID := 0
-		if g.Thread != nil {
-			threadID = g.Thread.ThreadID()
-		}
-		return fmt.Sprintf("%d pc=%#x sp=%#x bp=%#x lr=%#x gopc=%#x startpc=%#x systemstack=%v thread=%d", g.ID, g.PC, g.SP, g.BP, g.LR, g.GoPC, g.StartPC, g.SystemStack, threadID)
-	}
-
-	convertFrame := func(arch *proc.Arch, frame *proc.Stackframe) string {
-		return fmt.Sprintf("currentPC=%#x callPC=%#x frameOff=%#x\n", frame.Current.PC, frame.Call.PC, frame.FrameOffset())
-	}
-
-	makeDump := func(p *proc.Target, corePath, exePath string, flags proc.DumpFlags) *proc.Target {
-		fh, err := os.Create(corePath)
-		assertNoError(err, t, "Create()")
-		var state proc.DumpState
-		p.Dump(fh, flags, &state)
-		assertNoError(state.Err, t, "Dump()")
-		if state.ThreadsDone != state.ThreadsTotal || state.MemDone != state.MemTotal || !state.AllDone || state.Dumping || state.Canceled {
-			t.Fatalf("bad DumpState %#v", &state)
-		}
-		c, err := core.OpenCore(corePath, exePath, nil)
-		assertNoError(err, t, "OpenCore()")
-		return c.Selected
-	}
-
-	testDump := func(p, c *proc.Target) {
-		if p.Pid() != c.Pid() {
-			t.Errorf("Pid mismatch %x %x", p.Pid(), c.Pid())
-		}
-
-		threads := convertThreads(p.ThreadList())
-		cthreads := convertThreads(c.ThreadList())
-
-		if len(threads) != len(cthreads) {
-			t.Errorf("Thread number mismatch %d %d", len(threads), len(cthreads))
-		}
-
-		for i := range threads {
-			if threads[i] != cthreads[i] {
-				t.Errorf("Thread mismatch\nlive:\t%s\ncore:\t%s", threads[i], cthreads[i])
-			}
-		}
-
-		gos, _, err := proc.GoroutinesInfo(p, 0, 0)
-		assertNoError(err, t, "GoroutinesInfo() - live process")
-		cgos, _, err := proc.GoroutinesInfo(c, 0, 0)
-		assertNoError(err, t, "GoroutinesInfo() - core dump")
-
-		if len(gos) != len(cgos) {
-			t.Errorf("Goroutine number mismatch %d %d", len(gos), len(cgos))
-		}
-
-		var scope, cscope *proc.EvalScope
-
-		for i := range gos {
-			if convertGoroutine(gos[i]) != convertGoroutine(cgos[i]) {
-				t.Errorf("Goroutine mismatch\nlive:\t%s\ncore:\t%s", convertGoroutine(gos[i]), convertGoroutine(cgos[i]))
-			}
-
-			frames, err := proc.GoroutineStacktrace(p, gos[i], 20, 0)
-			assertNoError(err, t, fmt.Sprintf("Stacktrace for goroutine %d - live process", gos[i].ID))
-			cframes, err := proc.GoroutineStacktrace(c, cgos[i], 20, 0)
-			assertNoError(err, t, fmt.Sprintf("Stacktrace for goroutine %d - core dump", gos[i].ID))
-
-			if len(frames) != len(cframes) {
-				t.Errorf("Frame number mismatch for goroutine %d: %d %d", gos[i].ID, len(frames), len(cframes))
-			}
-
-			for j := range frames {
-				if convertFrame(p.BinInfo().Arch, &frames[j]) != convertFrame(p.BinInfo().Arch, &cframes[j]) {
-					t.Errorf("Frame mismatch %d.%d\nlive:\t%s\ncore:\t%s", gos[i].ID, j, convertFrame(p.BinInfo().Arch, &frames[j]), convertFrame(p.BinInfo().Arch, &cframes[j]))
-				}
-				if frames[j].Call.Fn != nil && frames[j].Call.Fn.Name == "main.main" {
-					scope = proc.FrameToScope(p, p.Memory(), gos[i], 0, frames[j:]...)
-					cscope = proc.FrameToScope(c, c.Memory(), cgos[i], 0, cframes[j:]...)
-				}
-			}
-		}
-
-		vars, err := scope.LocalVariables(normalLoadConfig)
-		assertNoError(err, t, "LocalVariables - live process")
-		cvars, err := cscope.LocalVariables(normalLoadConfig)
-		assertNoError(err, t, "LocalVariables - core dump")
-
-		if len(vars) != len(cvars) {
-			t.Errorf("Variable number mismatch %d %d", len(vars), len(cvars))
-		}
-
-		for i := range vars {
-			varstr := vars[i].Name + "=" + api.ConvertVar(vars[i]).SinglelineString()
-			cvarstr := cvars[i].Name + "=" + api.ConvertVar(cvars[i]).SinglelineString()
-			if strings.Contains(varstr, "(unreadable") {
-				// errors reading from unmapped memory differ between live process and core
-				continue
-			}
-			if varstr != cvarstr {
-				t.Errorf("Variable mismatch %s %s", varstr, cvarstr)
-			}
-		}
-	}
-
-	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		corePath := filepath.Join(fixture.BuildDir, "coredump")
-		corePathPlatIndep := filepath.Join(fixture.BuildDir, "coredump-indep")
-
-		t.Logf("testing normal dump")
-
-		c := makeDump(p, corePath, fixture.Path, 0)
-		defer os.Remove(corePath)
-		testDump(p, c)
-
-		if runtime.GOOS == "linux" && runtime.GOARCH == "amd64" {
-			// No reason to do this test on other goos/goarch because they use the
-			// platform-independent format anyway.
-			t.Logf("testing platform-independent dump")
-			c2 := makeDump(p, corePathPlatIndep, fixture.Path, proc.DumpPlatformIndependent)
-			defer os.Remove(corePathPlatIndep)
-			testDump(p, c2)
-		}
-	})
 }
 
 func TestCompositeMemoryWrite(t *testing.T) {
@@ -5408,9 +5185,6 @@ func TestWaitForAttach(t *testing.T) {
 			return
 		}
 	}
-	if testBackend == "rr" {
-		return
-	}
 
 	var mu sync.Mutex
 	started := false
@@ -5423,12 +5197,6 @@ func TestWaitForAttach(t *testing.T) {
 	switch testBackend {
 	case "native":
 		p, err = native.Attach(0, waitFor, []string{})
-	case "lldb":
-		path := ""
-		if runtime.GOOS == "darwin" {
-			path = waitFor.Name
-		}
-		p, err = gdbserial.LLDBAttach(0, path, waitFor, []string{})
 	default:
 		err = fmt.Errorf("unknown backend %q", testBackend)
 	}

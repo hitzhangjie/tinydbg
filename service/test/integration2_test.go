@@ -40,7 +40,6 @@ var normalLoadConfig = api.LoadConfig{
 var testBackend, buildMode string
 
 func TestMain(m *testing.M) {
-	flag.StringVar(&testBackend, "backend", "", "selects backend")
 	flag.StringVar(&buildMode, "test-buildmode", "", "selects build mode")
 	var logOutput string
 	flag.StringVar(&logOutput, "log-output", "", "configures log output")
@@ -61,9 +60,6 @@ func withTestClient2(name string, t *testing.T, fn func(c service.Client)) {
 }
 
 func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redirects [3]string, args []string) (clientConn net.Conn, fixture protest.Fixture) {
-	if testBackend == "rr" {
-		protest.MustHaveRecordingAllowed(t)
-	}
 	listener, clientConn := service.ListenerPipe()
 	defer listener.Close()
 	if buildMode == "pie" {
@@ -79,7 +75,6 @@ func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redir
 		Listener:    listener,
 		ProcessArgs: append([]string{fixture.Path}, args...),
 		Debugger: debugger.Config{
-			Backend:        testBackend,
 			CheckGoVersion: true,
 			Packages:       []string{fixture.Source},
 			BuildFlags:     "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
@@ -106,12 +101,6 @@ func withTestClient2Extended(name string, t *testing.T, buildFlags protest.Build
 }
 
 func TestRunWithInvalidPath(t *testing.T) {
-	if testBackend == "rr" {
-		// This test won't work because rr returns an error, after recording, when
-		// the recording failed but also when the recording succeeded but the
-		// inferior returned an error. Therefore we have to ignore errors from rr.
-		return
-	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("couldn't start listener: %s\n", err)
@@ -122,7 +111,6 @@ func TestRunWithInvalidPath(t *testing.T) {
 		ProcessArgs: []string{"invalid_path"},
 		APIVersion:  2,
 		Debugger: debugger.Config{
-			Backend:     testBackend,
 			ExecuteKind: debugger.ExecutingGeneratedFile,
 		},
 	})
@@ -1780,7 +1768,7 @@ func TestClientServer_FpRegisters(t *testing.T) {
 			if regtest.name == "XMM11" && !avx2 {
 				continue
 			}
-			if regtest.name == "XMM12" && (!avx512 || testBackend == "rr") {
+			if regtest.name == "XMM12" && !avx512 {
 				continue
 			}
 			found := false
@@ -1884,9 +1872,6 @@ func TestClientServer_SelectedGoroutineLoc(t *testing.T) {
 
 func TestClientServer_ReverseContinue(t *testing.T) {
 	protest.AllowRecording(t)
-	if testBackend != "rr" {
-		t.Skip("backend is not rr")
-	}
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: -1})
 		assertNoError(err, t, "CreateBreakpoint(main.main)")
@@ -2053,9 +2038,6 @@ func TestClientServer_StepOutReturn(t *testing.T) {
 }
 
 func TestAcceptMulticlient(t *testing.T) {
-	if testBackend == "rr" {
-		t.Skip("recording not allowed for TestAcceptMulticlient")
-	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("couldn't start listener: %s\n", err)
@@ -2071,7 +2053,6 @@ func TestAcceptMulticlient(t *testing.T) {
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
 			Debugger: debugger.Config{
-				Backend:     testBackend,
 				ExecuteKind: debugger.ExecutingGeneratedTest,
 			},
 		})
@@ -2108,9 +2089,7 @@ func TestForceStopWhileContinue(t *testing.T) {
 			ProcessArgs:    []string{protest.BuildFixture("http_server", protest.AllNonOptimized).Path},
 			AcceptMulti:    true,
 			DisconnectChan: disconnectChan,
-			Debugger: debugger.Config{
-				Backend: "default",
-			},
+			Debugger:       debugger.Config{},
 		})
 		if err := server.Run(); err != nil {
 			panic(err)
@@ -2131,7 +2110,7 @@ func TestClientServerFunctionCall(t *testing.T) {
 		t.Skip("Debug function call Test broken in PIE mode")
 	}
 
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	withTestClient2("fncall", t, func(c service.Client) {
 		c.SetReturnValuesLoadConfig(&normalLoadConfig)
 		state := <-c.Continue()
@@ -2164,7 +2143,7 @@ func TestClientServerFunctionCallPanic(t *testing.T) {
 	if buildMode == "pie" && runtime.GOARCH == "ppc64le" {
 		t.Skip("Debug function call Test broken in PIE mode")
 	}
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	withTestClient2("fncall", t, func(c service.Client) {
 		c.SetReturnValuesLoadConfig(&normalLoadConfig)
 		state := <-c.Continue()
@@ -2192,7 +2171,7 @@ func TestClientServerFunctionCallStacktrace(t *testing.T) {
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 15) {
 		t.Skip("Go 1.15 executes function calls in a different goroutine so the stack trace will not contain main.main or runtime.main")
 	}
-	protest.MustSupportFunctionCalls(t, testBackend)
+	protest.MustSupportFunctionCalls(t)
 	withTestClient2("fncall", t, func(c service.Client) {
 		c.SetReturnValuesLoadConfig(&api.LoadConfig{FollowPointers: false, MaxStringLen: 2048})
 		state := <-c.Continue()
@@ -2286,9 +2265,6 @@ func TestIssue1703(t *testing.T) {
 
 func TestRerecord(t *testing.T) {
 	protest.AllowRecording(t)
-	if testBackend != "rr" {
-		t.Skip("only valid for recorded targets")
-	}
 	withTestClient2("testrerecord", t, func(c service.Client) {
 		fp := testProgPath(t, "testrerecord")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 10})
@@ -2379,9 +2355,6 @@ func TestDoubleCreateBreakpoint(t *testing.T) {
 
 func TestStopRecording(t *testing.T) {
 	protest.AllowRecording(t)
-	if testBackend != "rr" {
-		t.Skip("only for rr backend")
-	}
 	withTestClient2("sleep", t, func(c service.Client) {
 		time.Sleep(time.Second)
 		c.StopRecording()
@@ -2440,21 +2413,20 @@ func TestRedirects(t *testing.T) {
 			t.Fatalf("Wrong output %q", string(buf))
 		}
 		os.Remove(outpath)
-		if testBackend != "rr" {
-			_, err = c.Restart(false)
-			assertNoError(err, t, "Restart")
-			<-c.Continue()
-			buf2, err := os.ReadFile(outpath)
-			t.Logf("output %q", buf2)
-			assertNoError(err, t, "Reading output file (second time)")
-			if !strings.HasPrefix(string(buf2), "Redirect test") {
-				t.Fatalf("Wrong output %q", string(buf2))
-			}
-			if string(buf2) == string(buf) {
-				t.Fatalf("Expected output change got %q and %q", string(buf), string(buf2))
-			}
-			os.Remove(outpath)
+
+		_, err = c.Restart(false)
+		assertNoError(err, t, "Restart")
+		<-c.Continue()
+		buf2, err := os.ReadFile(outpath)
+		t.Logf("output %q", buf2)
+		assertNoError(err, t, "Reading output file (second time)")
+		if !strings.HasPrefix(string(buf2), "Redirect test") {
+			t.Fatalf("Wrong output %q", string(buf2))
 		}
+		if string(buf2) == string(buf) {
+			t.Fatalf("Expected output change got %q and %q", string(buf), string(buf2))
+		}
+		os.Remove(outpath)
 	})
 }
 
@@ -2481,11 +2453,6 @@ func TestIssue2162(t *testing.T) {
 }
 
 func TestDetachLeaveRunning(t *testing.T) {
-	// See https://github.com/go-delve/delve/issues/2259
-	if testBackend == "rr" {
-		return
-	}
-
 	listener, clientConn := service.ListenerPipe()
 	defer listener.Close()
 	var buildFlags protest.BuildFlags
@@ -2520,7 +2487,6 @@ func TestDetachLeaveRunning(t *testing.T) {
 		Debugger: debugger.Config{
 			AttachPid:  cmd.Process.Pid,
 			WorkingDir: ".",
-			Backend:    testBackend,
 		},
 	})
 	if err := server.Run(); err != nil {
@@ -2564,11 +2530,6 @@ func TestToggleBreakpointRestart(t *testing.T) {
 }
 
 func TestStopServerWithClosedListener(t *testing.T) {
-	// Checks that the error returned by listener.Accept() is ignored when we
-	// are trying to shutdown. See issue #1633.
-	if testBackend == "rr" || buildMode == "pie" {
-		t.Skip("N/A")
-	}
 	listener, err := net.Listen("tcp", "localhost:0")
 	assertNoError(err, t, "listener")
 	fixture := protest.BuildFixture("math", 0)
@@ -2581,7 +2542,6 @@ func TestStopServerWithClosedListener(t *testing.T) {
 		ProcessArgs:        []string{fixture.Path},
 		Debugger: debugger.Config{
 			WorkingDir:  ".",
-			Backend:     "default",
 			Foreground:  false,
 			BuildFlags:  "",
 			ExecuteKind: debugger.ExecutingGeneratedFile,
@@ -2712,9 +2672,6 @@ func TestGenericsBreakpoint(t *testing.T) {
 }
 
 func TestRestartRewindAfterEnd(t *testing.T) {
-	if testBackend != "rr" {
-		t.Skip("not relevant")
-	}
 	// Check that Restart works after the program has terminated, even if a
 	// Continue is requested just before it.
 	// Also check that Rewind can be used after the program has terminated.
@@ -2825,7 +2782,6 @@ func TestNonGoDebug(t *testing.T) {
 		Listener:    listener,
 		ProcessArgs: []string{path},
 		Debugger: debugger.Config{
-			Backend:     testBackend,
 			ExecuteKind: debugger.ExecutingExistingFile,
 		},
 	})
@@ -3185,7 +3141,6 @@ func TestGuessSubstitutePath(t *testing.T) {
 			Listener:    listener,
 			ProcessArgs: []string{dlvbin, "help"},
 			Debugger: debugger.Config{
-				Backend:        testBackend,
 				CheckGoVersion: true,
 				BuildFlags:     "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
 				ExecuteKind:    debugger.ExecutingExistingFile,

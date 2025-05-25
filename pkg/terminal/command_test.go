@@ -133,9 +133,7 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 	server := rpccommon.NewServer(&service.Config{
 		Listener:    listener,
 		ProcessArgs: []string{test.BuildFixture(name, buildFlags).Path},
-		Debugger: debugger.Config{
-			Backend: testBackend,
-		},
+		Debugger:    debugger.Config{},
 	})
 	if err := server.Run(); err != nil {
 		t.Fatal(err)
@@ -998,7 +996,7 @@ func TestIssue1598(t *testing.T) {
 	if buildMode == "pie" && runtime.GOARCH == "ppc64le" {
 		t.Skip("Debug function call Test broken in PIE mode")
 	}
-	test.MustSupportFunctionCalls(t, testBackend)
+	test.MustSupportFunctionCalls(t)
 	withTestTerminal("issue1598", t, func(term *FakeTerminal) {
 		term.MustExec("break issue1598.go:5")
 		term.MustExec("continue")

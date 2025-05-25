@@ -20,13 +20,10 @@ import (
 
 var any = false
 var debugger = false
-var gdbWire = false
-var lldbServerOutput = false
 var debugLineErrors = false
 var rpc = false
 var dap = false
 var fnCall = false
-var minidump = false
 var stack = false
 
 var logOut io.WriteCloser
@@ -59,17 +56,6 @@ func Any() bool {
 	return any
 }
 
-// GdbWire returns true if the gdbserial package should log all the packets
-// exchanged with the stub.
-func GdbWire() bool {
-	return gdbWire
-}
-
-// GdbWireLogger returns a configured logger for the gdbserial wire protocol.
-func GdbWireLogger() Logger {
-	return makeLogger(gdbWire, "layer", "gdbconn")
-}
-
 // Debugger returns true if the debugger package should log.
 func Debugger() bool {
 	return debugger
@@ -78,12 +64,6 @@ func Debugger() bool {
 // DebuggerLogger returns a logger for the debugger package.
 func DebuggerLogger() Logger {
 	return makeLogger(debugger, "layer", "debugger")
-}
-
-// LLDBServerOutput returns true if the output of the LLDB server should be
-// redirected to standard output instead of suppressed.
-func LLDBServerOutput() bool {
-	return lldbServerOutput
 }
 
 // DebugLineErrors returns true if pkg/dwarf/line should log its recoverable
@@ -129,15 +109,6 @@ func FnCall() bool {
 
 func FnCallLogger() Logger {
 	return makeLogger(fnCall, "layer", "proc", "kind", "fncall")
-}
-
-// Minidump returns true if the minidump loader should be logged.
-func Minidump() bool {
-	return minidump
-}
-
-func MinidumpLogger() Logger {
-	return makeLogger(minidump, "layer", "core", "kind", "minidump")
 }
 
 // Stack returns true if the stacktracer should be logged.
@@ -223,10 +194,6 @@ func Setup(logFlag bool, logstr, logDest string) error {
 		switch logcmd {
 		case "debugger":
 			debugger = true
-		case "gdbwire":
-			gdbWire = true
-		case "lldbout":
-			lldbServerOutput = true
 		case "debuglineerr":
 			debugLineErrors = true
 		case "rpc":
@@ -235,8 +202,6 @@ func Setup(logFlag bool, logstr, logDest string) error {
 			dap = true
 		case "fncall":
 			fnCall = true
-		case "minidump":
-			minidump = true
 		case "stack":
 			stack = true
 		default:

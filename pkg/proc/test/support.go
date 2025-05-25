@@ -303,52 +303,16 @@ func SafeRemoveAll(dir string) {
 
 // MustSupportFunctionCalls skips this test if function calls are
 // unsupported on this backend/architecture pair.
-func MustSupportFunctionCalls(t *testing.T, testBackend string) {
+func MustSupportFunctionCalls(t *testing.T) {
 	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 11) {
 		t.Skip("this version of Go does not support function calls")
-	}
-
-	if runtime.GOOS == "darwin" && testBackend == "native" {
-		t.Skip("this backend does not support function calls")
-	}
-
-	if runtime.GOARCH == "386" {
-		t.Skip(fmt.Errorf("%s does not support FunctionCall for now", runtime.GOARCH))
-	}
-	if runtime.GOARCH == "riscv64" {
-		t.Skip(fmt.Errorf("%s does not support FunctionCall for now", runtime.GOARCH))
-	}
-	if runtime.GOARCH == "loong64" {
-		t.Skip(fmt.Errorf("%s does not support FunctionCall for now", runtime.GOARCH))
-	}
-	if runtime.GOARCH == "arm64" {
-		if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 19) || runtime.GOOS == "windows" {
-			t.Skip("this version of Go does not support function calls")
-		}
-	}
-
-	if runtime.GOARCH == "ppc64le" {
-		if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 22) {
-			t.Skip("On PPC64LE Building with Go lesser than 1.22 does not support function calls")
-		}
 	}
 }
 
 // DefaultTestBackend changes the value of testBackend to be the default
 // test backend for the OS, if testBackend isn't already set.
 func DefaultTestBackend(testBackend *string) {
-	if *testBackend != "" {
-		return
-	}
-	*testBackend = os.Getenv("PROCTEST")
-	if *testBackend != "" {
-		return
-	}
-	if runtime.GOOS == "darwin" {
-		*testBackend = "lldb"
-	} else {
-		*testBackend = "native"
-	}
+	*testBackend = "native"
 }
 
 // WithPlugins builds the fixtures in plugins as plugins and returns them.
