@@ -16,8 +16,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/go-delve/delve/pkg/dwarf/godwarf"
-	"github.com/go-delve/delve/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/godwarf"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
 )
 
 var userTestFile string

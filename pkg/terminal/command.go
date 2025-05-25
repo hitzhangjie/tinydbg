@@ -28,12 +28,12 @@ import (
 	"time"
 
 	"github.com/cosiner/argv"
-	"github.com/go-delve/delve/pkg/config"
-	"github.com/go-delve/delve/pkg/locspec"
-	"github.com/go-delve/delve/pkg/proc/debuginfod"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/rpc2"
+	"github.com/hitzhangjie/tinydbg/pkg/config"
+	"github.com/hitzhangjie/tinydbg/pkg/locspec"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/debuginfod"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
+	"github.com/hitzhangjie/tinydbg/service/rpc2"
 )
 
 const optimizedFunctionWarning = "Warning: debugging optimized function"
@@ -3032,12 +3032,6 @@ func printfile(t *Term, filename string, line int, showArrow bool) error {
 		return err
 	}
 	defer file.Close()
-
-	fi, _ := file.Stat()
-	lastModExe := t.client.LastModified()
-	if fi.ModTime().After(lastModExe) {
-		fmt.Fprintln(t.stdout, "Warning: listing may not match stale executable")
-	}
 
 	return t.stdout.ColorizePrint(file.Name(), file, line-lineCount, line+lineCount+1, arrowLine)
 }

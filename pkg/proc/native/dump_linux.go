@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
 )
 
 func (p *nativeProcess) MemoryMap() ([]proc.MemoryMapEntry, error) {
@@ -48,7 +48,7 @@ smapsLinesLoop:
 		for i := range vmflags {
 			switch vmflags[i] {
 			case "pf":
-				// pure PFN range, see https://github.com/go-delve/delve/issues/2630
+				// pure PFN range, see https://github.com/hitzhangjie/tinydbg/issues/2630
 				continue smapsLinesLoop
 			case "dd":
 				// "don't dump"

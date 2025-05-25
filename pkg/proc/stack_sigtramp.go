@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/regnum"
-	"github.com/go-delve/delve/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/regnum"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
 )
 
 // readSigtrampgoContext reads runtime.sigtrampgo context at the specified address

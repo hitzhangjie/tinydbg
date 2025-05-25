@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/elfwriter"
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/elfwriter"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
 )
 
 func threadsFromDelveNotes(p *process, notes []*note) (proc.Thread, error) {

@@ -11,10 +11,9 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
 )
 
 // EnableRace allows to configure whether the race detector is enabled on target process.
@@ -239,48 +238,6 @@ func RunTestsWithFixtures(m *testing.M) {
 	}
 }
 
-var recordingAllowed = map[string]bool{}
-var recordingAllowedMu sync.Mutex
-
-// AllowRecording allows the calling test to be used with a recording of the
-// fixture.
-func AllowRecording(t testing.TB) {
-	recordingAllowedMu.Lock()
-	defer recordingAllowedMu.Unlock()
-	name := t.Name()
-	t.Logf("enabling recording for %s", name)
-	recordingAllowed[name] = true
-}
-
-// MustHaveRecordingAllowed skips this test if recording is not allowed
-//
-// Not all the tests can be run with a recording:
-//   - some fixtures never terminate independently (loopprog,
-//     testnextnethttp) and can not be recorded
-//   - some tests assume they can interact with the target process (for
-//     example TestIssue419, or anything changing the value of a variable),
-//     which we can't do on with a recording
-//   - some tests assume that the Pid returned by the process is valid, but
-//     it won't be at replay time
-//   - some tests will start the fixture but not never execute a single
-//     instruction, for some reason rr doesn't like this and will print an
-//     error if it happens
-//   - many tests will assume that we can return from a runtime.Breakpoint,
-//     with a recording this is not possible because when the fixture ran it
-//     wasn't attached to a debugger and in those circumstances a
-//     runtime.Breakpoint leads directly to a crash
-//
-// Some of the tests using runtime.Breakpoint (anything involving variable
-// evaluation and TestWorkDir) have been adapted to work with a recording.
-func MustHaveRecordingAllowed(t testing.TB) {
-	recordingAllowedMu.Lock()
-	defer recordingAllowedMu.Unlock()
-	name := t.Name()
-	if !recordingAllowed[name] {
-		t.Skipf("recording not allowed for %s", name)
-	}
-}
-
 // SafeRemoveAll removes dir and its contents but only as long as dir does
 // not contain directories.
 func SafeRemoveAll(dir string) {
@@ -414,14 +371,14 @@ func GetDlvBinaryEBPF(t *testing.T) string {
 func getDlvBinInternal(t *testing.T, goflags ...string) string {
 	dlvbin := filepath.Join(t.TempDir(), "dlv.exe")
 	args := append([]string{"build", "-o", dlvbin}, goflags...)
-	args = append(args, "github.com/go-delve/delve/cmd/dlv")
+	args = append(args, "github.com/hitzhangjie/tinydbg/cmd/dlv")
 
 	wd, _ := os.Getwd()
 	fmt.Printf("at %s %s\n", wd, goflags)
 
 	out, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
-		t.Fatalf("go build -o %v github.com/go-delve/delve/cmd/dlv: %v\n%s", dlvbin, err, string(out))
+		t.Fatalf("go build -o %v github.com/hitzhangjie/tinydbg/cmd/dlv: %v\n%s", dlvbin, err, string(out))
 	}
 
 	return dlvbin

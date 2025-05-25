@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
 )
 
 // Process represents all of the information the debugger

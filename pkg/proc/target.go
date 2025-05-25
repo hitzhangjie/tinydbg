@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc/internal/ebpf"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/internal/ebpf"
 )
 
 var (

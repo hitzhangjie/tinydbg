@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
 )
 
 func assertNoError(err error, t *testing.T, s string) {

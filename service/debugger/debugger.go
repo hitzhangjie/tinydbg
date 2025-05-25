@@ -17,15 +17,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/gobuild"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/locspec"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/core"
-	"github.com/go-delve/delve/pkg/proc/native"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/gobuild"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/locspec"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/core"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/native"
+	"github.com/hitzhangjie/tinydbg/service/api"
 )
 
 var (
@@ -280,14 +280,6 @@ func (d *Debugger) ProcessPid() int {
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
 	return d.target.Selected.Pid()
-}
-
-// LastModified returns the time that the process' executable was last
-// modified.
-func (d *Debugger) LastModified() time.Time {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.Selected.BinInfo().LastModified()
 }
 
 // FunctionReturnLocations returns all return locations

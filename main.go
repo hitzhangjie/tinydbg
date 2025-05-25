@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/go-delve/delve/cmd/dlv/cmds"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/version"
+	"github.com/hitzhangjie/tinydbg/cmds"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/version"
 )
 
 // Build is the git sha of this binaries build.

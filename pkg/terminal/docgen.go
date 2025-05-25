@@ -33,7 +33,7 @@ func replaceDocPath(s string) string {
 		}
 
 		text := s[start:end]
-		s = s[:start] + fmt.Sprintf("[%s](//github.com/go-delve/delve/tree/master/%s)", text, text) + s[end:]
+		s = s[:start] + fmt.Sprintf("[%s](//github.com/hitzhangjie/tinydbg/tree/master/%s)", text, text) + s[end:]
 		i0 = end + 1
 	}
 }

@@ -16,18 +16,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-delve/delve/cmd/dlv/cmds/helphelpers"
-	"github.com/go-delve/delve/pkg/config"
-	"github.com/go-delve/delve/pkg/gobuild"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/terminal"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/debugger"
-	"github.com/go-delve/delve/service/rpc2"
-	"github.com/go-delve/delve/service/rpccommon"
+	"github.com/hitzhangjie/tinydbg/pkg/config"
+	"github.com/hitzhangjie/tinydbg/pkg/gobuild"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/terminal"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
+	"github.com/hitzhangjie/tinydbg/service/debugger"
+	"github.com/hitzhangjie/tinydbg/service/rpc2"
+	"github.com/hitzhangjie/tinydbg/service/rpccommon"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
@@ -944,7 +943,7 @@ func configUsageFunc(cmd *cobra.Command) {
 
 	usage := cmd.UsageFunc()
 	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		helphelpers.Prepare(cmd)
+		Prepare(cmd)
 		return usage(cmd)
 	})
 }

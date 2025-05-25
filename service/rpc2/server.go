@@ -7,11 +7,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/debugger"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
+	"github.com/hitzhangjie/tinydbg/service/debugger"
 )
 
 type RPCServer struct {
@@ -35,18 +35,6 @@ type ProcessPidOut struct {
 // ProcessPid returns the pid of the process we are debugging.
 func (s *RPCServer) ProcessPid(arg ProcessPidIn, out *ProcessPidOut) error {
 	out.Pid = s.debugger.ProcessPid()
-	return nil
-}
-
-type LastModifiedIn struct {
-}
-
-type LastModifiedOut struct {
-	Time time.Time
-}
-
-func (s *RPCServer) LastModified(arg LastModifiedIn, out *LastModifiedOut) error {
-	out.Time = s.debugger.LastModified()
 	return nil
 }
 
@@ -255,7 +243,7 @@ type CreateBreakpointOut struct {
 // CreateBreakpoint creates a new breakpoint. The client is expected to populate `CreateBreakpointIn`
 // with an `api.Breakpoint` struct describing where to set the breakpoint. For more information on
 // how to properly request a breakpoint via the `api.Breakpoint` struct see the documentation for
-// `debugger.CreateBreakpoint` here: https://pkg.go.dev/github.com/go-delve/delve/service/debugger#Debugger.CreateBreakpoint.
+// `debugger.CreateBreakpoint` here: https://pkg.go.dev/github.com/hitzhangjie/tinydbg/service/debugger#Debugger.CreateBreakpoint.
 func (s *RPCServer) CreateBreakpoint(arg CreateBreakpointIn, out *CreateBreakpointOut) error {
 	if err := api.ValidBreakpointName(arg.Breakpoint.Name); err != nil {
 		return err
@@ -527,7 +515,7 @@ type EvalOut struct {
 
 // Eval returns a variable in the specified context.
 //
-// See https://github.com/go-delve/delve/blob/master/Documentation/cli/expr.md
+// See https://github.com/hitzhangjie/tinydbg/blob/master/Documentation/cli/expr.md
 // for a description of acceptable values of arg.Expr.
 func (s *RPCServer) Eval(arg EvalIn, out *EvalOut) error {
 	cfg := arg.Cfg

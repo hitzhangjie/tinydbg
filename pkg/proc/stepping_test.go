@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/proc"
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	protest "github.com/hitzhangjie/tinydbg/pkg/proc/test"
+	"github.com/hitzhangjie/tinydbg/service/api"
 )
 
 type nextTest struct {
@@ -59,7 +59,6 @@ func testseq2(t *testing.T, program string, initialLocation string, testcases []
 }
 
 func testseq2Args(wd string, args []string, buildFlags protest.BuildFlags, t *testing.T, program string, initialLocation string, testcases []seqTest) {
-	protest.AllowRecording(t)
 	t.Helper()
 	withTestProcessArgs(program, t, wd, args, buildFlags, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		checkBreakpointClear := true
@@ -240,7 +239,6 @@ func TestNextFunctionReturn(t *testing.T) {
 		{14, 15},
 		{15, 35},
 	}
-	protest.AllowRecording(t)
 	testseq("testnextprog", contNext, testcases, "main.helloworld", t)
 }
 
@@ -262,7 +260,6 @@ func TestNextFunctionReturnDefer(t *testing.T) {
 			{9, 10},
 		}
 	}
-	protest.AllowRecording(t)
 	testseq("testnextdefer", contNext, testcases, "main.main", t)
 }
 

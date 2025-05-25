@@ -16,15 +16,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-delve/delve/pkg/config"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/debugger"
-	"github.com/go-delve/delve/service/rpc2"
-	"github.com/go-delve/delve/service/rpccommon"
+	"github.com/hitzhangjie/tinydbg/pkg/config"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/test"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
+	"github.com/hitzhangjie/tinydbg/service/debugger"
+	"github.com/hitzhangjie/tinydbg/service/rpc2"
+	"github.com/hitzhangjie/tinydbg/service/rpccommon"
 )
 
 var testBackend, buildMode string
@@ -118,9 +118,6 @@ func withTestTerminal(name string, t testing.TB, fn func(*FakeTerminal)) {
 }
 
 func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.BuildFlags, fn func(*FakeTerminal)) {
-	if testBackend == "rr" {
-		test.MustHaveRecordingAllowed(t)
-	}
 	t.Setenv("TERM", "dumb")
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -230,7 +227,6 @@ func TestIssue354(t *testing.T) {
 }
 
 func TestIssue411(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("math", t, func(term *FakeTerminal) {
 		term.MustExec("break _fixtures/math.go:8")
 		term.MustExec("trace _fixtures/math.go:9")
@@ -243,7 +239,6 @@ func TestIssue411(t *testing.T) {
 }
 
 func TestTrace(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("issue573", t, func(term *FakeTerminal) {
 		term.MustExec("trace foo")
 		out, _ := term.Exec("continue")
@@ -259,7 +254,6 @@ func TestTrace(t *testing.T) {
 }
 
 func TestTraceWithName(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("issue573", t, func(term *FakeTerminal) {
 		term.MustExec("trace foobar foo")
 		out, _ := term.Exec("continue")
@@ -275,7 +269,6 @@ func TestTraceWithName(t *testing.T) {
 }
 
 func TestTraceOnNonFunctionEntry(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("issue573", t, func(term *FakeTerminal) {
 		term.MustExec("trace foobar issue573.go:19")
 		out, _ := term.Exec("continue")
@@ -307,7 +300,6 @@ func TestScopePrefix(t *testing.T) {
 	}
 	const goroutinesLinePrefix = "  Goroutine "
 	const goroutinesCurLinePrefix = "* Goroutine "
-	test.AllowRecording(t)
 
 	lenient := 0
 	if runtime.GOOS == "windows" {
@@ -458,7 +450,6 @@ func TestScopePrefix(t *testing.T) {
 
 func TestOnPrefix(t *testing.T) {
 	const prefix = "\ti: "
-	test.AllowRecording(t)
 	lenient := false
 	if runtime.GOOS == "windows" {
 		lenient = true
@@ -507,7 +498,6 @@ func TestOnPrefix(t *testing.T) {
 }
 
 func TestNoVars(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("locationsUpperCase", t, func(term *FakeTerminal) {
 		term.MustExec("b main.main")
 		term.MustExec("continue")
@@ -519,7 +509,6 @@ func TestNoVars(t *testing.T) {
 
 func TestOnPrefixLocals(t *testing.T) {
 	const prefix = "\ti: "
-	test.AllowRecording(t)
 	withTestTerminal("goroutinestackprog", t, func(term *FakeTerminal) {
 		term.MustExec("b agobp main.agoroutine")
 		term.MustExec("on agobp args -v")
@@ -618,40 +607,7 @@ func TestListCmd(t *testing.T) {
 	})
 }
 
-func TestReverseContinue(t *testing.T) {
-	test.AllowRecording(t)
-	if testBackend != "rr" {
-		return
-	}
-	withTestTerminal("continuetestprog", t, func(term *FakeTerminal) {
-		term.MustExec("break main.main")
-		term.MustExec("break main.sayhi")
-		listIsAt(t, term, "continue", 16, -1, -1)
-		listIsAt(t, term, "continue", 12, -1, -1)
-		listIsAt(t, term, "rewind", 16, -1, -1)
-	})
-}
-
-func TestCheckpoints(t *testing.T) {
-	test.AllowRecording(t)
-	if testBackend != "rr" {
-		return
-	}
-	withTestTerminal("continuetestprog", t, func(term *FakeTerminal) {
-		term.MustExec("break main.main")
-		listIsAt(t, term, "continue", 16, -1, -1)
-		term.MustExec("checkpoint")
-		term.MustExec("checkpoints")
-		listIsAt(t, term, "next", 17, -1, -1)
-		listIsAt(t, term, "next", 18, -1, -1)
-		term.MustExec("restart c1")
-		term.MustExec("goroutine 1")
-		listIsAt(t, term, "list", 16, -1, -1)
-	})
-}
-
 func TestNextWithCount(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("nextcond", t, func(term *FakeTerminal) {
 		term.MustExec("break main.main")
 		listIsAt(t, term, "continue", 8, -1, -1)
@@ -1500,7 +1456,6 @@ func TestRestartBreakpoints(t *testing.T) {
 }
 
 func TestListPackages(t *testing.T) {
-	test.AllowRecording(t)
 	withTestTerminal("goroutinestackprog", t, func(term *FakeTerminal) {
 		out := term.MustExec("packages")
 		t.Logf("> packages\n%s", out)

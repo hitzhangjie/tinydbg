@@ -1,4 +1,4 @@
-module github.com/go-delve/delve
+module github.com/hitzhangjie/tinydbg
 
 go 1.21
 

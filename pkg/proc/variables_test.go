@@ -13,11 +13,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/service/api"
 
-	protest "github.com/go-delve/delve/pkg/proc/test"
+	protest "github.com/hitzhangjie/tinydbg/pkg/proc/test"
 )
 
 var pnormalLoadConfig = proc.LoadConfig{
@@ -103,7 +103,6 @@ func setVariable(p *proc.Target, symbol, value string) error {
 }
 
 func TestVariableEvaluation(t *testing.T) {
-	protest.AllowRecording(t)
 	testcases := []struct {
 		name        string
 		st          reflect.Kind
@@ -232,7 +231,6 @@ func TestVariableEvaluation2(t *testing.T) {
 		{"NonExistent", true, "", "", "", errors.New("could not find symbol value for NonExistent")},
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -372,7 +370,6 @@ func TestVariableEvaluationShort(t *testing.T) {
 		{"NonExistent", true, "", "", "", errors.New("could not find symbol value for NonExistent")},
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -428,7 +425,6 @@ func TestMultilineVariableEvaluation(t *testing.T) {
 		Nest: *(*main.Nest)(…`, "", "main.Nest", nil},
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -487,7 +483,6 @@ func TestLocalVariables(t *testing.T) {
 				{"baz", true, "\"bazburzum\"", "", "string", nil}}},
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		assertNoError(err, t, "Continue() returned an error")
@@ -526,7 +521,6 @@ func TestLocalVariables(t *testing.T) {
 }
 
 func TestEmbeddedStruct(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		testcases := []varTest{
 			{"b.val", true, "-314", "-314", "int", nil},
@@ -964,7 +958,6 @@ func (err *altError) Error() string {
 
 func TestEvalExpression(t *testing.T) {
 	testcases := getEvalExpressionTestCases()
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		for i, tc := range testcases {
@@ -1009,7 +1002,6 @@ func TestEvalExpression(t *testing.T) {
 }
 
 func TestEvalAddrAndCast(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		c1addr, err := evalVariableWithCfg(p, "&c1", pnormalLoadConfig)
@@ -1036,7 +1028,6 @@ func TestEvalAddrAndCast(t *testing.T) {
 }
 
 func TestMapEvaluation(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		m1v, err := evalVariableWithCfg(p, "m1", pnormalLoadConfig)
@@ -1078,7 +1069,6 @@ func TestMapEvaluation(t *testing.T) {
 }
 
 func TestUnsafePointer(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		up1v, err := evalVariableWithCfg(p, "up1", pnormalLoadConfig)
@@ -1116,7 +1106,6 @@ func TestIssue426(t *testing.T) {
 
 	// Serialization of type expressions (go/ast.Expr) containing anonymous structs or interfaces
 	// differs from the serialization used by the linker to produce DWARF type information
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		for _, testcase := range testcases {
@@ -1162,18 +1151,18 @@ func TestPackageRenames(t *testing.T) {
 		{"req", true, `interface {}(*net/http.Request) *{Method: "amethod", …`, "", "interface {}", nil},
 
 		// Package name that doesn't match import path
-		{"iface3", true, `interface {}(*github.com/go-delve/delve/_fixtures/internal/dir0/renamedpackage.SomeType) *{A: true}`, "", "interface {}", nil},
+		{"iface3", true, `interface {}(*github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/renamedpackage.SomeType) *{A: true}`, "", "interface {}", nil},
 
 		// Interfaces to anonymous types
-		{"dir0someType", true, "interface {}(*github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) *{X: 3}", "", "interface {}", nil},
-		{"dir1someType", true, "interface {}(github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType) {X: 1, Y: 2}", "", "interface {}", nil},
-		{"amap3", true, "interface {}(map[github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType]github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType) [{X: 4}: {X: 5, Y: 6}, ]", "", "interface {}", nil},
-		{"anarray", true, `interface {}([2]github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) [{X: 1},{X: 2}]`, "", "interface {}", nil},
-		{"achan", true, `interface {}(chan github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) chan github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType 0/0`, "", "interface {}", nil},
-		{"aslice", true, `interface {}([]github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType) [{X: 3},{X: 4}]`, "", "interface {}", nil},
-		{"afunc", true, `interface {}(func(github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType, github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType)) main.main.func1`, "", "interface {}", nil},
-		{"astruct", true, `interface {}(*struct { A github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType; B github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType }) *{A: github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, B: github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType {X: 3}}`, "", "interface {}", nil},
-		{"iface2iface", true, `interface {}(*interface { AMethod(int) int; AnotherMethod(int) int }) **github.com/go-delve/delve/_fixtures/internal/dir0/pkg.SomeType {X: 4}`, "", "interface {}", nil},
+		{"dir0someType", true, "interface {}(*github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType) *{X: 3}", "", "interface {}", nil},
+		{"dir1someType", true, "interface {}(github.com/hitzhangjie/tinydbg/_fixtures/internal/dir1/pkg.SomeType) {X: 1, Y: 2}", "", "interface {}", nil},
+		{"amap3", true, "interface {}(map[github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType]github.com/hitzhangjie/tinydbg/_fixtures/internal/dir1/pkg.SomeType) [{X: 4}: {X: 5, Y: 6}, ]", "", "interface {}", nil},
+		{"anarray", true, `interface {}([2]github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType) [{X: 1},{X: 2}]`, "", "interface {}", nil},
+		{"achan", true, `interface {}(chan github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType) chan github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType 0/0`, "", "interface {}", nil},
+		{"aslice", true, `interface {}([]github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType) [{X: 3},{X: 4}]`, "", "interface {}", nil},
+		{"afunc", true, `interface {}(func(github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType, github.com/hitzhangjie/tinydbg/_fixtures/internal/dir1/pkg.SomeType)) main.main.func1`, "", "interface {}", nil},
+		{"astruct", true, `interface {}(*struct { A github.com/hitzhangjie/tinydbg/_fixtures/internal/dir1/pkg.SomeType; B github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType }) *{A: github.com/hitzhangjie/tinydbg/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, B: github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType {X: 3}}`, "", "interface {}", nil},
+		{"iface2iface", true, `interface {}(*interface { AMethod(int) int; AnotherMethod(int) int }) **github.com/hitzhangjie/tinydbg/_fixtures/internal/dir0/pkg.SomeType {X: 4}`, "", "interface {}", nil},
 
 		{`"dir0/pkg".A`, false, "0", "", "int", nil},
 		{`"dir1/pkg".A`, false, "1", "", "int", nil},
@@ -1183,7 +1172,7 @@ func TestPackageRenames(t *testing.T) {
 	}
 
 	testcases1_9 := []varTest{
-		{"astruct2", true, `interface {}(*struct { github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType; X int }) *{SomeType: github.com/go-delve/delve/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, X: 10}`, "", "interface {}", nil},
+		{"astruct2", true, `interface {}(*struct { github.com/hitzhangjie/tinydbg/_fixtures/internal/dir1/pkg.SomeType; X int }) *{SomeType: github.com/hitzhangjie/tinydbg/_fixtures/internal/dir1/pkg.SomeType {X: 1, Y: 2}, X: 10}`, "", "interface {}", nil},
 	}
 
 	testcases1_13 := []varTest{
@@ -1195,7 +1184,6 @@ func TestPackageRenames(t *testing.T) {
 		return
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("pkgrenames", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		testPackageRenamesHelper(t, p, testcases)
@@ -1268,7 +1256,6 @@ func TestCallFunction(t *testing.T) {
 	skipOn(t, "broken - pie mode", "linux", "ppc64le", "native", "pie")
 
 	protest.MustSupportFunctionCalls(t)
-	protest.AllowRecording(t)
 
 	var testcases = []testCaseCallFunction{
 		// Basic function call injection tests
@@ -1628,9 +1615,9 @@ func TestPluginVariables(t *testing.T) {
 		setFileBreakpoint(p, t, fixture.Source, 41)
 		assertNoError(grp.Continue(), t, "Continue 1")
 
-		bp := setFunctionBreakpoint(p, t, "github.com/go-delve/delve/_fixtures/plugin2.TypesTest")
+		bp := setFunctionBreakpoint(p, t, "github.com/hitzhangjie/tinydbg/_fixtures/plugin2.TypesTest")
 		t.Logf("bp.Addr = %#x", bp.Addr)
-		setFunctionBreakpoint(p, t, "github.com/go-delve/delve/_fixtures/plugin2.aIsNotNil")
+		setFunctionBreakpoint(p, t, "github.com/hitzhangjie/tinydbg/_fixtures/plugin2.aIsNotNil")
 
 		for _, image := range p.BinInfo().Images {
 			t.Logf("%#x %s\n", image.StaticBase, image.Path)
@@ -1646,7 +1633,7 @@ func TestPluginVariables(t *testing.T) {
 		var plugin2AFound, mainExeGlobalFound bool
 		for _, v := range allvars {
 			switch v.Name {
-			case "github.com/go-delve/delve/_fixtures/plugin2.A":
+			case "github.com/hitzhangjie/tinydbg/_fixtures/plugin2.A":
 				plugin2AFound = true
 			case "main.ExeGlobal":
 				mainExeGlobalFound = true
@@ -1662,12 +1649,12 @@ func TestPluginVariables(t *testing.T) {
 		// read interface variable, inside plugin code, with a concrete type defined in the executable
 		vs, err := evalVariableWithCfg(p, "s", pnormalLoadConfig)
 		assertNoError(err, t, "Eval(s)")
-		assertVariable(t, vs, varTest{"s", true, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.Something(*main.asomething) *{n: 2}`, ``, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.Something`, nil})
+		assertVariable(t, vs, varTest{"s", true, `github.com/hitzhangjie/tinydbg/_fixtures/internal/pluginsupport.Something(*main.asomething) *{n: 2}`, ``, `github.com/hitzhangjie/tinydbg/_fixtures/internal/pluginsupport.Something`, nil})
 
 		// test that the concrete type -> interface{} conversion works across plugins (mostly tests proc.dwarfToRuntimeType)
 		assertNoError(setVariable(p, "plugin2.A", "main.ExeGlobal"), t, "setVariable(plugin2.A = main.ExeGlobal)")
 		assertNoError(grp.Continue(), t, "Continue 3")
-		assertCurrentLocationFunction(p, t, "github.com/go-delve/delve/_fixtures/plugin2.aIsNotNil")
+		assertCurrentLocationFunction(p, t, "github.com/hitzhangjie/tinydbg/_fixtures/plugin2.aIsNotNil")
 		vstr, err := evalVariableWithCfg(p, "str", pnormalLoadConfig)
 		assertNoError(err, t, "Eval(str)")
 		assertVariable(t, vstr, varTest{"str", true, `"success"`, ``, `string`, nil})
@@ -1679,7 +1666,7 @@ func TestPluginVariables(t *testing.T) {
 		// read interface variable, inside executable code, with a concrete type defined in a plugin
 		vb, err := evalVariableWithCfg(p, "b", pnormalLoadConfig)
 		assertNoError(err, t, "Eval(b)")
-		assertVariable(t, vb, varTest{"b", true, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.SomethingElse(*github.com/go-delve/delve/_fixtures/plugin2.asomethingelse) *{x: 1, y: 4}`, ``, `github.com/go-delve/delve/_fixtures/internal/pluginsupport.SomethingElse`, nil})
+		assertVariable(t, vb, varTest{"b", true, `github.com/hitzhangjie/tinydbg/_fixtures/internal/pluginsupport.SomethingElse(*github.com/hitzhangjie/tinydbg/_fixtures/plugin2.asomethingelse) *{x: 1, y: 4}`, ``, `github.com/hitzhangjie/tinydbg/_fixtures/internal/pluginsupport.SomethingElse`, nil})
 	})
 }
 
@@ -1708,7 +1695,6 @@ func TestCgoEval(t *testing.T) {
 		t.Skip("skipped on ppc64le: broken")
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("testvariablescgo/", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		for _, tc := range testcases {
@@ -1887,7 +1873,6 @@ func TestClassicMap(t *testing.T) {
 	// This test replicates some of the tests in TestEvalExpression to check
 	// that we still support non-swiss maps on versions of Go where the default
 	// map backend is swisstables.
-	protest.AllowRecording(t)
 
 	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 24) {
 		t.Skip("N/A")

@@ -19,21 +19,20 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/go-delve/delve/pkg/astutil"
-	pdwarf "github.com/go-delve/delve/pkg/dwarf"
-	"github.com/go-delve/delve/pkg/dwarf/frame"
-	"github.com/go-delve/delve/pkg/dwarf/godwarf"
-	"github.com/go-delve/delve/pkg/dwarf/line"
-	"github.com/go-delve/delve/pkg/dwarf/loclist"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/reader"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/internal/gosym"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc/evalop"
 	"github.com/hashicorp/golang-lru/simplelru"
+	"github.com/hitzhangjie/tinydbg/pkg/astutil"
+	pdwarf "github.com/hitzhangjie/tinydbg/pkg/dwarf"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/frame"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/godwarf"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/line"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/loclist"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/reader"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/internal/gosym"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/evalop"
 )
 
 const (
@@ -72,11 +71,9 @@ type BinaryInfo struct {
 
 	ElfDynamicSection ElfDynamicSection
 
-	lastModified time.Time // Time the executable of this process was last modified
-
 	// PackageMap maps package names to package paths, needed to lookup types inside DWARF info.
 	// On Go1.12 this mapping is determined by using the last element of a package path, for example:
-	//   github.com/go-delve/delve
+	//   github.com/hitzhangjie/tinydbg
 	// will map to 'delve' because it ends in '/delve'.
 	// Starting with Go1.13 debug_info will contain a special attribute
 	// (godwarf.AttrGoPackageName) containing the canonical package name for
@@ -793,13 +790,11 @@ func NewBinaryInfo(goos, goarch string) *BinaryInfo {
 
 // LoadBinaryInfo will load and store the information from the binary at 'path'.
 func (bi *BinaryInfo) LoadBinaryInfo(path string, entryPoint uint64, debugInfoDirs []string) error {
-	fi, err := os.Stat(path)
-	if err == nil {
-		bi.lastModified = fi.ModTime()
+	_, err := os.Stat(path)
+	if err != nil {
+		return err
 	}
-
 	bi.DebugInfoDirectories = debugInfoDirs
-
 	return bi.AddImage(path, entryPoint)
 }
 
@@ -827,11 +822,6 @@ func (bi *BinaryInfo) GStructOffset(mem MemoryReadWriter) (uint64, error) {
 		}
 	}
 	return offset, nil
-}
-
-// LastModified returns the last modified time of the binary.
-func (bi *BinaryInfo) LastModified() time.Time {
-	return bi.lastModified
 }
 
 // DwarfReader returns a reader for the dwarf data

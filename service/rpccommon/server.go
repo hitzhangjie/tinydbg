@@ -14,12 +14,12 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/version"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/debugger"
-	"github.com/go-delve/delve/service/rpc2"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/version"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
+	"github.com/hitzhangjie/tinydbg/service/debugger"
+	"github.com/hitzhangjie/tinydbg/service/rpc2"
 )
 
 //go:generate go run ../../_scripts/gen-suitablemethods.go suitablemethods

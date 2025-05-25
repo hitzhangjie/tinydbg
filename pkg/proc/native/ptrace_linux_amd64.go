@@ -6,8 +6,8 @@ import (
 
 	sys "golang.org/x/sys/unix"
 
-	"github.com/go-delve/delve/pkg/proc/amd64util"
-	"github.com/go-delve/delve/pkg/proc/native/cpuid"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/amd64util"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/native/cpuid"
 )
 
 // ptraceGetRegset returns floating point registers of the specified thread
@@ -27,7 +27,7 @@ func ptraceGetRegset(tid int) (regset amd64util.AMD64Xstate, err error) {
 	_, _, err = syscall.Syscall6(syscall.SYS_PTRACE, sys.PTRACE_GETREGSET, uintptr(tid), _NT_X86_XSTATE, uintptr(unsafe.Pointer(&iov)), 0, 0)
 	if err != syscall.Errno(0) {
 		if err == syscall.ENODEV || err == syscall.EIO || err == syscall.EINVAL {
-			// ignore ENODEV, it just means this CPU or kernel doesn't support XSTATE, see https://github.com/go-delve/delve/issues/1022
+			// ignore ENODEV, it just means this CPU or kernel doesn't support XSTATE, see https://github.com/hitzhangjie/tinydbg/issues/1022
 			// also ignore EIO, it means that we are running on an old kernel (pre 2.6.34) and PTRACE_GETREGSET is not implemented
 			// also ignore EINVAL, it means the kernel itself does not support the NT_X86_XSTATE argument (but does support PTRACE_GETREGSET)
 			err = nil

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/core"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/core"
 
-	protest "github.com/go-delve/delve/pkg/proc/test"
+	protest "github.com/hitzhangjie/tinydbg/pkg/proc/test"
 )
 
 var fuzzEvalExpressionSetup = flag.Bool("fuzzevalexpressionsetup", false, "Performs setup for FuzzEvalExpression")

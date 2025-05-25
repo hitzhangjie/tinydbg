@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
 )
 
 const (

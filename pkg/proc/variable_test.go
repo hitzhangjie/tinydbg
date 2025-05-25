@@ -4,12 +4,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-delve/delve/pkg/proc"
-	protest "github.com/go-delve/delve/pkg/proc/test"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	protest "github.com/hitzhangjie/tinydbg/pkg/proc/test"
 )
 
 func TestGoroutineCreationLocation(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("goroutinestackprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.agoroutine")
 		assertNoError(grp.Continue(), t, "Continue()")

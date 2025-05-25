@@ -13,14 +13,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/astutil"
-	"github.com/go-delve/delve/pkg/dwarf/godwarf"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/reader"
-	"github.com/go-delve/delve/pkg/dwarf/regnum"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc/evalop"
+	"github.com/hitzhangjie/tinydbg/pkg/astutil"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/godwarf"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/reader"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/regnum"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/evalop"
 )
 
 // This file implements the function call injection introduced in go1.11.
@@ -660,7 +660,7 @@ func funcCallArgs(fn *Function, bi *BinaryInfo, includeRet bool) (argFrameSize i
 		// each argument plus the total bytes of register arguments.
 		// This is derived from worst-case alignment padding of up to
 		// (pointer-word-bytes - 1) per argument passed in registers.
-		// See: https://github.com/go-delve/delve/pull/2451#discussion_r665761531
+		// See: https://github.com/hitzhangjie/tinydbg/pull/2451#discussion_r665761531
 		// TODO: Make this generic for other platforms.
 		argFrameSize = alignAddr(argFrameSize, 8)
 		argFrameSize += int64(bi.Arch.maxRegArgBytes)
@@ -868,7 +868,7 @@ func funcCallStep(callScope *EvalScope, stack *evalStack, thread Thread) bool {
 		if bi.Arch.Name == "amd64" {
 			// The tail of debugCallV2 corrupts the state of RFLAGS, we must restore
 			// it one extra time after stepping out of it.
-			// See https://github.com/go-delve/delve/issues/2985 and
+			// See https://github.com/hitzhangjie/tinydbg/issues/2985 and
 			// TestCallInjectionFlagCorruption
 			rflags := bi.Arch.RegistersToDwarfRegisters(0, fncall.savedRegs).Uint64Val(regnum.AMD64_Rflags)
 			err := thread.SetReg(regnum.AMD64_Rflags, op.DwarfRegisterFromUint64(rflags))

@@ -26,18 +26,19 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/go-delve/delve/pkg/dwarf/frame"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/native"
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/frame"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/native"
+	protest "github.com/hitzhangjie/tinydbg/pkg/proc/test"
+	"github.com/hitzhangjie/tinydbg/service/api"
 )
 
 var normalLoadConfig = proc.LoadConfig{true, 1, 64, 64, -1, 0}
-var testBackend, buildMode string
+var buildMode string
+var testBackend = "native"
 
 func init() {
 	runtime.GOMAXPROCS(4)
@@ -49,7 +50,6 @@ func TestMain(m *testing.M) {
 	var logConf string
 	flag.StringVar(&logConf, "log", "", "configures logging")
 	flag.Parse()
-	protest.DefaultTestBackend(&testBackend)
 	if buildMode != "" && buildMode != "pie" {
 		fmt.Fprintf(os.Stderr, "unknown build mode %q", buildMode)
 		os.Exit(1)
@@ -197,7 +197,6 @@ func assertFunctionName(p *proc.Target, t *testing.T, fnname string, descr strin
 }
 
 func TestExit(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("continuetestprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		pe, ok := err.(proc.ErrProcessExited)
@@ -214,7 +213,6 @@ func TestExit(t *testing.T) {
 }
 
 func TestExitAfterContinue(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("continuetestprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.sayhi")
 		assertNoError(grp.Continue(), t, "First Continue()")
@@ -329,7 +327,6 @@ func TestHalt(t *testing.T) {
 }
 
 func TestStepInstruction(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.helloworld")
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -348,7 +345,6 @@ func TestStepInstruction(t *testing.T) {
 }
 
 func TestNextInstruction(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 19)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -361,7 +357,6 @@ func TestNextInstruction(t *testing.T) {
 }
 
 func TestBreakpoint(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.helloworld")
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -382,7 +377,6 @@ func TestBreakpoint(t *testing.T) {
 }
 
 func TestBreakpointInSeparateGoRoutine(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testthreads", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.anotherthread")
 
@@ -446,7 +440,6 @@ func TestNextConcurrent(t *testing.T) {
 		{9, 10},
 		{10, 11},
 	}
-	protest.AllowRecording(t)
 	withTestProcess("parallel_next", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.sayhi")
 		assertNoError(grp.Continue(), t, "Continue")
@@ -483,7 +476,6 @@ func TestNextConcurrentVariant2(t *testing.T) {
 		{9, 10},
 		{10, 11},
 	}
-	protest.AllowRecording(t)
 	withTestProcess("parallel_next", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.sayhi")
 		assertNoError(grp.Continue(), t, "Continue")
@@ -590,7 +582,6 @@ func returnAddress(tgt *proc.Target, thread proc.Thread) (uint64, error) {
 }
 
 func TestFindReturnAddress(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testnextprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 24)
 		err := grp.Continue()
@@ -610,7 +601,6 @@ func TestFindReturnAddress(t *testing.T) {
 
 func TestFindReturnAddressTopOfStackFn(t *testing.T) {
 	skipOn(t, "broken in linux ppc64le", "linux", "ppc64le", "native")
-	protest.AllowRecording(t)
 	withTestProcess("testreturnaddress", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		fnName := "runtime.rt0_go"
 		setFunctionBreakpoint(p, t, fnName)
@@ -624,7 +614,6 @@ func TestFindReturnAddressTopOfStackFn(t *testing.T) {
 }
 
 func TestSwitchThread(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testnextprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		// With invalid thread id
 		err := p.SwitchThread(-1)
@@ -666,9 +655,8 @@ func TestCGONext(t *testing.T) {
 	}
 	protest.MustHaveCgo(t)
 
-	skipOn(t, "broken - see https://github.com/go-delve/delve/issues/3158", "darwin", "amd64")
+	skipOn(t, "broken - see https://github.com/hitzhangjie/tinydbg/issues/3158", "darwin", "amd64")
 
-	protest.AllowRecording(t)
 	withTestProcess("cgotest", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.main")
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -678,7 +666,6 @@ func TestCGONext(t *testing.T) {
 
 func TestCGOBreakpointLocation(t *testing.T) {
 	protest.MustHaveCgo(t)
-	protest.AllowRecording(t)
 
 	withTestProcess("cgotest", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "C.foo")
@@ -707,7 +694,6 @@ func TestStacktrace(t *testing.T) {
 		{{4, "main.stacktraceme"}, {8, "main.func1"}, {16, "main.main"}},
 		{{4, "main.stacktraceme"}, {8, "main.func1"}, {12, "main.func2"}, {17, "main.main"}},
 	}
-	protest.AllowRecording(t)
 	withTestProcess("stacktraceprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.stacktraceme")
 
@@ -800,7 +786,6 @@ func TestStacktraceGoroutine(t *testing.T) {
 		lenient = 1
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("goroutinestackprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.stacktraceme")
 
@@ -907,14 +892,12 @@ func TestGetG(t *testing.T) {
 	}
 	protest.MustHaveCgo(t)
 
-	protest.AllowRecording(t)
 	withTestProcess("cgotest", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		testGSupportFunc("cgo", t, p, grp, fixture)
 	})
 }
 
 func TestContinueMulti(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("integrationprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp1 := setFunctionBreakpoint(p, t, "main.main")
 		bp2 := setFunctionBreakpoint(p, t, "main.sayhi")
@@ -952,7 +935,6 @@ func TestBreakpointOnFunctionEntry(t *testing.T) {
 }
 
 func TestProcessReceivesSIGCHLD(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("sigchldprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		_, ok := err.(proc.ErrProcessExited)
@@ -1003,7 +985,6 @@ func evalVariable(p *proc.Target, t testing.TB, symbol string) *proc.Variable {
 }
 
 func TestFrameEvaluation(t *testing.T) {
-	protest.AllowRecording(t)
 	lenient := false
 	if runtime.GOOS == "windows" {
 		lenient = true
@@ -1159,7 +1140,6 @@ func TestVariableFunctionScoping(t *testing.T) {
 }
 
 func TestRecursiveStructure(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		v := evalVariable(p, t, "aas")
@@ -1169,7 +1149,6 @@ func TestRecursiveStructure(t *testing.T) {
 
 func TestIssue316(t *testing.T) {
 	// A pointer loop that includes one interface should not send dlv into an infinite loop
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		evalVariable(p, t, "iface5")
@@ -1178,7 +1157,6 @@ func TestIssue316(t *testing.T) {
 
 func TestIssue325(t *testing.T) {
 	// nil pointer dereference when evaluating interfaces to function pointers
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		iface2fn1v := evalVariable(p, t, "iface2fn1")
@@ -1190,7 +1168,6 @@ func TestIssue325(t *testing.T) {
 }
 
 func TestBreakpointCounts(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("bpcountstest", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 12)
 
@@ -1275,7 +1252,6 @@ func TestBreakpointCountsWithDetection(t *testing.T) {
 		return
 	}
 	m := map[int64]int64{}
-	protest.AllowRecording(t)
 	withTestProcess("bpcountstest", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 12)
 
@@ -1368,7 +1344,6 @@ func BenchmarkGoroutinesInfo(b *testing.B) {
 
 func TestIssue262(t *testing.T) {
 	// Continue does not work when the current breakpoint is set on a NOP instruction
-	protest.AllowRecording(t)
 	withTestProcess("issue262", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 11)
 
@@ -1388,7 +1363,6 @@ func TestIssue305(t *testing.T) {
 	// If 'next' hits a breakpoint on the goroutine it's stepping through
 	// the internal breakpoints aren't cleared preventing further use of
 	// 'next' command
-	protest.AllowRecording(t)
 	withTestProcess("issue305", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 5)
 
@@ -1405,7 +1379,6 @@ func TestIssue305(t *testing.T) {
 func TestPointerLoops(t *testing.T) {
 	// Pointer loops through map entries, pointers and slices
 	// Regression test for issue #341
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		for _, expr := range []string{"mapinf", "ptrinf", "sliceinf"} {
@@ -1430,7 +1403,6 @@ func BenchmarkLocalVariables(b *testing.B) {
 }
 
 func TestCondBreakpoint(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("parallel_next", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 9)
 		bp.UserBreaklet().Cond = &ast.BinaryExpr{
@@ -1451,7 +1423,6 @@ func TestCondBreakpoint(t *testing.T) {
 }
 
 func TestCondBreakpointWithFrame(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("condframe", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 12)
 		parsed, err := parser.ParseExpr("runtime.frame(1).i == 3")
@@ -1481,7 +1452,6 @@ func TestCondBreakpointWithFrame(t *testing.T) {
 }
 
 func TestCondBreakpointError(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("parallel_next", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 9)
 		bp.UserBreaklet().Cond = &ast.BinaryExpr{
@@ -1542,7 +1512,6 @@ func TestHitCondBreakpointEQ(t *testing.T) {
 }
 
 func TestHitCondBreakpointGEQ(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("break", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 7)
 		grp.ChangeBreakpointCondition(bp.Logical, "", ">= 3", false)
@@ -1562,7 +1531,6 @@ func TestHitCondBreakpointGEQ(t *testing.T) {
 }
 
 func TestHitCondBreakpointREM(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("break", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 7)
 		grp.ChangeBreakpointCondition(bp.Logical, "", "% 2", false)
@@ -1586,7 +1554,6 @@ func TestHitCondBreakpointREM(t *testing.T) {
 
 func TestIssue356(t *testing.T) {
 	// slice with a typedef does not get printed correctly
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue() returned an error")
 		mmvar := evalVariable(p, t, "mainMenu")
@@ -1621,7 +1588,6 @@ func TestStepIntoFunction(t *testing.T) {
 
 func TestIssue332_Part1(t *testing.T) {
 	// Next shouldn't step inside a function call
-	protest.AllowRecording(t)
 	withTestProcess("issue332", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 8)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -1645,7 +1611,6 @@ func TestIssue332_Part2(t *testing.T) {
 	// In some parts of the prologue, for some functions, the FDE data is incorrect
 	// which leads to 'next' and 'stack' failing with error "could not find FDE for PC: <garbage>"
 	// because the incorrect FDE data leads to reading the wrong stack address as the return address
-	protest.AllowRecording(t)
 	withTestProcess("issue332", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 8)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -1687,7 +1652,6 @@ func TestIssue332_Part2(t *testing.T) {
 func TestIssue414(t *testing.T) {
 	skipOn(t, "broken", "linux", "386", "pie") // test occasionally hangs on linux/386/pie
 	// Stepping until the program exits
-	protest.AllowRecording(t)
 	withTestProcess("math", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 9)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -1698,7 +1662,7 @@ func TestIssue414(t *testing.T) {
 			var err error
 			// Stepping through the runtime is not generally safe so after we are out
 			// of main.main just use Next.
-			// See: https://github.com/go-delve/delve/pull/2082
+			// See: https://github.com/hitzhangjie/tinydbg/pull/2082
 			if f == fixture.Source {
 				err = grp.Step()
 			} else {
@@ -1721,7 +1685,6 @@ func TestPackageVariables(t *testing.T) {
 		"runtime.sliceEface":  true,
 	}
 
-	protest.AllowRecording(t)
 	withTestProcess("testvariables", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		assertNoError(err, t, "Continue()")
@@ -1757,7 +1720,6 @@ func TestIssue149(t *testing.T) {
 }
 
 func TestPanicBreakpoint(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("panic", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		bp := p.CurrentThread().Breakpoint()
@@ -1830,7 +1792,6 @@ func TestIssue462(t *testing.T) {
 }
 
 func TestNextParked(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("parallel_next", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.sayhi")
 
@@ -1880,7 +1841,6 @@ func TestNextParked(t *testing.T) {
 }
 
 func TestStepParked(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("parallel_next", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFunctionBreakpoint(p, t, "main.sayhi")
 
@@ -1975,7 +1935,6 @@ func TestUnsupportedArch(t *testing.T) {
 func TestIssue573(t *testing.T) {
 	// calls to runtime.duffzero and runtime.duffcopy jump directly into the middle
 	// of the function and the internal breakpoint set by StepInto may be missed.
-	protest.AllowRecording(t)
 	withTestProcess("issue573", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.foo")
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -1998,7 +1957,6 @@ func TestTestvariables2Prologue(t *testing.T) {
 func TestIssue561(t *testing.T) {
 	// Step fails to make progress when PC is at a CALL instruction
 	// where a breakpoint is also set.
-	protest.AllowRecording(t)
 	withTestProcess("issue561", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 10)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -2035,7 +1993,6 @@ func TestStepOut(t *testing.T) {
 
 func TestStepConcurrentDirect(t *testing.T) {
 	skipOn(t, "broken - step concurrent", "windows", "arm64")
-	protest.AllowRecording(t)
 	withTestProcess("teststepconcurrent", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 37)
 
@@ -2098,7 +2055,6 @@ func TestStepConcurrentDirect(t *testing.T) {
 }
 
 func TestStepConcurrentPtr(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("teststepconcurrent", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 24)
 
@@ -2170,7 +2126,6 @@ func TestStepConcurrentPtr(t *testing.T) {
 }
 
 func TestStepOutBreakpoint(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testnextprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 13)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -2187,7 +2142,6 @@ func TestStepOutBreakpoint(t *testing.T) {
 }
 
 func TestNextBreakpoint(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testnextprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 34)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -2204,7 +2158,6 @@ func TestNextBreakpoint(t *testing.T) {
 }
 
 func TestNextBreakpointKeepsSteppingBreakpoints(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testnextprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		grp.KeepSteppingBreakpoints = proc.TracepointKeepsSteppingBreakpoints
 		bp := setFileBreakpoint(p, t, fixture.Source, 34)
@@ -2230,7 +2183,6 @@ func TestNextBreakpointKeepsSteppingBreakpoints(t *testing.T) {
 }
 
 func TestStepOutDefer(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testnextdefer", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 9)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -2257,7 +2209,6 @@ func TestStepOutDeferReturnAndDirectCall(t *testing.T) {
 }
 
 func TestStepOnCallPtrInstr(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("teststepprog", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 10)
 
@@ -2308,7 +2259,6 @@ func TestIssue594(t *testing.T) {
 	// back to the target.
 	// In particular the target should be able to cause a nil pointer
 	// dereference panic and recover from it.
-	protest.AllowRecording(t)
 	withTestProcess("issue594", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		f, ln := currentLineNumber(p, t)
@@ -2333,7 +2283,6 @@ func TestWorkDir(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		wd = "/private/tmp"
 	}
-	protest.AllowRecording(t)
 	withTestProcessArgs("workdir", t, wd, []string{}, 0, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 14)
 		grp.Continue()
@@ -2355,7 +2304,6 @@ func TestNegativeIntEvaluation(t *testing.T) {
 		{"ni16", "int16", int64(-5)},
 		{"ni32", "int32", int64(-5)},
 	}
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		for _, tc := range testcases {
@@ -2372,7 +2320,6 @@ func TestNegativeIntEvaluation(t *testing.T) {
 
 func TestIssue683(t *testing.T) {
 	// Step panics when source file can not be found
-	protest.AllowRecording(t)
 	withTestProcess("issue683", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.main")
 		assertNoError(grp.Continue(), t, "First Continue()")
@@ -2388,7 +2335,6 @@ func TestIssue683(t *testing.T) {
 }
 
 func TestIssue664(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("issue664", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 4)
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -2418,7 +2364,6 @@ func TestNextInDeferReturn(t *testing.T) {
 	// instruction leaves the curg._defer field non-nil but with curg._defer.fn
 	// field being nil.
 	// We need to deal with this without panicking.
-	protest.AllowRecording(t)
 	withTestProcess("defercall", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "runtime.deferreturn")
 		assertNoError(grp.Continue(), t, "First Continue()")
@@ -2505,7 +2450,6 @@ func TestAttachDetach(t *testing.T) {
 }
 
 func TestVarSum(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		sumvar := evalVariable(p, t, "s1[0] + s1[1]")
@@ -2520,7 +2464,6 @@ func TestVarSum(t *testing.T) {
 }
 
 func TestPackageWithPathVar(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("pkgrenames", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		evalVariable(p, t, "pkg.SomeVar")
@@ -2529,7 +2472,6 @@ func TestPackageWithPathVar(t *testing.T) {
 }
 
 func TestEnvironment(t *testing.T) {
-	protest.AllowRecording(t)
 	t.Setenv("SOMEVAR", "bah")
 	withTestProcess("testenv", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
@@ -2549,7 +2491,7 @@ func getFrameOff(p *proc.Target, t *testing.T) int64 {
 }
 
 func TestRecursiveNext(t *testing.T) {
-	protest.AllowRecording(t)
+
 	testcases := []nextTest{
 		{6, 7},
 		{7, 10},
@@ -2604,7 +2546,6 @@ func TestIssue893(t *testing.T) {
 	// Test what happens when next is called immediately after launching the
 	// executable, acceptable behaviors are: (a) no error, (b) no source at PC
 	// error, (c) program runs to completion
-	protest.AllowRecording(t)
 	withTestProcess("increment", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Next()
 		if err == nil {
@@ -2624,7 +2565,6 @@ func TestIssue893(t *testing.T) {
 }
 
 func TestStepInstructionNoGoroutine(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("increment", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		// Call StepInstruction immediately after launching the program, it should
 		// work even though no goroutine is selected.
@@ -2633,7 +2573,6 @@ func TestStepInstructionNoGoroutine(t *testing.T) {
 }
 
 func TestIssue871(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcess("issue871", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue")
 
@@ -4519,7 +4458,7 @@ func TestVariablesWithExternalLinking(t *testing.T) {
 	// Tests that macOSDebugFrameBugWorkaround works.
 	// See:
 	//  https://github.com/golang/go/issues/25841
-	//  https://github.com/go-delve/delve/issues/2346
+	//  https://github.com/hitzhangjie/tinydbg/issues/2346
 	withTestProcessArgs("testvariables2", t, ".", []string{}, protest.BuildModeExternalLinker, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		assertNoError(grp.Continue(), t, "Continue()")
 		str1Var := evalVariable(p, t, "str1")
@@ -4539,8 +4478,7 @@ func TestWatchpointsBasic(t *testing.T) {
 	skipOn(t, "not implemented", "ppc64le")
 	skipOn(t, "not implemented", "riscv64")
 	skipOn(t, "not implemented", "loong64")
-	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
-	protest.AllowRecording(t)
+	skipOn(t, "see https://github.com/hitzhangjie/tinydbg/issues/2768", "windows")
 
 	position1 := []int{18, 19}
 	position5 := []int{40, 41}
@@ -4593,14 +4531,13 @@ func TestWatchpointsBasic(t *testing.T) {
 func TestWatchpointCounts(t *testing.T) {
 	skipOn(t, "not implemented", "freebsd")
 	skipOn(t, "not implemented", "386")
-	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
+	skipOn(t, "see https://github.com/hitzhangjie/tinydbg/issues/2768", "windows")
 	skipOn(t, "not implemented", "ppc64le")
 	skipOn(t, "not implemented", "riscv64")
 	skipOn(t, "not implemented", "loong64")
 	if _, isTeamCityTest := os.LookupEnv("TEAMCITY_VERSION"); isTeamCityTest {
 		skipOn(t, "CI is running a version of macOS that is too old (11.2)", "darwin", "arm64")
 	}
-	protest.AllowRecording(t)
 
 	withTestProcess("databpcountstest", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFunctionBreakpoint(p, t, "main.main")
@@ -4716,11 +4653,10 @@ func TestWatchpointStack(t *testing.T) {
 	skipOn(t, "not implemented", "ppc64le")
 	skipOn(t, "not implemented", "riscv64")
 	skipOn(t, "not implemented", "loong64")
-	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
+	skipOn(t, "see https://github.com/hitzhangjie/tinydbg/issues/2768", "windows")
 	if _, isTeamCityTest := os.LookupEnv("TEAMCITY_VERSION"); isTeamCityTest {
 		skipOn(t, "CI is running a version of macOS that is too old (11.2)", "darwin", "arm64")
 	}
-	protest.AllowRecording(t)
 
 	position1 := []int{16, 17}
 
@@ -4798,7 +4734,6 @@ func TestWatchpointStack(t *testing.T) {
 
 func TestWatchpointStackBackwardsOutOfScope(t *testing.T) {
 	skipUnlessOn(t, "only for recorded targets", "rr")
-	protest.AllowRecording(t)
 
 	withTestProcess("databpstack", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 11) // Position 0 breakpoint
@@ -5124,7 +5059,6 @@ func TestFollowExecRegexFilter(t *testing.T) {
 }
 
 func TestReadTargetArguments(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcessArgs("restartargs", t, ".", []string{"one", "two", "three"}, 0, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		t.Logf("command line: %q\n", p.CmdLine)
 		if !strings.HasSuffix(p.CmdLine, " one two three") {
@@ -5178,13 +5112,6 @@ func TestWaitFor(t *testing.T) {
 
 func TestWaitForAttach(t *testing.T) {
 	skipOn(t, "flaky", "freebsd")
-	if testBackend == "lldb" && runtime.GOOS == "linux" {
-		bs, _ := os.ReadFile("/proc/sys/kernel/yama/ptrace_scope")
-		if bs == nil || strings.TrimSpace(string(bs)) != "0" {
-			t.Logf("can not run TestAttachDetach: %v\n", bs)
-			return
-		}
-	}
 
 	var mu sync.Mutex
 	started := false
@@ -5215,7 +5142,6 @@ func TestWaitForAttach(t *testing.T) {
 }
 
 func TestIssue3545(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestProcessArgs("nilptr", t, "", []string{}, protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		err := grp.Continue()
 		if err != nil && err.Error() == "bad access" {
@@ -5323,8 +5249,7 @@ func TestWatchpointInterface(t *testing.T) {
 	skipOn(t, "not implemented", "ppc64le")
 	skipOn(t, "not implemented", "riscv64")
 	skipOn(t, "not implemented", "loong64")
-	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
-	protest.AllowRecording(t)
+	skipOn(t, "see https://github.com/hitzhangjie/tinydbg/issues/2768", "windows")
 
 	withTestProcess("watchpointInterface", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		// Set breakpoint at line after error is created and printed
@@ -5357,8 +5282,7 @@ func TestWatchpointInterfaceNil(t *testing.T) {
 	skipOn(t, "not implemented", "ppc64le")
 	skipOn(t, "not implemented", "riscv64")
 	skipOn(t, "not implemented", "loong64")
-	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
-	protest.AllowRecording(t)
+	skipOn(t, "see https://github.com/hitzhangjie/tinydbg/issues/2768", "windows")
 
 	withTestProcess("watchpointInterfaceNil", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		// Set breakpoint at line after error is created and printed
@@ -5396,7 +5320,7 @@ func TestStackwatchClearBug(t *testing.T) {
 	skipOn(t, "not implemented", "386")
 	skipOn(t, "not implemented", "ppc64le")
 	skipOn(t, "not implemented", "loong64")
-	skipOn(t, "see https://github.com/go-delve/delve/issues/2768", "windows")
+	skipOn(t, "see https://github.com/hitzhangjie/tinydbg/issues/2768", "windows")
 
 	showbps := func(bps *proc.BreakpointMap) {
 		for _, bp := range bps.M {

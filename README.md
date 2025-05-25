@@ -1,6 +1,6 @@
 Note:
 
-1. this repo is forked from https://github.com/go-delve/delve
+1. this repo is forked from https://github.com/hitzhangjie/tinydbg
 2. this branch is modified based on go-delve/delve@v1.24.1
   - keep the core design and logic
   - simplify platforms relevant info, only linux/amd64 kept
@@ -17,7 +17,7 @@ Note:
 ![Delve](https://raw.githubusercontent.com/go-delve/delve/master/assets/delve_horizontal.png)
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/go-delve/delve/master/LICENSE)
-[![Go Reference](https://pkg.go.dev/badge/github.com/go-delve/delve.svg)](https://pkg.go.dev/github.com/go-delve/delve)
+[![Go Reference](https://pkg.go.dev/badge/github.com/hitzhangjie/tinydbg.svg)](https://pkg.go.dev/github.com/hitzhangjie/tinydbg)
 [![Build Status](<https://delve.teamcity.com/app/rest/builds/buildType:(id:Delve_AggregatorBuild)/statusIcon.svg>)](https://delve.teamcity.com/viewType.html?buildTypeId=Delve_AggregatorBuild&guest=1)
 
 The GitHub issue tracker is for **bugs** only. Please use the [developer mailing list](https://groups.google.com/forum/#!forum/delve-dev) for any feature proposals and discussions.

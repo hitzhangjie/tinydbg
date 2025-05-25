@@ -6,8 +6,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/dwarf"
-	"github.com/go-delve/delve/pkg/dwarf/leb128"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/leb128"
 )
 
 // DebugLinePrologue prologue of .debug_line data.

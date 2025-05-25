@@ -3,7 +3,7 @@
 package rpccommon
 
 import (
-	"github.com/go-delve/delve/service/rpc2"
+	"github.com/hitzhangjie/tinydbg/service/rpc2"
 	"reflect"
 )
 
@@ -37,7 +37,6 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.GetThread"] = &methodType{method: reflect.ValueOf(s.GetThread)}
 	methods["RPCServer.GuessSubstitutePath"] = &methodType{method: reflect.ValueOf(s.GuessSubstitutePath)}
 	methods["RPCServer.IsMulticlient"] = &methodType{method: reflect.ValueOf(s.IsMulticlient)}
-	methods["RPCServer.LastModified"] = &methodType{method: reflect.ValueOf(s.LastModified)}
 	methods["RPCServer.ListBreakpoints"] = &methodType{method: reflect.ValueOf(s.ListBreakpoints)}
 	methods["RPCServer.ListCheckpoints"] = &methodType{method: reflect.ValueOf(s.ListCheckpoints)}
 	methods["RPCServer.ListDynamicLibraries"] = &methodType{method: reflect.ValueOf(s.ListDynamicLibraries)}

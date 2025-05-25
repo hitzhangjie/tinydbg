@@ -3,7 +3,7 @@
 package native
 
 import (
-	"github.com/go-delve/delve/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
 	sys "golang.org/x/sys/unix"
 )
 

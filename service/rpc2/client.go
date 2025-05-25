@@ -11,10 +11,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
 )
 
 // RPCClient is a RPC service.Client.
@@ -56,12 +55,6 @@ func (c *RPCClient) BuildID() string {
 	out := new(BuildIDOut)
 	c.call("BuildID", BuildIDIn{}, out)
 	return out.BuildID
-}
-
-func (c *RPCClient) LastModified() time.Time {
-	out := new(LastModifiedOut)
-	c.call("LastModified", LastModifiedIn{}, out)
-	return out.Time
 }
 
 func (c *RPCClient) Detach(kill bool) error {
@@ -254,7 +247,7 @@ func (c *RPCClient) GetBreakpointByName(name string) (*api.Breakpoint, error) {
 // CreateBreakpoint will send a request to the RPC server to create a breakpoint.
 // Please refer to the documentation for `Debugger.CreateBreakpoint` for a description of how
 // the requested breakpoint parameters are interpreted and used:
-// https://pkg.go.dev/github.com/go-delve/delve/service/debugger#Debugger.CreateBreakpoint
+// https://pkg.go.dev/github.com/hitzhangjie/tinydbg/service/debugger#Debugger.CreateBreakpoint
 func (c *RPCClient) CreateBreakpoint(breakPoint *api.Breakpoint) (*api.Breakpoint, error) {
 	var out CreateBreakpointOut
 	err := c.call("CreateBreakpoint", CreateBreakpointIn{*breakPoint, "", nil, false}, &out)

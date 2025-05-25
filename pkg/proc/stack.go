@@ -10,10 +10,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-delve/delve/pkg/dwarf/frame"
-	"github.com/go-delve/delve/pkg/dwarf/op"
-	"github.com/go-delve/delve/pkg/dwarf/reader"
-	"github.com/go-delve/delve/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/frame"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
+	"github.com/hitzhangjie/tinydbg/pkg/dwarf/reader"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
 )
 
 // This code is partly adapted from runtime.gentraceback in

@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-delve/delve/pkg/elfwriter"
-	"github.com/go-delve/delve/pkg/proc/internal/ebpf"
+	"github.com/hitzhangjie/tinydbg/pkg/elfwriter"
+	"github.com/hitzhangjie/tinydbg/pkg/proc/internal/ebpf"
 )
 
 // ProcessGroup is a group of processes that are resumed at the same time.

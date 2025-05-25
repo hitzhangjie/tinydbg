@@ -3,7 +3,6 @@ package service_test
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
@@ -17,16 +16,16 @@ import (
 	"testing"
 	"time"
 
-	protest "github.com/go-delve/delve/pkg/proc/test"
-	"github.com/go-delve/delve/service/debugger"
+	protest "github.com/hitzhangjie/tinydbg/pkg/proc/test"
+	"github.com/hitzhangjie/tinydbg/service/debugger"
 
-	"github.com/go-delve/delve/pkg/goversion"
-	"github.com/go-delve/delve/pkg/logflags"
-	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/service"
-	"github.com/go-delve/delve/service/api"
-	"github.com/go-delve/delve/service/rpc2"
-	"github.com/go-delve/delve/service/rpccommon"
+	"github.com/hitzhangjie/tinydbg/pkg/goversion"
+	"github.com/hitzhangjie/tinydbg/pkg/logflags"
+	"github.com/hitzhangjie/tinydbg/pkg/proc"
+	"github.com/hitzhangjie/tinydbg/service"
+	"github.com/hitzhangjie/tinydbg/service/api"
+	"github.com/hitzhangjie/tinydbg/service/rpc2"
+	"github.com/hitzhangjie/tinydbg/service/rpccommon"
 )
 
 var normalLoadConfig = api.LoadConfig{
@@ -37,7 +36,8 @@ var normalLoadConfig = api.LoadConfig{
 	MaxStructFields:    -1,
 }
 
-var testBackend, buildMode string
+var buildMode string
+var testBackend = "native"
 
 func TestMain(m *testing.M) {
 	flag.StringVar(&buildMode, "test-buildmode", "", "selects build mode")
@@ -140,7 +140,6 @@ func TestRestart_afterExit(t *testing.T) {
 }
 
 func TestRestart_breakpointPreservation(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: 1, Name: "firstbreakpoint", Tracepoint: true})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -263,7 +262,6 @@ func TestRestart_rebuild(t *testing.T) {
 }
 
 func TestClientServer_exit(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		state, err := c.GetState()
 		if err != nil {
@@ -287,7 +285,6 @@ func TestClientServer_exit(t *testing.T) {
 }
 
 func TestClientServer_step(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.helloworld", Line: -1})
 		if err != nil {
@@ -311,7 +308,6 @@ func TestClientServer_step(t *testing.T) {
 }
 
 func TestClientServer_stepout(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.helloworld", Line: -1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -329,7 +325,6 @@ func TestClientServer_stepout(t *testing.T) {
 }
 
 func testnext2(testcases []nextTest, initialLocation string, t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: initialLocation, Line: -1})
 		if err != nil {
@@ -421,7 +416,6 @@ func TestNextFunctionReturn(t *testing.T) {
 }
 
 func TestClientServer_breakpointInMainThread(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testprog", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.helloworld", Line: 1})
 		if err != nil {
@@ -443,7 +437,6 @@ func TestClientServer_breakpointInMainThread(t *testing.T) {
 }
 
 func TestClientServer_breakpointInSeparateGoroutine(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testthreads", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.anotherthread", Line: 1})
 		if err != nil {
@@ -707,7 +700,6 @@ func TestClientServer_disableHitEQLCondBreakpoint(t *testing.T) {
 }
 
 func TestClientServer_switchThread(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		// With invalid thread id
 		_, err := c.SwitchThread(-1)
@@ -751,7 +743,6 @@ func TestClientServer_switchThread(t *testing.T) {
 }
 
 func TestClientServer_infoLocals(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		fp := testProgPath(t, "testnextprog")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 24})
@@ -781,7 +772,6 @@ func matchFunctions(t *testing.T, funcs []string, expected []string, depth int) 
 }
 
 func TestTraceFollowCallsCommand(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testtracefns", t, func(c service.Client) {
 		depth := 3
 		functions, err := c.ListFunctions("main.A", depth)
@@ -809,7 +799,6 @@ func TestTraceFollowCallsCommand(t *testing.T) {
 }
 
 func TestClientServer_infoArgs(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		fp := testProgPath(t, "testnextprog")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 47})
@@ -853,7 +842,6 @@ func TestClientServer_infoArgs(t *testing.T) {
 }
 
 func TestClientServer_traceContinue(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("integrationprog", t, func(c service.Client) {
 		fp := testProgPath(t, "integrationprog")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 15, Tracepoint: true, Goroutine: true, Stacktrace: 5, Variables: []string{"i"}})
@@ -910,7 +898,6 @@ func TestClientServer_traceContinue(t *testing.T) {
 }
 
 func TestClientServer_traceContinue2(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("integrationprog", t, func(c service.Client) {
 		bp1, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: 1, Tracepoint: true})
 		if err != nil {
@@ -1070,7 +1057,7 @@ func TestClientServer_FindLocations(t *testing.T) {
 
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 13) {
 		withTestClient2("pkgrenames", t, func(c service.Client) {
-			someFuncLoc := findLocationHelper(t, c, "github.com/go-delve/delve/_fixtures/internal/dir%2eio.SomeFunction:0", false, 1, 0)[0]
+			someFuncLoc := findLocationHelper(t, c, "github.com/hitzhangjie/tinydbg/_fixtures/internal/dir%2eio.SomeFunction:0", false, 1, 0)[0]
 			findLocationHelper(t, c, "dirio.SomeFunction:0", false, 1, someFuncLoc)
 		})
 	}
@@ -1215,7 +1202,6 @@ func TestClientServer_SetVariable(t *testing.T) {
 }
 
 func TestClientServer_FullStacktrace(t *testing.T) {
-	protest.AllowRecording(t)
 	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
 		t.Skip("cgo doesn't work on darwin/arm64")
 	}
@@ -1303,73 +1289,6 @@ func TestClientServer_FullStacktrace(t *testing.T) {
 				break
 			}
 		}
-	})
-}
-
-func assertErrorOrExited(s *api.DebuggerState, err error, t *testing.T, reason string) {
-	if err != nil {
-		return
-	}
-	if s != nil && s.Exited {
-		return
-	}
-	t.Fatalf("%s (no error and no exited status)", reason)
-}
-
-func TestIssue355(t *testing.T) {
-	// After the target process has terminated should return an error but not crash
-	protest.AllowRecording(t)
-	withTestClient2("continuetestprog", t, func(c service.Client) {
-		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: -1})
-		assertNoError(err, t, "CreateBreakpoint()")
-		ch := c.Continue()
-		state := <-ch
-		tid := state.CurrentThread.ID
-		gid := state.SelectedGoroutine.ID
-		assertNoError(state.Err, t, "First Continue()")
-		ch = c.Continue()
-		state = <-ch
-		if !state.Exited {
-			t.Fatalf("Target did not terminate after second continue")
-		}
-
-		ch = c.Continue()
-		state = <-ch
-		assertError(state.Err, t, "Continue()")
-
-		s, err := c.Next()
-		assertErrorOrExited(s, err, t, "Next()")
-		s, err = c.Step()
-		assertErrorOrExited(s, err, t, "Step()")
-		s, err = c.StepInstruction(false)
-		assertErrorOrExited(s, err, t, "StepInstruction()")
-		s, err = c.SwitchThread(tid)
-		assertErrorOrExited(s, err, t, "SwitchThread()")
-		s, err = c.SwitchGoroutine(gid)
-		assertErrorOrExited(s, err, t, "SwitchGoroutine()")
-		s, err = c.Halt()
-		assertErrorOrExited(s, err, t, "Halt()")
-		_, err = c.ListThreads()
-		assertError(err, t, "ListThreads()")
-		_, err = c.GetThread(tid)
-		assertError(err, t, "GetThread()")
-		assertError(c.SetVariable(api.EvalScope{GoroutineID: gid}, "a", "10"), t, "SetVariable()")
-		_, err = c.ListLocalVariables(api.EvalScope{GoroutineID: gid}, normalLoadConfig)
-		assertError(err, t, "ListLocalVariables()")
-		_, err = c.ListFunctionArgs(api.EvalScope{GoroutineID: gid}, normalLoadConfig)
-		assertError(err, t, "ListFunctionArgs()")
-		_, err = c.ListThreadRegisters(0, false)
-		assertError(err, t, "ListThreadRegisters()")
-		_, err = c.ListScopeRegisters(api.EvalScope{GoroutineID: gid}, false)
-		assertError(err, t, "ListScopeRegisters()")
-		_, _, err = c.ListGoroutines(0, 0)
-		assertError(err, t, "ListGoroutines()")
-		_, err = c.Stacktrace(gid, 10, 0, &normalLoadConfig)
-		assertError(err, t, "Stacktrace()")
-		_, _, err = c.FindLocation(api.EvalScope{GoroutineID: gid}, "+1", false, nil)
-		assertError(err, t, "FindLocation()")
-		_, err = c.DisassemblePC(api.EvalScope{GoroutineID: -1}, 0x40100, api.IntelFlavour)
-		assertError(err, t, "DisassemblePC()")
 	})
 }
 
@@ -1493,7 +1412,6 @@ func TestDisasm(t *testing.T) {
 
 func TestNegativeStackDepthBug(t *testing.T) {
 	// After the target process has terminated should return an error but not crash
-	protest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: -1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -1506,7 +1424,6 @@ func TestNegativeStackDepthBug(t *testing.T) {
 }
 
 func TestClientServer_CondBreakpoint(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("parallel_next", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: 1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -1593,30 +1510,7 @@ func TestSkipPrologue2(t *testing.T) {
 	})
 }
 
-func TestIssue419(t *testing.T) {
-	// Calling service/rpc.(*Client).Halt could cause a crash because both Halt and Continue simultaneously
-	// try to read 'runtime.g' and debug/dwarf.Data.Type is not thread safe
-	finish := make(chan struct{})
-	withTestClient2("issue419", t, func(c service.Client) {
-		go func() {
-			defer close(finish)
-			rand.Seed(time.Now().Unix())
-			d := time.Duration(rand.Intn(4) + 1)
-			time.Sleep(d * time.Second)
-			t.Logf("halt")
-			_, err := c.Halt()
-			assertNoError(err, t, "RequestManualStop()")
-		}()
-		statech := c.Continue()
-		state := <-statech
-		assertNoError(state.Err, t, "Continue()")
-		t.Logf("done")
-		<-finish
-	})
-}
-
 func TestTypesCommand(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testvariables2", t, func(c service.Client) {
 		state := <-c.Continue()
 		assertNoError(state.Err, t, "Continue()")
@@ -1639,23 +1533,6 @@ func TestTypesCommand(t *testing.T) {
 		if len(types) != 1 {
 			t.Fatalf("ListTypes(\"^main.astruct$\") did not filter properly, expected 1 got %d: %v", len(types), types)
 		}
-	})
-}
-
-func TestIssue406(t *testing.T) {
-	protest.AllowRecording(t)
-	withTestClient2("issue406", t, func(c service.Client) {
-		locs, _, err := c.FindLocation(api.EvalScope{GoroutineID: -1}, "issue406.go:146", false, nil)
-		assertNoError(err, t, "FindLocation()")
-		_, err = c.CreateBreakpoint(&api.Breakpoint{Addr: locs[0].PC})
-		assertNoError(err, t, "CreateBreakpoint()")
-		ch := c.Continue()
-		state := <-ch
-		assertNoError(state.Err, t, "Continue()")
-		v, err := c.EvalVariable(api.EvalScope{GoroutineID: -1}, "cfgtree", normalLoadConfig)
-		assertNoError(err, t, "EvalVariable()")
-		vs := v.MultilineString("", "")
-		t.Logf("cfgtree formats to: %s\n", vs)
 	})
 }
 
@@ -1730,7 +1607,6 @@ func TestClientServer_FpRegisters(t *testing.T) {
 		{"XMM12", "…[ZMM12hl] 0x3ff66666666666663ff4cccccccccccd"},
 		{"XMM12", "…[ZMM12hh] 0x3ff66666666666663ff4cccccccccccd"},
 	}
-	protest.AllowRecording(t)
 	withTestClient2Extended("fputest/", t, 0, [3]string{}, nil, func(c service.Client, fixture protest.Fixture) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: filepath.Join(fixture.BuildDir, "fputest.go"), Line: 25})
 		assertNoError(err, t, "CreateBreakpoint")
@@ -1817,7 +1693,6 @@ func TestClientServer_FpRegisters(t *testing.T) {
 }
 
 func TestClientServer_RestartBreakpointPosition(t *testing.T) {
-	protest.AllowRecording(t)
 	if buildMode == "pie" || (runtime.GOOS == "darwin" && runtime.GOARCH == "arm64") {
 		t.Skip("not meaningful in PIE mode")
 	}
@@ -1850,7 +1725,6 @@ func TestClientServer_SelectedGoroutineLoc(t *testing.T) {
 	// CurrentLocation of SelectedGoroutine should reflect what's happening on
 	// the thread running the goroutine, not the position the goroutine was in
 	// the last time it was parked.
-	protest.AllowRecording(t)
 	withTestClient2("testprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: -11})
 		assertNoError(err, t, "CreateBreakpoint")
@@ -1871,7 +1745,6 @@ func TestClientServer_SelectedGoroutineLoc(t *testing.T) {
 }
 
 func TestClientServer_ReverseContinue(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: -1})
 		assertNoError(err, t, "CreateBreakpoint(main.main)")
@@ -1902,7 +1775,6 @@ func TestClientServer_ReverseContinue(t *testing.T) {
 }
 
 func TestClientServer_collectBreakpointInfoOnNext(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{
 			Addr:       findLocationHelper(t, c, "testnextprog.go:23", false, 1, 0)[0],
@@ -1936,7 +1808,6 @@ func TestClientServer_collectBreakpointInfoOnNext(t *testing.T) {
 }
 
 func TestClientServer_collectBreakpointInfoError(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{
 			Addr:       findLocationHelper(t, c, "testnextprog.go:23", false, 1, 0)[0],
@@ -2251,20 +2122,7 @@ func TestUnknownMethodCall(t *testing.T) {
 	}
 }
 
-func TestIssue1703(t *testing.T) {
-	// Calling Disassemble when there is no current goroutine should work.
-	withTestClient2("testnextprog", t, func(c service.Client) {
-		locs, _, err := c.FindLocation(api.EvalScope{GoroutineID: -1}, "main.main", true, nil)
-		assertNoError(err, t, "FindLocation")
-		t.Logf("FindLocation: %#v", locs)
-		text, err := c.DisassemblePC(api.EvalScope{GoroutineID: -1}, locs[0].PC, api.IntelFlavour)
-		assertNoError(err, t, "DisassemblePC")
-		t.Logf("text: %#v\n", text)
-	})
-}
-
 func TestRerecord(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testrerecord", t, func(c service.Client) {
 		fp := testProgPath(t, "testrerecord")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 10})
@@ -2311,16 +2169,6 @@ func TestRerecord(t *testing.T) {
 	})
 }
 
-func TestIssue1787(t *testing.T) {
-	// Calling FunctionReturnLocations without a selected goroutine should
-	// work.
-	withTestClient2("testnextprog", t, func(c service.Client) {
-		if c, _ := c.(*rpc2.RPCClient); c != nil {
-			c.FunctionReturnLocations("main.main")
-		}
-	})
-}
-
 func TestDoubleCreateBreakpoint(t *testing.T) {
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: 1, Name: "firstbreakpoint", Tracepoint: true})
@@ -2354,7 +2202,6 @@ func TestDoubleCreateBreakpoint(t *testing.T) {
 }
 
 func TestStopRecording(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("sleep", t, func(c service.Client) {
 		time.Sleep(time.Second)
 		c.StopRecording()
@@ -2402,7 +2249,6 @@ func TestRedirects(t *testing.T) {
 		infile  = "redirect-input.txt"
 		outfile = "redirect-output.txt"
 	)
-	protest.AllowRecording(t)
 	withTestClient2Extended("redirect", t, 0, [3]string{infile, outfile, ""}, nil, func(c service.Client, fixture protest.Fixture) {
 		outpath := filepath.Join(fixture.BuildDir, outfile)
 		<-c.Continue()
@@ -2427,28 +2273,6 @@ func TestRedirects(t *testing.T) {
 			t.Fatalf("Expected output change got %q and %q", string(buf), string(buf2))
 		}
 		os.Remove(outpath)
-	})
-}
-
-func TestIssue2162(t *testing.T) {
-	if buildMode == "pie" || runtime.GOOS == "windows" {
-		t.Skip("skip it for stepping into one place where no source for pc when on pie mode or windows")
-	}
-	withTestClient2("issue2162", t, func(c service.Client) {
-		state, err := c.GetState()
-		assertNoError(err, t, "GetState()")
-		if state.CurrentThread.Function == nil {
-			// Can't call Step if we don't have the source code of the current function
-			return
-		}
-
-		_, err = c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main"})
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		_, err = c.Step()
-		assertNoError(err, t, "Step()")
 	})
 }
 
@@ -2674,7 +2498,6 @@ func TestRestartRewindAfterEnd(t *testing.T) {
 	// Check that Restart works after the program has terminated, even if a
 	// Continue is requested just before it.
 	// Also check that Rewind can be used after the program has terminated.
-	protest.AllowRecording(t)
 	withTestClient2("math", t, func(c service.Client) {
 		state := <-c.Continue()
 		if !state.Exited {
@@ -2858,7 +2681,7 @@ func TestPluginSuspendedBreakpoint(t *testing.T) {
 	assertNoError(err, t, "filepath.Abs")
 
 	withTestClient2Extended("plugintest", t, protest.AllNonOptimized, [3]string{}, []string{pluginFixtures[0].Path, pluginFixtures[1].Path}, func(c service.Client, f protest.Fixture) {
-		_, err := c.CreateBreakpointWithExpr(&api.Breakpoint{FunctionName: "github.com/go-delve/delve/_fixtures/plugin1.Fn1", Line: 1}, "", nil, true)
+		_, err := c.CreateBreakpointWithExpr(&api.Breakpoint{FunctionName: "github.com/hitzhangjie/tinydbg/_fixtures/plugin1.Fn1", Line: 1}, "", nil, true)
 		assertNoError(err, t, "CreateBreakpointWithExpr(Fn1) (suspended)")
 
 		_, err = c.CreateBreakpointWithExpr(&api.Breakpoint{File: filepath.Join(dir, "plugin2", "plugin2.go"), Line: 9}, "", nil, true)
@@ -2952,7 +2775,6 @@ func TestBreakpointAfterProcessExit(t *testing.T) {
 }
 
 func TestClientServer_createBreakpointWithID(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("continuetestprog", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{ID: 2, FunctionName: "main.main", Line: 1})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -2971,7 +2793,6 @@ func TestClientServer_createBreakpointWithID(t *testing.T) {
 func TestClientServer_autoBreakpoints(t *testing.T) {
 	// Check that unrecovered-panic and fatal-throw breakpoints are visible in
 	// the breakpoint list.
-	protest.AllowRecording(t)
 	withTestClient2("math", t, func(c service.Client) {
 		bps, err := c.ListBreakpoints(false)
 		assertNoError(err, t, "ListBreakpoints")
@@ -2993,7 +2814,6 @@ func TestClientServer_breakpointOnFuncWithABIWrapper(t *testing.T) {
 	// compatibility wrapper should end up setting a breakpoint on the real
 	// function (also setting a breakpoint on the wrapper is fine).
 	// Issue #3296
-	protest.AllowRecording(t)
 	withTestClient2("math", t, func(c service.Client) {
 		bp, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "runtime.schedinit"})
 		assertNoError(err, t, "CreateBreakpoint()")
@@ -3081,7 +2901,6 @@ func TestClientServer_chanGoroutines(t *testing.T) {
 }
 
 func TestNextInstruction(t *testing.T) {
-	protest.AllowRecording(t)
 	withTestClient2("testprog", t, func(c service.Client) {
 		fp := testProgPath(t, "testprog")
 		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 19})
@@ -3222,7 +3041,7 @@ func TestGuessSubstitutePath(t *testing.T) {
 		found := false
 		for _, e := range gsp {
 			t.Logf("\t%s -> %s", e[0], e[1])
-			if e[0] == "github.com/go-delve/delve" && e[1] == delvePath {
+			if e[0] == "github.com/hitzhangjie/tinydbg" && e[1] == delvePath {
 				found = true
 			}
 		}
@@ -3240,7 +3059,7 @@ func TestGuessSubstitutePath(t *testing.T) {
 		found := false
 		for _, e := range gsp {
 			t.Logf("\t%s -> %s", e[0], e[1])
-			if e[0] == "github.com/go-delve/delve" && e[1] == delvePath {
+			if e[0] == "github.com/hitzhangjie/tinydbg" && e[1] == delvePath {
 				found = true
 			}
 		}

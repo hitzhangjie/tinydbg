@@ -1,1 +1,1 @@
-cloc cmd/ pkg/ service/
+cloc cmds/ pkg/ service/

@@ -1,9 +1,7 @@
 package service
 
 import (
-	"time"
-
-	"github.com/go-delve/delve/service/api"
+	"github.com/hitzhangjie/tinydbg/service/api"
 )
 
 // Client represents a debugger service client. All client methods are
@@ -14,9 +12,6 @@ type Client interface {
 
 	// BuildID returns the BuildID of the process' executable we are debugging.
 	BuildID() string
-
-	// LastModified returns the time that the process' executable was modified.
-	LastModified() time.Time
 
 	// Detach detaches the debugger, optionally killing the process.
 	Detach(killProcess bool) error
