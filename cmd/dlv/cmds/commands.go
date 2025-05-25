@@ -24,7 +24,6 @@ import (
 	"github.com/go-delve/delve/pkg/logflags"
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/terminal"
-	"github.com/go-delve/delve/pkg/version"
 	"github.com/go-delve/delve/service"
 	"github.com/go-delve/delve/service/api"
 	"github.com/go-delve/delve/service/dap"
@@ -46,8 +45,6 @@ var (
 	headless bool
 	// continueOnStart is whether to continue the process on startup
 	continueOnStart bool
-	// apiVersion is the requested API version while running headless
-	apiVersion int
 	// acceptMulti allows multiple clients to connect to the same server
 	acceptMulti bool
 	// addr is the debugging server listen address.
@@ -312,27 +309,6 @@ or later, -gcflags="-N -l" on earlier versions of Go.`,
 	}
 	rootCommand.AddCommand(runCommand)
 
-	// 'test' subcommand.
-	testCommand := &cobra.Command{
-		Use:   "test [package]",
-		Short: "Compile test binary and begin debugging program.",
-		Long: `Compiles a test binary with optimizations disabled and begins a new debug session.
-
-The test command allows you to begin a new debug session in the context of your
-unit tests. By default Delve will debug the tests in the current directory.
-Alternatively you can specify a package name, and Delve will debug the tests in
-that package instead. Double-dashes ` + "`--`" + ` can be used to pass arguments to the test program:
-
-dlv test [package] -- -test.run TestSomething -test.v -other-argument
-
-See also: 'go help testflag'.`,
-		Run:               testCmd,
-		ValidArgsFunction: cobra.NoFileCompletions,
-	}
-	testCommand.Flags().String("output", "", "Output path for the binary.")
-	must(testCommand.MarkFlagFilename("output"))
-	rootCommand.AddCommand(testCommand)
-
 	// 'trace' subcommand.
 	traceCommand := &cobra.Command{
 		Use:   "trace [package] regexp",
@@ -395,22 +371,6 @@ Currently supports linux/amd64 and linux/arm64 core files, windows/amd64 minidum
 	coreCommand.Flags().MarkHidden("core")
 	rootCommand.AddCommand(coreCommand)
 
-	// 'version' subcommand.
-	var versionVerbose = false
-	versionCommand := &cobra.Command{
-		Use:   "version",
-		Short: "Prints version.",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Delve Debugger\n%s\n", version.DelveVersion)
-			if versionVerbose {
-				fmt.Printf("Build Details: %s\n", version.BuildInfo())
-			}
-		},
-		ValidArgsFunction: cobra.NoFileCompletions,
-	}
-	versionCommand.Flags().BoolVarP(&versionVerbose, "verbose", "v", false, "print verbose version info")
-	rootCommand.AddCommand(versionCommand)
-
 	if path, _ := exec.LookPath("rr"); path != "" || docCall {
 		replayCommand := &cobra.Command{
 			Use:   "replay [trace directory]",
@@ -444,25 +404,6 @@ https://github.com/mozilla/rr
 
 		rootCommand.AddCommand(replayCommand)
 	}
-
-	rootCommand.AddCommand(&cobra.Command{
-		Use:   "backend",
-		Short: "Help about the --backend flag.",
-		Long: `The --backend flag specifies which backend should be used, possible values
-are:
-
-	default		Uses lldb on macOS, native everywhere else.
-	native		Native backend.
-	lldb		Uses lldb-server or debugserver.
-	rr		Uses mozilla rr (https://github.com/mozilla/rr).
-
-Some backends can be configured using environment variables:
-
-* DELVE_DEBUGSERVER_PATH specifies the path of the debugserver executable for the lldb backend
-* DELVE_RR_RECORD_FLAGS specifies additional flags used when calling 'rr record'
-* DELVE_RR_REPLAY_FLAGS specifies additional flags used when calling 'rr replay'
-`,
-	})
 
 	rootCommand.AddCommand(&cobra.Command{
 		Use:   "log",
@@ -509,6 +450,19 @@ Where source is one of 'stdin', 'stdout' or 'stderr' and destination is the path
 
 File redirects can also be changed using the 'restart' command.
 `,
+	})
+
+	// Move completion and help commands to Other Commands group
+	rootCommand.AddCommand(&cobra.Command{
+		Use:    "completion",
+		Short:  "Output shell completion code",
+		Hidden: true,
+	})
+
+	rootCommand.AddCommand(&cobra.Command{
+		Use:    "help",
+		Short:  "Help about any command",
+		Hidden: true,
 	})
 
 	rootCommand.AddCommand(&cobra.Command{
@@ -887,41 +841,8 @@ func isBreakpointExistsErr(err error) bool {
 	return strings.Contains(err.Error(), "Breakpoint exists")
 }
 
-func testCmd(cmd *cobra.Command, args []string) {
-	status := func() int {
-		dlvArgs, targetArgs := splitArgs(cmd, args)
-		debugname, ok := buildBinary(cmd, dlvArgs, true)
-		if !ok {
-			return 1
-		}
-		defer gobuild.Remove(debugname)
-		processArgs := append([]string{debugname}, targetArgs...)
-
-		if workingDir == "" {
-			workingDir = getPackageDir(dlvArgs)
-		}
-
-		return execute(0, processArgs, conf, "", debugger.ExecutingGeneratedTest, dlvArgs, buildFlags)
-	}()
-	os.Exit(status)
-}
-
-func getPackageDir(pkg []string) string {
-	args := []string{"list", "--json"}
-	args = append(args, pkg...)
-	out, err := exec.Command("go", args...).CombinedOutput()
-	if err != nil {
-		return "."
-	}
-	type listOut struct {
-		Dir string `json:"Dir"`
-	}
-	var listout listOut
-	err = json.Unmarshal(out, &listout)
-	if err != nil {
-		return "."
-	}
-	return listout.Dir
+func coreCmd(_ *cobra.Command, args []string) {
+	os.Exit(execute(0, []string{args[0]}, conf, args[1], debugger.ExecutingOther, args, buildFlags))
 }
 
 func attachCmd(_ *cobra.Command, args []string) {
@@ -936,10 +857,6 @@ func attachCmd(_ *cobra.Command, args []string) {
 		args = args[1:]
 	}
 	os.Exit(execute(pid, args, conf, "", debugger.ExecutingOther, args, buildFlags))
-}
-
-func coreCmd(_ *cobra.Command, args []string) {
-	os.Exit(execute(0, []string{args[0]}, conf, args[1], debugger.ExecutingOther, args, buildFlags))
 }
 
 func connectCmd(_ *cobra.Command, args []string) {
