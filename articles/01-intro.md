@@ -238,3 +238,11 @@ DWARF作为后期之秀，其前辈们（如Stabs、COFF、PE/Coff、OMF、IEEE-
 - 在生产环境中安全地进行问题诊断
 
 这种可扩展的设计不仅提升了调试器的适应性，也为未来功能的扩展和优化提供了良好的基础。tinydbg设计实现后续内容也会在这些方面进行介绍。
+
+## 参考文献
+
+- go-delve/delve, https://github.com/go-delve/delve
+- gdb, https://sourceware.org/gdb/
+- mozilla rr, https://rr-project.org/
+- dap, https://microsoft.github.io/debug-adapter-protocol/
+
