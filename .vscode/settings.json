@@ -1,0 +1,11 @@
+{
+    "go.toolsEnvVars": {
+        "GOENV": "/Users/zhangjie/hitzhangjie/debugger101/tinydbg/go.env"
+    },
+    "files.exclude": {
+        "_fixtures": true,
+        ".teamcity": true,
+        "assets": true,
+        "vendor": true
+    }
+}

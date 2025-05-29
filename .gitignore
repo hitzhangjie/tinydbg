@@ -10,5 +10,4 @@ localtests
 .idea
 *.iml
 .teamcity/target
-.vscode
 tinydbg

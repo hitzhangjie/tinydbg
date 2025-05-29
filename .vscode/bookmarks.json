@@ -1,0 +1,24 @@
+{
+	"files": [
+		{
+			"path": "pkg/terminal/command.go",
+			"bookmarks": [
+				{
+					"line": 107,
+					"column": 0,
+					"label": "cmds: in debugger session"
+				}
+			]
+		},
+		{
+			"path": "service/debugger/debugger.go",
+			"bookmarks": [
+				{
+					"line": 944,
+					"column": 10,
+					"label": "cmds/debugger: all debug session cmds handled in (*Debugger).Command(...)"
+				}
+			]
+		}
+	]
+}
