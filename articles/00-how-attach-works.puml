@@ -1,0 +1,32 @@
+@startuml
+
+hide footbox
+
+actor User
+participant "Debugger Frontend" as FE
+participant "Debugger Backend" as BE
+participant "Tracee" as TP
+
+activate BE
+
+BE -> BE: ln, _ := listen(ipport)\nconn, err := ln.accept()\nserveConn(conn)
+activate BE
+deactivate BE
+
+
+User -> FE: input `godbg attach <pid>`
+activate FE
+FE -> BE: API Call `client.Attach(pid)`
+BE -> BE: jsonrpc.ReadRequest(&req)\nreq.Method = "Attach"\nserver.Attach(pid)
+activate BE
+
+BE -> TP: syscall `ptrace(PTRACE_ATTACH, pid, nil, nil)`
+activate TP
+TP --> BE: wait4(pid,status)\nStopped 
+deactivate TP
+BE --> FE: Return Response {msg: attach ok, pc: 0x1234, file: f, line: 123}
+deactivate BE
+
+FE --> User: Display Data `tracee stopped at 0x1234 in f:123`
+
+@enduml
