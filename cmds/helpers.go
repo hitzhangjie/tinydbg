@@ -39,7 +39,6 @@ func Prepare(cmd *cobra.Command) {
 		hideFlag(cmd, "disable-aslr")
 		hideFlag(cmd, "headless")
 		hideFlag(cmd, "listen")
-		hideFlag(cmd, "only-same-user")
 		hideFlag(cmd, "redirect")
 		hideFlag(cmd, "wd")
 	case "debug":
@@ -53,7 +52,6 @@ func Prepare(cmd *cobra.Command) {
 		hideFlag(cmd, "headless")
 		hideFlag(cmd, "init")
 		hideFlag(cmd, "listen")
-		hideFlag(cmd, "only-same-user")
 	}
 }
 

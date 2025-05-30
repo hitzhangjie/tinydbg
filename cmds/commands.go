@@ -50,9 +50,6 @@ var (
 	buildFlags string
 	// workingDir is the working directory for running the program.
 	workingDir string
-	// checkLocalConnUser is true if the debugger should check that local
-	// connections come from the same user that started the headless server
-	checkLocalConnUser bool
 	// tty is used to provide an alternate TTY for the program you wish to debug.
 	tty string
 	// disableASLR is used to disable ASLR
@@ -132,7 +129,6 @@ func New(docCall bool) *cobra.Command {
 	must(rootCommand.RegisterFlagCompletionFunc("build-flags", cobra.NoFileCompletions))
 	rootCommand.PersistentFlags().StringVar(&workingDir, "wd", "", "Working directory for running the program.")
 	must(rootCommand.MarkPersistentFlagDirname("wd"))
-	rootCommand.PersistentFlags().BoolVarP(&checkLocalConnUser, "only-same-user", "", true, "Only connections from the same user that started this instance of Delve are allowed to connect.")
 	rootCommand.PersistentFlags().StringArrayVarP(&redirects, "redirect", "r", []string{}, "Specifies redirect rules for target process (see 'dlv help redirect')")
 	must(rootCommand.MarkPersistentFlagFilename("redirect"))
 	rootCommand.PersistentFlags().BoolVar(&allowNonTerminalInteractive, "allow-non-terminal-interactive", false, "Allows interactive sessions of Delve that don't have a terminal as stdin, stdout and stderr")
