@@ -71,7 +71,7 @@ func fieldsOfStruct(typ types.Type) (fieldNames, fieldTypes []string) {
 	return fieldNames, fieldTypes
 }
 
-func camelToDash(in string) string {
+func camelToSnakeCase(in string) string {
 	out := []rune{}
 	for i, ch := range in {
 		isupper := func(i int) bool {
@@ -109,7 +109,7 @@ func processServerMethods(serverMethods []*types.Func, funcDeclByPos map[token.P
 		sig, _ := fn.Type().(*types.Signature)
 		argNames, argTypes := fieldsOfStruct(sig.Params().At(0).Type())
 
-		name := camelToDash(fn.Name())
+		name := camelToSnakeCase(fn.Name())
 
 		switch name {
 		case "set":
