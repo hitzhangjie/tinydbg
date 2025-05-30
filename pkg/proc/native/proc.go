@@ -376,10 +376,10 @@ func (dbp *nativeProcess) initialize(path string, debugInfoDirs []string) (*proc
 		//    instructions, if the sequence happens to contain a breakpoint it will
 		//    look like the breakpoint was hit twice when it was "logically" only
 		//    executed once.
-		DisableAsyncPreempt: runtime.GOOS == "windows" || (runtime.GOOS == "linux" && runtime.GOARCH == "arm64") || (runtime.GOOS == "linux" && runtime.GOARCH == "ppc64le") || (runtime.GOOS == "linux" && runtime.GOARCH == "loong64"),
+		DisableAsyncPreempt: false,
 
 		StopReason: stopReason,
-		CanDump:    runtime.GOOS == "linux" || runtime.GOOS == "freebsd" || (runtime.GOOS == "windows" && runtime.GOARCH == "amd64"),
+		CanDump:    true,
 	})
 	procgrp.addTarget = addTarget
 	tgt, err := procgrp.add(dbp, dbp.pid, dbp.memthread, path, stopReason, cmdline)

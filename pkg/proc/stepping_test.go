@@ -116,27 +116,6 @@ func testseq2intl(t *testing.T, fixture protest.Fixture, grp *proc.TargetGroup, 
 				err := p.ClearBreakpoint(bp.Addr)
 				assertNoError(err, t, "ClearBreakpoint() returned an error")
 			}
-		case contReverseNext:
-			if traceTestseq2 {
-				t.Log("reverse-next")
-			}
-			assertNoError(grp.ChangeDirection(proc.Backward), t, "direction switch")
-			assertNoError(grp.Next(), t, "reverse Next() returned an error")
-			assertNoError(grp.ChangeDirection(proc.Forward), t, "direction switch")
-		case contReverseStep:
-			if traceTestseq2 {
-				t.Log("reverse-step")
-			}
-			assertNoError(grp.ChangeDirection(proc.Backward), t, "direction switch")
-			assertNoError(grp.Step(), t, "reverse Step() returned an error")
-			assertNoError(grp.ChangeDirection(proc.Forward), t, "direction switch")
-		case contReverseStepout:
-			if traceTestseq2 {
-				t.Log("reverse-stepout")
-			}
-			assertNoError(grp.ChangeDirection(proc.Backward), t, "direction switch")
-			assertNoError(grp.StepOut(), t, "reverse StepOut() returned an error")
-			assertNoError(grp.ChangeDirection(proc.Forward), t, "direction switch")
 		case contContinueToBreakpoint:
 			bp := setFileBreakpoint(p, t, fixture.Source, tc.pos.(int))
 			if traceTestseq2 {

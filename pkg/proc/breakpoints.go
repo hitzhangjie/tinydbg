@@ -600,10 +600,7 @@ func (t *Target) SetWatchpoint(logicalID int, scope *EvalScope, expr string, wty
 
 func (t *Target) setBreakpointInternal(logicalID int, addr uint64, kind BreakpointKind, wtype WatchType, cond ast.Expr) (*Breakpoint, error) {
 	if valid, err := t.Valid(); !valid {
-		recorded, _ := t.recman.Recorded()
-		if !recorded {
-			return nil, err
-		}
+		return nil, err
 	}
 	bpmap := t.Breakpoints()
 	newBreaklet := &Breaklet{Kind: kind, Cond: cond}
@@ -711,10 +708,7 @@ func (bp *Breakpoint) canOverlap(kind BreakpointKind) bool {
 // ClearBreakpoint clears the breakpoint at addr.
 func (t *Target) ClearBreakpoint(addr uint64) error {
 	if valid, err := t.Valid(); !valid {
-		recorded, _ := t.recman.Recorded()
-		if !recorded {
-			return err
-		}
+		return err
 	}
 	bp, ok := t.Breakpoints().M[addr]
 	if !ok {

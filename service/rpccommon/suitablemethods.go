@@ -13,9 +13,7 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.AttachedToExistingProcess"] = &methodType{method: reflect.ValueOf(s.AttachedToExistingProcess)}
 	methods["RPCServer.BuildID"] = &methodType{method: reflect.ValueOf(s.BuildID)}
 	methods["RPCServer.CancelNext"] = &methodType{method: reflect.ValueOf(s.CancelNext)}
-	methods["RPCServer.Checkpoint"] = &methodType{method: reflect.ValueOf(s.Checkpoint)}
 	methods["RPCServer.ClearBreakpoint"] = &methodType{method: reflect.ValueOf(s.ClearBreakpoint)}
-	methods["RPCServer.ClearCheckpoint"] = &methodType{method: reflect.ValueOf(s.ClearCheckpoint)}
 	methods["RPCServer.Command"] = &methodType{method: reflect.ValueOf(s.Command)}
 	methods["RPCServer.CreateBreakpoint"] = &methodType{method: reflect.ValueOf(s.CreateBreakpoint)}
 	methods["RPCServer.CreateWatchpoint"] = &methodType{method: reflect.ValueOf(s.CreateWatchpoint)}
@@ -36,7 +34,6 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.GuessSubstitutePath"] = &methodType{method: reflect.ValueOf(s.GuessSubstitutePath)}
 	methods["RPCServer.IsMulticlient"] = &methodType{method: reflect.ValueOf(s.IsMulticlient)}
 	methods["RPCServer.ListBreakpoints"] = &methodType{method: reflect.ValueOf(s.ListBreakpoints)}
-	methods["RPCServer.ListCheckpoints"] = &methodType{method: reflect.ValueOf(s.ListCheckpoints)}
 	methods["RPCServer.ListDynamicLibraries"] = &methodType{method: reflect.ValueOf(s.ListDynamicLibraries)}
 	methods["RPCServer.ListFunctionArgs"] = &methodType{method: reflect.ValueOf(s.ListFunctionArgs)}
 	methods["RPCServer.ListFunctions"] = &methodType{method: reflect.ValueOf(s.ListFunctions)}
@@ -50,7 +47,6 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.ListThreads"] = &methodType{method: reflect.ValueOf(s.ListThreads)}
 	methods["RPCServer.ListTypes"] = &methodType{method: reflect.ValueOf(s.ListTypes)}
 	methods["RPCServer.ProcessPid"] = &methodType{method: reflect.ValueOf(s.ProcessPid)}
-	methods["RPCServer.Recorded"] = &methodType{method: reflect.ValueOf(s.Recorded)}
 	methods["RPCServer.Restart"] = &methodType{method: reflect.ValueOf(s.Restart)}
 	methods["RPCServer.Set"] = &methodType{method: reflect.ValueOf(s.Set)}
 	methods["RPCServer.Stacktrace"] = &methodType{method: reflect.ValueOf(s.Stacktrace)}

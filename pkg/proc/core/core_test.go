@@ -261,7 +261,7 @@ func TestCore(t *testing.T) {
 	grp := withCoreFile(t, "panic", "")
 	p := grp.Selected
 
-	recorded, _ := grp.Recorded()
+	recorded := grp.Recorded()
 	if !recorded {
 		t.Fatalf("expecting recorded to be true")
 	}

@@ -25,9 +25,6 @@ type TargetGroup struct {
 	followExecEnabled bool
 	followExecRegex   *regexp.Regexp
 
-	RecordingManipulation
-	recman RecordingManipulationInternal
-
 	// StopReason describes the reason why the selected target process is stopped.
 	// A process could be stopped for multiple simultaneous reasons, in which
 	// case only one will be reported.
@@ -125,10 +122,6 @@ func (grp *TargetGroup) addTarget(p ProcessInternal, pid int, currentThread Thre
 		panic("internal error: target is already part of group")
 	}
 	t.partOfGroup = true
-	if grp.RecordingManipulation == nil {
-		grp.RecordingManipulation = t.recman
-		grp.recman = t.recman
-	}
 	if grp.Selected == nil {
 		grp.Selected = t
 	}
@@ -535,6 +528,11 @@ func (grp *TargetGroup) FollowExec(v bool, regex string) error {
 // FollowExecEnabled returns true if follow exec is enabled
 func (grp *TargetGroup) FollowExecEnabled() bool {
 	return grp.followExecEnabled
+}
+
+// Recorded returns true if the target group is in recorded mode
+func (grp *TargetGroup) Recorded() bool {
+	return grp.CanDump
 }
 
 // ValidTargets iterates through all valid targets in Group.

@@ -353,12 +353,6 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
 
-	recorded, _ := d.target.Recorded()
-	if recorded && !rerecord {
-		d.target.ResumeNotify(nil)
-		return nil, d.target.Restart(pos)
-	}
-
 	if pos != "" {
 		return nil, proc.ErrNotRecorded
 	}
@@ -401,11 +395,7 @@ func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []
 		}
 	}
 
-	if recorded {
-		return nil, fmt.Errorf("recording is not supported with native backend")
-	} else {
-		grp, err = d.Launch(d.processArgs, d.config.WorkingDir)
-	}
+	grp, err = d.Launch(d.processArgs, d.config.WorkingDir)
 	if err != nil {
 		return nil, fmt.Errorf("could not launch process: %s", err)
 	}
@@ -486,10 +476,6 @@ func (d *Debugger) state(retLoadCfg *proc.LoadConfig, withBreakpointInfo bool) (
 	}
 
 	state.NextInProgress = d.target.HasSteppingBreakpoints()
-
-	if recorded, _ := d.target.Recorded(); recorded {
-		state.When, _ = d.target.When()
-	}
 
 	t := proc.ValidTargets{Group: d.target}
 	for t.Next() {
@@ -945,18 +931,12 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 	switch command.Name {
 	case api.Continue:
 		d.log.Debug("continuing")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
 		err = d.target.Continue()
 	case api.DirectionCongruentContinue:
 		d.log.Debug("continuing (direction congruent)")
 		err = d.target.Continue()
 	case api.Call:
 		d.log.Debugf("function call %s", command.Expr)
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
 		if command.ReturnInfoLoadConfig == nil {
 			return nil, errors.New("can not call function with nil ReturnInfoLoadConfig")
 		}
@@ -968,71 +948,20 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 			}
 		}
 		err = proc.EvalExpressionWithCalls(d.target, g, command.Expr, *api.LoadConfigToProc(command.ReturnInfoLoadConfig), !command.UnsafeCall)
-	case api.Rewind:
-		d.log.Debug("rewinding")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
-		err = d.target.Continue()
 	case api.Next:
 		d.log.Debug("nexting")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.Next()
-	case api.ReverseNext:
-		d.log.Debug("reverse nexting")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.Next()
 	case api.Step:
 		d.log.Debug("stepping")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.Step()
-	case api.ReverseStep:
-		d.log.Debug("reverse stepping")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.Step()
 	case api.StepInstruction:
 		d.log.Debug("single stepping")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.StepInstruction(false)
-	case api.ReverseStepInstruction:
-		d.log.Debug("reverse single stepping")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.StepInstruction(false)
 	case api.NextInstruction:
 		d.log.Debug("single stepping")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.StepInstruction(true)
-	case api.ReverseNextInstruction:
-		d.log.Debug("reverse single stepping")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.StepInstruction(true)
 	case api.StepOut:
 		d.log.Debug("step out")
-		if err := d.target.ChangeDirection(proc.Forward); err != nil {
-			return nil, err
-		}
-		err = d.target.StepOut()
-	case api.ReverseStepOut:
-		d.log.Debug("reverse step out")
-		if err := d.target.ChangeDirection(proc.Backward); err != nil {
-			return nil, err
-		}
 		err = d.target.StepOut()
 	case api.SwitchThread:
 		d.log.Debugf("switching to thread %d", command.ThreadID)
@@ -1858,13 +1787,6 @@ func (d *Debugger) AsmInstructionText(inst *proc.AsmInstruction, flavour proc.As
 	return inst.Text(flavour, d.target.Selected.BinInfo())
 }
 
-// Recorded returns true if the target is a recording.
-func (d *Debugger) Recorded() (recorded bool, tracedir string) {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.Recorded()
-}
-
 // FindThreadReturnValues returns the return values of the function that
 // the thread of the given 'id' just stepped out of.
 func (d *Debugger) FindThreadReturnValues(id int, cfg proc.LoadConfig) ([]*proc.Variable, error) {
@@ -1881,27 +1803,6 @@ func (d *Debugger) FindThreadReturnValues(id int, cfg proc.LoadConfig) ([]*proc.
 	}
 
 	return thread.Common().ReturnValues(cfg), nil
-}
-
-// Checkpoint will set a checkpoint specified by the locspec.
-func (d *Debugger) Checkpoint(where string) (int, error) {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.Checkpoint(where)
-}
-
-// Checkpoints will return a list of checkpoints.
-func (d *Debugger) Checkpoints() ([]proc.Checkpoint, error) {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.Checkpoints()
-}
-
-// ClearCheckpoint will clear the checkpoint of the given ID.
-func (d *Debugger) ClearCheckpoint(id int) error {
-	d.targetMutex.Lock()
-	defer d.targetMutex.Unlock()
-	return d.target.ClearCheckpoint(id)
 }
 
 // ListDynamicLibraries returns a list of loaded dynamic libraries.

@@ -1744,36 +1744,6 @@ func TestClientServer_SelectedGoroutineLoc(t *testing.T) {
 	})
 }
 
-func TestClientServer_ReverseContinue(t *testing.T) {
-	withTestClient2("continuetestprog", t, func(c service.Client) {
-		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: -1})
-		assertNoError(err, t, "CreateBreakpoint(main.main)")
-		_, err = c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.sayhi", Line: -1})
-		assertNoError(err, t, "CreateBreakpoint(main.sayhi)")
-
-		state := <-c.Continue()
-		assertNoError(state.Err, t, "first continue")
-		mainPC := state.CurrentThread.PC
-		t.Logf("after first continue %#x", mainPC)
-
-		state = <-c.Continue()
-		assertNoError(state.Err, t, "second continue")
-		sayhiPC := state.CurrentThread.PC
-		t.Logf("after second continue %#x", sayhiPC)
-
-		if mainPC == sayhiPC {
-			t.Fatalf("expected different PC after second PC (%#x)", mainPC)
-		}
-
-		state = <-c.Rewind()
-		assertNoError(state.Err, t, "rewind")
-
-		if mainPC != state.CurrentThread.PC {
-			t.Fatalf("Expected rewind to go back to the first breakpoint: %#x", state.CurrentThread.PC)
-		}
-	})
-}
-
 func TestClientServer_collectBreakpointInfoOnNext(t *testing.T) {
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{
@@ -2490,42 +2460,6 @@ func TestGenericsBreakpoint(t *testing.T) {
 		assertNoError(err, t, "ClearBreakpoint")
 		if rmbp.FunctionName != "main.testfn" {
 			t.Errorf("wrong name for breakpoint (ClearBreakpoint): %q", rmbp.FunctionName)
-		}
-	})
-}
-
-func TestRestartRewindAfterEnd(t *testing.T) {
-	// Check that Restart works after the program has terminated, even if a
-	// Continue is requested just before it.
-	// Also check that Rewind can be used after the program has terminated.
-	withTestClient2("math", t, func(c service.Client) {
-		state := <-c.Continue()
-		if !state.Exited {
-			t.Fatalf("program did not exit")
-		}
-		state = <-c.Continue()
-		if !state.Exited {
-			t.Errorf("bad Continue return state: %v", state)
-		}
-		time.Sleep(1 * time.Second) // bug only happens if there is some time for the server to close the notify channel
-		_, err := c.Restart(false)
-		if err != nil {
-			t.Fatalf("Restart: %v", err)
-		}
-		state = <-c.Continue()
-		if !state.Exited {
-			t.Fatalf("program did not exit exited")
-		}
-		_, err = c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: 0})
-		if err != nil {
-			t.Fatalf("CreateBreakpoint: %v", err)
-		}
-		state = <-c.Rewind()
-		if state.Exited || state.Err != nil {
-			t.Errorf("bad Rewind return state: %v", state)
-		}
-		if state.CurrentThread.Line != 7 {
-			t.Errorf("wrong stop location %s:%d", state.CurrentThread.File, state.CurrentThread.Line)
 		}
 	})
 }

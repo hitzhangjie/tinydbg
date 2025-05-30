@@ -4200,22 +4200,6 @@ func TestIssue1795(t *testing.T) {
 	})
 }
 
-func BenchmarkConditionalBreakpoints(b *testing.B) {
-	b.N = 1
-	withTestProcess("issue1549", b, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		bp := setFileBreakpoint(p, b, fixture.Source, 12)
-		bp.UserBreaklet().Cond = &ast.BinaryExpr{
-			Op: token.EQL,
-			X:  &ast.Ident{Name: "value"},
-			Y:  &ast.BasicLit{Kind: token.INT, Value: "-1"},
-		}
-		err := grp.Continue()
-		if _, exited := err.(proc.ErrProcessExited); !exited {
-			b.Fatalf("Unexpected error on Continue(): %v", err)
-		}
-	})
-}
-
 func TestIssue1925(t *testing.T) {
 	// Calling a function should not leave cached goroutine information in an
 	// inconsistent state.
@@ -4674,7 +4658,7 @@ func TestWatchpointStack(t *testing.T) {
 		assertNoError(err, t, "SetDataBreakpoint(write-only)")
 
 		watchbpnum := 3
-		if recorded, _ := grp.Recorded(); recorded {
+		if recorded := grp.Recorded(); recorded {
 			watchbpnum = 4
 		}
 
@@ -4724,54 +4708,6 @@ func TestWatchpointStack(t *testing.T) {
 
 		err = p.ClearBreakpoint(retaddr)
 		assertNoError(err, t, "ClearBreakpoint")
-
-		if len(p.Breakpoints().M) != clearlen {
-			// want 1 user breakpoint set at retaddr
-			t.Errorf("wrong number of breakpoints after removing user breakpoint: %d", len(p.Breakpoints().M)-clearlen)
-		}
-	})
-}
-
-func TestWatchpointStackBackwardsOutOfScope(t *testing.T) {
-	skipUnlessOn(t, "only for recorded targets", "rr")
-
-	withTestProcess("databpstack", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 11) // Position 0 breakpoint
-		clearlen := len(p.Breakpoints().M)
-
-		assertNoError(grp.Continue(), t, "Continue 0")
-		assertLineNumber(p, t, 11, "Continue 0") // Position 0
-
-		scope, err := proc.GoroutineScope(p, p.CurrentThread())
-		assertNoError(err, t, "GoroutineScope")
-
-		_, err = p.SetWatchpoint(0, scope, "w", proc.WatchWrite, nil)
-		assertNoError(err, t, "SetDataBreakpoint(write-only)")
-
-		assertNoError(grp.Continue(), t, "Continue 1")
-		assertLineNumber(p, t, 17, "Continue 1") // Position 1
-
-		grp.ChangeDirection(proc.Backward)
-
-		assertNoError(grp.Continue(), t, "Continue 2")
-		t.Logf("%#v", p.CurrentThread().Breakpoint().Breakpoint)
-		assertLineNumber(p, t, 16, "Continue 2") // Position 1 again (because of inverted movement)
-
-		assertNoError(grp.Continue(), t, "Continue 3")
-		t.Logf("%#v", p.CurrentThread().Breakpoint().Breakpoint)
-		assertLineNumber(p, t, 11, "Continue 3") // Position 0 (breakpoint 1 hit)
-
-		assertNoError(grp.Continue(), t, "Continue 4")
-		t.Logf("%#v", p.CurrentThread().Breakpoint().Breakpoint)
-		assertLineNumber(p, t, 23, "Continue 4") // Position 2 (watchpoint gone out of scope)
-
-		if len(p.Breakpoints().M) != clearlen {
-			t.Errorf("wrong number of breakpoints after watchpoint goes out of scope: %d", len(p.Breakpoints().M)-clearlen)
-		}
-
-		if len(p.Breakpoints().WatchOutOfScope) != 1 {
-			t.Errorf("wrong number of out-of-scope watchpoints after watchpoint goes out of scope: %d", len(p.Breakpoints().WatchOutOfScope))
-		}
 
 		if len(p.Breakpoints().M) != clearlen {
 			// want 1 user breakpoint set at retaddr

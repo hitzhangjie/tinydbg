@@ -755,63 +755,6 @@ func (s *RPCServer) Disassemble(arg DisassembleIn, out *DisassembleOut) error {
 	return nil
 }
 
-type RecordedIn struct {
-}
-
-type RecordedOut struct {
-	Recorded       bool
-	TraceDirectory string
-}
-
-func (s *RPCServer) Recorded(arg RecordedIn, out *RecordedOut) error {
-	out.Recorded, out.TraceDirectory = s.debugger.Recorded()
-	return nil
-}
-
-type CheckpointIn struct {
-	Where string
-}
-
-type CheckpointOut struct {
-	ID int
-}
-
-func (s *RPCServer) Checkpoint(arg CheckpointIn, out *CheckpointOut) error {
-	var err error
-	out.ID, err = s.debugger.Checkpoint(arg.Where)
-	return err
-}
-
-type ListCheckpointsIn struct {
-}
-
-type ListCheckpointsOut struct {
-	Checkpoints []api.Checkpoint
-}
-
-func (s *RPCServer) ListCheckpoints(arg ListCheckpointsIn, out *ListCheckpointsOut) error {
-	cps, err := s.debugger.Checkpoints()
-	if err != nil {
-		return err
-	}
-	out.Checkpoints = make([]api.Checkpoint, len(cps))
-	for i := range cps {
-		out.Checkpoints[i] = api.Checkpoint(cps[i])
-	}
-	return nil
-}
-
-type ClearCheckpointIn struct {
-	ID int
-}
-
-type ClearCheckpointOut struct {
-}
-
-func (s *RPCServer) ClearCheckpoint(arg ClearCheckpointIn, out *ClearCheckpointOut) error {
-	return s.debugger.ClearCheckpoint(arg.ID)
-}
-
 type IsMulticlientIn struct {
 }
 

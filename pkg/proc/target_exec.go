@@ -214,12 +214,6 @@ func (grp *TargetGroup) Continue() error {
 				if err := conditionErrors(grp); err != nil {
 					return err
 				}
-				if grp.GetDirection() == Backward {
-					if err := dbp.ClearSteppingBreakpoints(); err != nil {
-						return err
-					}
-					return grp.StepInstruction(false)
-				}
 			case curbp.SteppingIntoRangeOverFuncBody:
 				if err := conditionErrors(grp); err != nil {
 					return err
@@ -486,11 +480,6 @@ func (grp *TargetGroup) Step() (err error) {
 		return err
 	}
 
-	if bpstate := grp.Selected.CurrentThread().Breakpoint(); bpstate.Breakpoint != nil && bpstate.Active && bpstate.SteppingInto && grp.GetDirection() == Backward {
-		grp.Selected.ClearSteppingBreakpoints()
-		return grp.StepInstruction(false)
-	}
-
 	return grp.Continue()
 }
 
@@ -523,7 +512,6 @@ func frameoffCondition(frame *Stackframe) ast.Expr {
 // until the current goroutine exits the function currently being
 // executed or a deferred function is executed
 func (grp *TargetGroup) StepOut() error {
-	backward := grp.GetDirection() == Backward
 	if _, err := grp.Valid(); err != nil {
 		return err
 	}
@@ -567,15 +555,6 @@ func (grp *TargetGroup) StepOut() error {
 	}
 
 	sameGCond := sameGoroutineCondition(dbp.BinInfo(), selg, curthread.ThreadID())
-
-	if backward {
-		if err := stepOutReverse(dbp, topframe, retframe, sameGCond); err != nil {
-			return err
-		}
-
-		success = true
-		return grp.Continue()
-	}
 
 	deferpc, err := setDeferBreakpoint(dbp, nil, topframe, sameGCond, false)
 	if err != nil {
@@ -684,7 +663,6 @@ func (grp *TargetGroup) StepInstruction(skipCalls bool) (err error) {
 // when removing instructions belonging to inlined calls we also remove all
 // instructions belonging to the current inlined call.
 func next(dbp *Target, stepInto, inlinedStepOut bool) error {
-	backward := dbp.recman.GetDirection() == Backward
 	selg := dbp.SelectedGoroutine()
 	curthread := dbp.CurrentThread()
 	bi := dbp.BinInfo()
@@ -695,10 +673,6 @@ func next(dbp *Target, stepInto, inlinedStepOut bool) error {
 
 	if topframe.Current.Fn == nil {
 		return &ErrNoSourceForPC{topframe.Current.PC}
-	}
-
-	if backward && retframe.Current.Fn == nil {
-		return &ErrNoSourceForPC{retframe.Current.PC}
 	}
 
 	// sanity check
@@ -735,23 +709,6 @@ func next(dbp *Target, stepInto, inlinedStepOut bool) error {
 		return err
 	}
 
-	if backward {
-		if firstPCAfterPrologue == topframe.Current.PC {
-			// We don't want to step into the prologue so we just execute a reverse step out instead
-			if err := stepOutReverse(dbp, topframe, retframe, sameGCond); err != nil {
-				return err
-			}
-
-			success = true
-			return nil
-		}
-
-		topframe.Ret, err = findCallInstrForRet(dbp, dbp.Memory(), topframe.Ret, retframe.Current.Fn)
-		if err != nil {
-			return err
-		}
-	}
-
 	text, err := disassemble(dbp.Memory(), regs, dbp.Breakpoints(), bi, topframe.Current.Fn.Entry, topframe.Current.Fn.End, false)
 	if err != nil && stepInto {
 		return err
@@ -759,14 +716,14 @@ func next(dbp *Target, stepInto, inlinedStepOut bool) error {
 
 	sameFrameCond := astutil.And(sameGCond, frameoffCondition(&topframe))
 
-	if stepInto && !backward {
+	if stepInto {
 		err := setStepIntoBreakpoints(dbp, topframe.Current.Fn, text, topframe, sameGCond)
 		if err != nil {
 			return err
 		}
 	}
 
-	if !backward && !topframe.Current.Fn.cu.image.Stripped() {
+	if !topframe.Current.Fn.cu.image.Stripped() {
 		fr := topframe
 		if len(rangeFrames) != 0 && !stepInto {
 			fr = rangeFrames[len(rangeFrames)-2]
@@ -781,20 +738,6 @@ func next(dbp *Target, stepInto, inlinedStepOut bool) error {
 	pcs, err := topframe.Current.Fn.AllPCs(topframe.Current.File, topframe.Current.Line)
 	if err != nil {
 		return err
-	}
-
-	if backward {
-		// Ensure that pcs contains firstPCAfterPrologue when reverse stepping.
-		found := false
-		for _, pc := range pcs {
-			if pc == firstPCAfterPrologue {
-				found = true
-				break
-			}
-		}
-		if !found {
-			pcs = append(pcs, firstPCAfterPrologue)
-		}
 	}
 
 	if !stepInto {
@@ -833,13 +776,6 @@ func next(dbp *Target, stepInto, inlinedStepOut bool) error {
 			}
 		}
 		if _, err := allowDuplicateBreakpoint(dbp.SetBreakpoint(0, pc, NextBreakpoint, sameFrameCond)); err != nil {
-			return err
-		}
-	}
-
-	if stepInto && backward {
-		err := setStepIntoBreakpointsReverse(dbp, text, topframe, sameGCond)
-		if err != nil {
 			return err
 		}
 	}
@@ -977,13 +913,6 @@ func setStepIntoBreakpoints(dbp *Target, curfn *Function, text []AsmInstruction,
 // disassembles the current instruction to figure out its destination and
 // sets a breakpoint on it.
 func stepIntoCallback(curthread Thread, p *Target) (bool, error) {
-	if p.recman.GetDirection() != Forward {
-		// This should never happen, step into breakpoints with callbacks are only
-		// set when moving forward and direction changes are forbidden while
-		// breakpoints are set.
-		return true, nil
-	}
-
 	text, err := disassembleCurrentInstruction(p, curthread, 0)
 	if err != nil {
 		return false, err
@@ -1617,8 +1546,8 @@ func (t *Target) clearHardcodedBreakpoints() {
 func (t *Target) handleHardcodedBreakpoints(grp *TargetGroup, trapthread Thread, threads []Thread) error {
 	mem := t.Memory()
 	arch := t.BinInfo().Arch
-	recorded, _ := t.recman.Recorded()
 
+	recorded := t.Recorded()
 	isHardcodedBreakpoint := func(thread Thread, pc uint64) uint64 {
 		for _, bpinstr := range [][]byte{arch.BreakpointInstruction(), arch.AltBreakpointInstruction()} {
 			if bpinstr == nil {
@@ -1684,7 +1613,7 @@ func (t *Target) handleHardcodedBreakpoints(grp *TargetGroup, trapthread Thread,
 
 		switch {
 		case loc.Fn.Name == "runtime.breakpoint":
-			if recorded, _ := t.recman.Recorded(); recorded {
+			if recorded := t.Recorded(); recorded {
 				setHardcodedBreakpoint(thread, loc)
 				continue
 			}

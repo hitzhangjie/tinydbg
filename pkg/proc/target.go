@@ -37,8 +37,7 @@ const (
 type Target struct {
 	Process
 
-	proc   ProcessInternal
-	recman RecordingManipulationInternal
+	proc ProcessInternal
 
 	pid     int
 	CmdLine string
@@ -185,12 +184,6 @@ func (grp *TargetGroup) newTarget(p ProcessInternal, pid int, currentThread Thre
 		CmdLine:       cmdline,
 	}
 
-	if recman, ok := p.(RecordingManipulationInternal); ok {
-		t.recman = recman
-	} else {
-		t.recman = &dummyRecordingManipulation{}
-	}
-
 	g, _ := GetG(currentThread)
 	t.selectedGoroutine = g
 
@@ -268,25 +261,33 @@ func (t *Target) ClearCaches() {
 // This is only useful for recorded targets.
 // Restarting of a normal process happens at a higher level (debugger.Restart).
 func (grp *TargetGroup) Restart(from string) error {
-	if len(grp.targets) != 1 {
-		panic("multiple targets not implemented")
-	}
-	for _, t := range grp.targets {
-		t.ClearCaches()
-	}
-	t := grp.Selected
-	currentThread, err := t.recman.Restart(grp.cctx, from)
-	if err != nil {
-		return err
-	}
-	t.currentThread = currentThread
-	t.selectedGoroutine, _ = GetG(t.CurrentThread())
-	if from != "" {
-		t.StopReason = StopManual
-	} else {
-		t.StopReason = StopLaunched
-	}
-	return nil
+	panic("not implemented")
+
+	// FIXME 这里restart，其实可以直接不实现
+
+	/*
+		if len(grp.targets) != 1 {
+			panic("multiple targets not implemented")
+		}
+		for _, t := range grp.targets {
+			t.ClearCaches()
+		}
+		t := grp.Selected
+
+		currentThread, err := t.recman.Restart(grp.cctx, from)
+		if err != nil {
+			return err
+		}
+
+		t.currentThread = currentThread
+		t.selectedGoroutine, _ = GetG(t.CurrentThread())
+		if from != "" {
+			t.StopReason = StopManual
+		} else {
+			t.StopReason = StopLaunched
+		}
+		return nil
+	*/
 }
 
 // SelectedGoroutine returns the currently selected goroutine.
@@ -544,6 +545,12 @@ func (t *Target) pluginOpenCallback(Thread, *Target) (bool, error) {
 	return false, nil
 }
 
+// Recorded returns whether the current process is in recording state. Returns true for core dumps,
+// false for others. Currently we have not enabled rr recording support.
+func (t *Target) Recorded() bool {
+	return t.IsCoreDump()
+}
+
 func isSuspended(t *Target, lbp *LogicalBreakpoint) bool {
 	for _, bp := range t.Breakpoints().M {
 		if bp.LogicalID() == lbp.LogicalID {
@@ -553,47 +560,14 @@ func isSuspended(t *Target, lbp *LogicalBreakpoint) bool {
 	return true
 }
 
-type dummyRecordingManipulation struct {
-}
-
-// Recorded always returns false for the native proc backend.
-func (*dummyRecordingManipulation) Recorded() (bool, string) { return false, "" }
-
-// ChangeDirection will always return an error in the native proc backend, only for
-// recorded traces.
-func (*dummyRecordingManipulation) ChangeDirection(dir Direction) error {
-	if dir != Forward {
-		return ErrNotRecorded
-	}
-	return nil
-}
-
-// GetDirection will always return Forward.
-func (*dummyRecordingManipulation) GetDirection() Direction { return Forward }
-
-// When will always return an empty string and nil, not supported on native proc backend.
-func (*dummyRecordingManipulation) When() (string, error) { return "", nil }
-
-// Checkpoint will always return an error on the native proc backend,
-// only supported for recorded traces.
-func (*dummyRecordingManipulation) Checkpoint(string) (int, error) { return -1, ErrNotRecorded }
-
-// Checkpoints will always return an error on the native proc backend,
-// only supported for recorded traces.
-func (*dummyRecordingManipulation) Checkpoints() ([]Checkpoint, error) { return nil, ErrNotRecorded }
-
-// ClearCheckpoint will always return an error on the native proc backend,
-// only supported in recorded traces.
-func (*dummyRecordingManipulation) ClearCheckpoint(int) error { return ErrNotRecorded }
-
-// Restart will always return an error in the native proc backend, only for
-// recorded traces.
-func (*dummyRecordingManipulation) Restart(*ContinueOnceContext, string) (Thread, error) {
-	return nil, ErrNotRecorded
-}
-
 var ErrWaitForNotImplemented = errors.New("waitfor not implemented")
 
 func (waitFor *WaitFor) Valid() bool {
 	return waitFor != nil && waitFor.Name != ""
+}
+
+// IsCoreDump returns true if the target is a core dump file.
+func (t *Target) IsCoreDump() bool {
+	_, err := t.proc.MemoryMap()
+	return err == ErrMemoryMapNotSupported
 }

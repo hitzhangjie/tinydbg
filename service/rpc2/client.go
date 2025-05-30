@@ -434,41 +434,6 @@ func (c *RPCClient) DisassemblePC(scope api.EvalScope, pc uint64, flavour api.As
 	return out.Disassemble, err
 }
 
-// Recorded returns true if the debugger target is a recording.
-func (c *RPCClient) Recorded() bool {
-	out := new(RecordedOut)
-	c.call("Recorded", RecordedIn{}, out)
-	return out.Recorded
-}
-
-// TraceDirectory returns the path to the trace directory for a recording.
-func (c *RPCClient) TraceDirectory() (string, error) {
-	var out RecordedOut
-	err := c.call("Recorded", RecordedIn{}, &out)
-	return out.TraceDirectory, err
-}
-
-// Checkpoint sets a checkpoint at the current position.
-func (c *RPCClient) Checkpoint(where string) (checkpointID int, err error) {
-	var out CheckpointOut
-	err = c.call("Checkpoint", CheckpointIn{where}, &out)
-	return out.ID, err
-}
-
-// ListCheckpoints gets all checkpoints.
-func (c *RPCClient) ListCheckpoints() ([]api.Checkpoint, error) {
-	var out ListCheckpointsOut
-	err := c.call("ListCheckpoints", ListCheckpointsIn{}, &out)
-	return out.Checkpoints, err
-}
-
-// ClearCheckpoint removes a checkpoint
-func (c *RPCClient) ClearCheckpoint(id int) error {
-	var out ClearCheckpointOut
-	err := c.call("ClearCheckpoint", ClearCheckpointIn{id}, &out)
-	return err
-}
-
 func (c *RPCClient) SetReturnValuesLoadConfig(cfg *api.LoadConfig) {
 	c.retValLoadCfg = cfg
 }

@@ -28,29 +28,19 @@ type Client interface {
 
 	// Continue resumes process execution.
 	Continue() <-chan *api.DebuggerState
-	// Rewind resumes process execution backwards.
-	Rewind() <-chan *api.DebuggerState
 	// DirectionCongruentContinue resumes process execution, if a reverse next, step or stepout operation is in progress it will resume execution backward.
 	DirectionCongruentContinue() <-chan *api.DebuggerState
 	// Next continues to the next source line, not entering function calls.
 	Next() (*api.DebuggerState, error)
-	// ReverseNext continues backward to the previous line of source code, not entering function calls.
-	ReverseNext() (*api.DebuggerState, error)
 	// Step continues to the next source line, entering function calls.
 	Step() (*api.DebuggerState, error)
-	// ReverseStep continues backward to the previous line of source code, entering function calls.
-	ReverseStep() (*api.DebuggerState, error)
 	// StepOut continues to the return address of the current function.
 	StepOut() (*api.DebuggerState, error)
-	// ReverseStepOut continues backward to the caller of the current function.
-	ReverseStepOut() (*api.DebuggerState, error)
 	// Call resumes process execution while making a function call.
 	Call(goroutineID int64, expr string, unsafe bool) (*api.DebuggerState, error)
 
 	// StepInstruction will step a single cpu instruction.
 	StepInstruction(skipCalls bool) (*api.DebuggerState, error)
-	// ReverseStepInstruction will reverse step a single cpu instruction.
-	ReverseStepInstruction(skipCalls bool) (*api.DebuggerState, error)
 	// SwitchThread switches the current thread context.
 	SwitchThread(threadID int) (*api.DebuggerState, error)
 	// SwitchGoroutine switches the current goroutine (and the current thread as well)
@@ -146,17 +136,6 @@ type Client interface {
 	DisassembleRange(scope api.EvalScope, startPC, endPC uint64, flavour api.AssemblyFlavour) (api.AsmInstructions, error)
 	// DisassemblePC disassemble code of the function containing PC
 	DisassemblePC(scope api.EvalScope, pc uint64, flavour api.AssemblyFlavour) (api.AsmInstructions, error)
-
-	// Recorded returns true if the target is a recording.
-	Recorded() bool
-	// TraceDirectory returns the path to the trace directory for a recording.
-	TraceDirectory() (string, error)
-	// Checkpoint sets a checkpoint at the current position.
-	Checkpoint(where string) (checkpointID int, err error)
-	// ListCheckpoints gets all checkpoints.
-	ListCheckpoints() ([]api.Checkpoint, error)
-	// ClearCheckpoint removes a checkpoint
-	ClearCheckpoint(id int) error
 
 	// SetReturnValuesLoadConfig sets the load configuration for return values.
 	SetReturnValuesLoadConfig(*api.LoadConfig)

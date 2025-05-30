@@ -246,24 +246,6 @@ func (p *process) Restart(*proc.ContinueOnceContext, string) (proc.Thread, error
 	return nil, ErrContinueCore
 }
 
-// ChangeDirection will only return an error as you cannot continue a core process.
-func (p *process) ChangeDirection(proc.Direction) error { return ErrContinueCore }
-
-// GetDirection will always return forward.
-func (p *process) GetDirection() proc.Direction { return proc.Forward }
-
-// When does not apply to core files, it is to support the Mozilla 'rr' backend.
-func (p *process) When() (string, error) { return "", nil }
-
-// Checkpoint for core files returns an error, there is no execution of a core file.
-func (p *process) Checkpoint(string) (int, error) { return -1, ErrContinueCore }
-
-// Checkpoints returns nil on core files, you cannot set checkpoints when debugging core files.
-func (p *process) Checkpoints() ([]proc.Checkpoint, error) { return nil, nil }
-
-// ClearCheckpoint clears a checkpoint, but will only return an error for core files.
-func (p *process) ClearCheckpoint(int) error { return errors.New("checkpoint not found") }
-
 func (p *process) SupportsBPF() bool {
 	return false
 }
