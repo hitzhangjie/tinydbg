@@ -58,11 +58,6 @@ var (
 	// disableASLR is used to disable ASLR
 	disableASLR bool
 
-	// checkGoVersion is true if the debugger should check the version of Go
-	// used to compile the executable and refuse to work on incompatible
-	// versions.
-	checkGoVersion bool
-
 	// rootCommand is the root of the command tree.
 	rootCommand *cobra.Command
 
@@ -137,7 +132,6 @@ func New(docCall bool) *cobra.Command {
 	must(rootCommand.RegisterFlagCompletionFunc("build-flags", cobra.NoFileCompletions))
 	rootCommand.PersistentFlags().StringVar(&workingDir, "wd", "", "Working directory for running the program.")
 	must(rootCommand.MarkPersistentFlagDirname("wd"))
-	rootCommand.PersistentFlags().BoolVarP(&checkGoVersion, "check-go-version", "", true, "Exits if the version of Go in use is not compatible (too old or too new) with the version of Delve.")
 	rootCommand.PersistentFlags().BoolVarP(&checkLocalConnUser, "only-same-user", "", true, "Only connections from the same user that started this instance of Delve are allowed to connect.")
 	rootCommand.PersistentFlags().StringArrayVarP(&redirects, "redirect", "r", []string{}, "Specifies redirect rules for target process (see 'dlv help redirect')")
 	must(rootCommand.MarkPersistentFlagFilename("redirect"))
@@ -497,7 +491,6 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 			Debugger: debugger.Config{
 				AttachPid:            traceAttachPid,
 				WorkingDir:           workingDir,
-				CheckGoVersion:       checkGoVersion,
 				DebugInfoDirectories: conf.DebugInfoDirectories,
 			},
 		})
@@ -794,7 +787,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 			BuildFlags:            buildFlags,
 			ExecuteKind:           kind,
 			DebugInfoDirectories:  conf.DebugInfoDirectories,
-			CheckGoVersion:        checkGoVersion,
 			TTY:                   tty,
 			Stdin:                 redirects[0],
 			Stdout:                proc.OutputRedirect{Path: redirects[1]},

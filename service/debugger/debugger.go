@@ -119,11 +119,6 @@ type Config struct {
 	// when resolving external debug info files.
 	DebugInfoDirectories []string
 
-	// CheckGoVersion is true if the debugger should check the version of Go
-	// used to compile the executable and refuse to work on incompatible
-	// versions.
-	CheckGoVersion bool
-
 	// TTY is passed along to the target process on creation. Used to specify a
 	// TTY for that process.
 	TTY string
@@ -241,7 +236,7 @@ func (d *Debugger) checkGoVersion() error {
 	if producer == "" {
 		return nil
 	}
-	return goversion.Compatible(producer, !d.config.CheckGoVersion)
+	return goversion.Compatible(producer, false)
 }
 
 func (d *Debugger) TargetGoVersion() string {

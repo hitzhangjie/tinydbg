@@ -36,7 +36,6 @@ func Prepare(cmd *cobra.Command) {
 		hideFlag(cmd, "allow-non-terminal-interactive")
 		hideFlag(cmd, "api-version")
 		hideFlag(cmd, "build-flags")
-		hideFlag(cmd, "check-go-version")
 		hideFlag(cmd, "disable-aslr")
 		hideFlag(cmd, "headless")
 		hideFlag(cmd, "listen")

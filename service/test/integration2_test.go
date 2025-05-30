@@ -75,13 +75,12 @@ func startServer(name string, buildFlags protest.BuildFlags, t *testing.T, redir
 		Listener:    listener,
 		ProcessArgs: append([]string{fixture.Path}, args...),
 		Debugger: debugger.Config{
-			CheckGoVersion: true,
-			Packages:       []string{fixture.Source},
-			BuildFlags:     "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
-			ExecuteKind:    debugger.ExecutingGeneratedFile,
-			Stdin:          redirects[0],
-			Stdout:         proc.OutputRedirect{Path: redirects[1]},
-			Stderr:         proc.OutputRedirect{Path: redirects[2]},
+			Packages:    []string{fixture.Source},
+			BuildFlags:  "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
+			ExecuteKind: debugger.ExecutingGeneratedFile,
+			Stdin:       redirects[0],
+			Stdout:      proc.OutputRedirect{Path: redirects[1]},
+			Stderr:      proc.OutputRedirect{Path: redirects[2]},
 		},
 	})
 	if err := server.Run(); err != nil {
@@ -2893,9 +2892,8 @@ func TestGuessSubstitutePath(t *testing.T) {
 			Listener:    listener,
 			ProcessArgs: []string{dlvbin, "help"},
 			Debugger: debugger.Config{
-				CheckGoVersion: true,
-				BuildFlags:     "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
-				ExecuteKind:    debugger.ExecutingExistingFile,
+				BuildFlags:  "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
+				ExecuteKind: debugger.ExecutingExistingFile,
 			},
 		})
 		if err := server.Run(); err != nil {
