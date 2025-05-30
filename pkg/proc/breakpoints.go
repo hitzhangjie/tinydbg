@@ -520,9 +520,6 @@ func (t *Target) SetBreakpoint(logicalID int, addr uint64, kind BreakpointKind, 
 	return t.setBreakpointInternal(logicalID, addr, kind, 0, cond)
 }
 
-// SetEBPFTracepoint will attach a uprobe to the function
-// specified by 'fnName'.
-
 // SetWatchpoint sets a data breakpoint at addr and stores it in the
 // process wide break point table.
 func (t *Target) SetWatchpoint(logicalID int, scope *EvalScope, expr string, wtype WatchType, cond ast.Expr) (*Breakpoint, error) {

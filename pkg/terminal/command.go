@@ -86,9 +86,9 @@ func (c command) match(cmdstr string) bool {
 	return false
 }
 
-// Commands represents the commands for Delve terminal process.
-type Commands struct {
-	cmds   []command
+// DebugSession represents the commands for Delve terminal process.
+type DebugSession struct {
+	cmds   []*command
 	client service.Client
 	frame  int // Current frame as set by frame/up/down commands.
 }
@@ -104,545 +104,34 @@ var (
 	ShortLoadConfig = api.LoadConfig{MaxStringLen: 64, MaxStructFields: 3}
 )
 
-// DebugCommands returns a Commands struct with default commands defined.
-func DebugCommands(client service.Client) *Commands {
-	c := &Commands{client: client}
+type newDebugCmdFunc func(*DebugSession) *command
 
-	c.cmds = []command{
-		{aliases: []string{"help", "h"}, cmdFn: c.help, helpMsg: `Prints the help message.
+var supportedDebugCmds []newDebugCmdFunc
 
-	help [command]
+func registerDebugCmd(c newDebugCmdFunc) {
+	supportedDebugCmds = append(supportedDebugCmds, c)
+}
 
-Type "help" followed by the name of a command for more information about it.`},
-		{aliases: []string{"break", "b"}, group: breakCmds, cmdFn: breakpoint, helpMsg: `Sets a breakpoint.
+// NewDebugSession returns a Commands struct with default commands defined.
+func NewDebugSession(client service.Client) *DebugSession {
+	c := &DebugSession{client: client}
 
-	break [name] [locspec] [if <condition>]
-
-Locspec is a location specifier in the form of:
-
-  * *<address> Specifies the location of memory address address. address can be specified as a decimal, hexadecimal or octal number
-  * <filename>:<line> Specifies the line in filename. filename can be the partial path to a file or even just the base name as long as the expression remains unambiguous.
-  * <line> Specifies the line in the current file
-  * +<offset> Specifies the line offset lines after the current one
-  * -<offset> Specifies the line offset lines before the current one
-  * <function>[:<line>] Specifies the line inside function.
-      The full syntax for function is <package>.(*<receiver type>).<function name> however the only required element is the function name,
-      everything else can be omitted as long as the expression remains unambiguous. For setting a breakpoint on an init function (ex: main.init),
-      the <filename>:<line> syntax should be used to break in the correct init function at the correct location.
-  * /<regex>/ Specifies the location of all the functions matching regex
-
-If locspec is omitted a breakpoint will be set on the current line.
-
-If you would like to assign a name to the breakpoint you can do so with the form:
-
-	break mybpname main.go:4
-
-Finally, you can assign a condition to the newly created breakpoint by using the 'if' postfix form, like so:
-
-	break main.go:55 if i == 5
-
-Alternatively you can set a condition on a breakpoint after created by using the 'on' command.
-
-See also: "help on", "help cond" and "help clear"`},
-		{aliases: []string{"trace", "t"}, group: breakCmds, cmdFn: tracepoint, allowedPrefixes: onPrefix, helpMsg: `Set tracepoint.
-
-	trace [name] [locspec]
-
-A tracepoint is a breakpoint that does not stop the execution of the program, instead when the tracepoint is hit a notification is displayed. See Documentation/cli/locspec.md for the syntax of locspec. If locspec is omitted a tracepoint will be set on the current line.
-
-See also: "help on", "help cond" and "help clear"`},
-		{aliases: []string{"watch"}, group: breakCmds, cmdFn: watchpoint, helpMsg: `Set watchpoint.
-	
-	watch [-r|-w|-rw] <expr>
-	
-	-r	stops when the memory location is read
-	-w	stops when the memory location is written
-	-rw	stops when the memory location is read or written
-
-The memory location is specified with the same expression language used by 'print', for example:
-
-	watch v
-	watch -w *(*int)(0x1400007c018)
-
-will watch the address of variable 'v' and writes to an int at addr '0x1400007c018'.
-
-Note that writes that do not change the value of the watched memory address might not be reported.
-
-See also: "help print".`},
-		{aliases: []string{"restart", "r"}, group: runCmds, cmdFn: restart, helpMsg: `Restart process.
-
-For recorded targets the command takes the following forms:
-
-	restart					resets to the start of the recording
-	restart [checkpoint]			resets the recording to the given checkpoint
-	restart -r [newargv...]	[redirects...]	re-records the target process
-	
-For live targets the command takes the following forms:
-
-	restart [newargv...] [redirects...]	restarts the process
-
-If newargv is omitted the process is restarted (or re-recorded) with the same argument vector.
-If -noargs is specified instead, the argument vector is cleared.
-
-A list of file redirections can be specified after the new argument list to override the redirections defined using the '--redirect' command line option. A syntax similar to Unix shells is used:
-
-	<input.txt	redirects the standard input of the target process from input.txt
-	>output.txt	redirects the standard output of the target process to output.txt
-	2>error.txt	redirects the standard error of the target process to error.txt
-`},
-		{aliases: []string{"rebuild"}, group: runCmds, cmdFn: c.rebuild, allowedPrefixes: revPrefix, helpMsg: "Rebuild the target executable and restarts it. It does not work if the executable was not built by delve."},
-		{aliases: []string{"continue", "c"}, group: runCmds, cmdFn: c.cont, allowedPrefixes: revPrefix, helpMsg: `Run until breakpoint or program termination.
-
-	continue [<locspec>]
-
-Optional locspec argument allows you to continue until a specific location is reached. The program will halt if a breakpoint is hit before reaching the specified location.
-
-For example:
-
-	continue main.main
-	continue encoding/json.Marshal
-`},
-		{aliases: []string{"step", "s"}, group: runCmds, cmdFn: c.step, allowedPrefixes: revPrefix, helpMsg: "Single step through program."},
-		{aliases: []string{"step-instruction", "si", "stepi"}, group: runCmds, allowedPrefixes: revPrefix, cmdFn: c.stepInstruction, helpMsg: "Single step a single cpu instruction."},
-		{aliases: []string{"next-instruction", "ni", "nexti"}, group: runCmds, allowedPrefixes: revPrefix, cmdFn: c.nextInstruction, helpMsg: "Single step a single cpu instruction, skipping function calls."},
-		{aliases: []string{"next", "n"}, group: runCmds, cmdFn: c.next, allowedPrefixes: revPrefix, helpMsg: `Step over to next source line.
-
-	next [count]
-
-Optional [count] argument allows you to skip multiple lines.
-`},
-		{aliases: []string{"stepout", "so"}, group: runCmds, allowedPrefixes: revPrefix, cmdFn: c.stepout, helpMsg: "Step out of the current function."},
-		{aliases: []string{"call"}, group: runCmds, cmdFn: c.call, helpMsg: `Resumes process, injecting a function call (EXPERIMENTAL!!!)
-	
-	call [-unsafe] <function call expression>
-	
-Current limitations:
-- only pointers to stack-allocated objects can be passed as argument.
-- only some automatic type conversions are supported.
-- functions can only be called on running goroutines that are not
-  executing the runtime.
-- the current goroutine needs to have at least 256 bytes of free space on
-  the stack.
-- functions can only be called when the goroutine is stopped at a safe
-  point.
-- calling a function will resume execution of all goroutines.
-- only supported on linux's native backend.
-`},
-		{aliases: []string{"threads"}, group: goroutineCmds, cmdFn: threads, helpMsg: "Print out info for every traced thread."},
-		{aliases: []string{"thread", "tr"}, group: goroutineCmds, cmdFn: thread, helpMsg: `Switch to the specified thread.
-
-	thread <id>`},
-		{aliases: []string{"clear"}, group: breakCmds, cmdFn: clear, helpMsg: `Deletes breakpoint.
-
-	clear <breakpoint name or id>`},
-		{aliases: []string{"clearall"}, group: breakCmds, cmdFn: clearAll, helpMsg: `Deletes multiple breakpoints.
-
-	clearall [<locspec>]
-
-If called with the locspec argument it will delete all the breakpoints matching the locspec. If locspec is omitted all breakpoints are deleted.`},
-		{aliases: []string{"toggle"}, group: breakCmds, cmdFn: toggle, helpMsg: `Toggles on or off a breakpoint.
-
-	toggle <breakpoint name or id>`},
-		{aliases: []string{"goroutines", "grs"}, group: goroutineCmds, cmdFn: c.goroutines, helpMsg: `List program goroutines.
-
-	goroutines [-u|-r|-g|-s] [-t [depth]] [-l] [-with loc expr] [-without loc expr] [-group argument] [-chan expr] [-exec command]
-
-Print out info for every goroutine. The flag controls what information is shown along with each goroutine:
-
-	-u	displays location of topmost stackframe in user code (default)
-	-r	displays location of topmost stackframe (including frames inside private runtime functions)
-	-g	displays location of go instruction that created the goroutine
-	-s	displays location of the start function
-	-t	displays goroutine's stacktrace (an optional depth value can be specified, default: 10)
-	-l	displays goroutine's labels
-
-If no flag is specified the default is -u, i.e. the first frame within the first 30 frames that is not executing a runtime private function.
-
-FILTERING
-
-If -with or -without are specified only goroutines that match the given condition are returned.
-
-To only display goroutines where the specified location contains (or does not contain, for -without and -wo) expr as a substring, use:
-
-	goroutines -with (userloc|curloc|goloc|startloc) expr
-	goroutines -w (userloc|curloc|goloc|startloc) expr
-	goroutines -without (userloc|curloc|goloc|startloc) expr
-	goroutines -wo (userloc|curloc|goloc|startloc) expr
-
-	Where:
-	userloc: filter by the location of the topmost stackframe in user code
-	curloc: filter by the location of the topmost stackframe (including frames inside private runtime functions)
-	goloc: filter by the location of the go instruction that created the goroutine
-	startloc: filter by the location of the start function
-	
-To only display goroutines that have (or do not have) the specified label key and value, use:
-
-	goroutines -with label key=value
-	goroutines -without label key=value
-	
-To only display goroutines that have (or do not have) the specified label key, use:
-
-	goroutines -with label key
-	goroutines -without label key
-	
-To only display goroutines that are running (or are not running) on a OS thread, use:
-
-
-	goroutines -with running
-	goroutines -without running
-	
-To only display user (or runtime) goroutines, use:
-
-	goroutines -with user
-	goroutines -without user
-
-CHANNELS
-	
-To only show goroutines waiting to send to or receive from a specific channel use:
-
-	goroutines -chan expr
-	
-Note that 'expr' must not contain spaces.
-
-GROUPING
-
-	goroutines -group (userloc|curloc|goloc|startloc|running|user)
-
-	Where:
-	userloc: groups goroutines by the location of the topmost stackframe in user code
-	curloc: groups goroutines by the location of the topmost stackframe
-	goloc: groups goroutines by the location of the go instruction that created the goroutine
-	startloc: groups goroutines by the location of the start function
-	running: groups goroutines by whether they are running or not
-	user: groups goroutines by weather they are user or runtime goroutines
-
-
-Groups goroutines by the given location, running status or user classification, up to 5 goroutines per group will be displayed as well as the total number of goroutines in the group.
-
-	goroutines -group label key
-
-Groups goroutines by the value of the label with the specified key.
-
-EXEC
-
-	goroutines -exec <command>
-
-Runs the command on every goroutine.
-`},
-		{aliases: []string{"goroutine", "gr"}, group: goroutineCmds, allowedPrefixes: onPrefix, cmdFn: c.goroutine, helpMsg: `Shows or changes current goroutine
-
-	goroutine
-	goroutine <id>
-	goroutine <id> <command>
-
-Called without arguments it will show information about the current goroutine.
-Called with a single argument it will switch to the specified goroutine.
-Called with more arguments it will execute a command on the specified goroutine.`},
-		{aliases: []string{"breakpoints", "bp"}, group: breakCmds, cmdFn: breakpoints, helpMsg: `Print out info for active breakpoints.
-	
-	breakpoints [-a]
-
-Specifying -a prints all physical breakpoint, including internal breakpoints.`},
-		{aliases: []string{"print", "p"}, group: dataCmds, allowedPrefixes: onPrefix | deferredPrefix, cmdFn: c.printVar, helpMsg: `Evaluate an expression.
-
-	[goroutine <n>] [frame <m>] print [%format] <expression>
-
-See Documentation/cli/expr.md for a description of supported expressions.
-
-The optional format argument is a format specifier, like the ones used by the fmt package. For example "print %x v" will print v as an hexadecimal number.`},
-		{aliases: []string{"whatis"}, group: dataCmds, cmdFn: whatisCommand, helpMsg: `Prints type of an expression.
-
-	whatis <expression>`},
-		{aliases: []string{"set"}, group: dataCmds, cmdFn: setVar, helpMsg: `Changes the value of a variable.
-
-	[goroutine <n>] [frame <m>] set <variable> = <value>
-
-See Documentation/cli/expr.md for a description of supported expressions. Only numerical variables and pointers can be changed.`},
-		{aliases: []string{"sources"}, cmdFn: sources, helpMsg: `Print list of source files.
-
-	sources [<regex>]
-
-If regex is specified only the source files matching it will be returned.`},
-		{aliases: []string{"funcs"}, cmdFn: funcs, helpMsg: `Print list of functions.
-
-	funcs [<regex>]
-
-If regex is specified only the functions matching it will be returned.`},
-		{aliases: []string{"types"}, cmdFn: types, helpMsg: `Print list of types
-
-	types [<regex>]
-
-If regex is specified only the types matching it will be returned.`},
-		{aliases: []string{"packages"}, cmdFn: packages, helpMsg: `Print list of packages.
-
-	packages [<regex>]
-
-If regex is specified only the packages matching it will be returned.`},
-		{aliases: []string{"args"}, allowedPrefixes: onPrefix | deferredPrefix, group: dataCmds, cmdFn: args, helpMsg: `Print function arguments.
-
-	[goroutine <n>] [frame <m>] args [-v] [<regex>]
-
-If regex is specified only function arguments with a name matching it will be returned. If -v is specified more information about each function argument will be shown.`},
-		{aliases: []string{"locals"}, allowedPrefixes: onPrefix | deferredPrefix, group: dataCmds, cmdFn: locals, helpMsg: `Print local variables.
-
-	[goroutine <n>] [frame <m>] locals [-v] [<regex>]
-
-The name of variables that are shadowed in the current scope will be shown in parenthesis.
-
-If regex is specified only local variables with a name matching it will be returned. If -v is specified more information about each local variable will be shown.`},
-		{aliases: []string{"vars"}, cmdFn: vars, group: dataCmds, helpMsg: `Print package variables.
-
-	vars [-v] [<regex>]
-
-If regex is specified only package variables with a name matching it will be returned. If -v is specified more information about each package variable will be shown.`},
-		{aliases: []string{"regs"}, cmdFn: regs, group: dataCmds, helpMsg: `Print contents of CPU registers.
-
-	regs [-a]
-
-Argument -a shows more registers. Individual registers can also be displayed by 'print' and 'display'. See Documentation/cli/expr.md.`},
-		{aliases: []string{"exit", "quit", "q"}, cmdFn: exitCommand, helpMsg: `Exit the debugger.
-		
-	exit [-c]
-	
-When connected to a headless instance started with the --accept-multiclient, pass -c to resume the execution of the target process before disconnecting.`},
-		{aliases: []string{"list", "ls", "l"}, cmdFn: listCommand, helpMsg: `Show source code.
-
-	[goroutine <n>] [frame <m>] list [<locspec>]
-
-Show source around current point or provided locspec.
-
-For example:
-
-	frame 1 list 69
-	list testvariables.go:10000
-	list main.main:30
-	list 40`},
-		{aliases: []string{"stack", "bt"}, allowedPrefixes: onPrefix, group: stackCmds, cmdFn: stackCommand, helpMsg: `Print stack trace.
-
-	[goroutine <n>] [frame <m>] stack [<depth>] [-full] [-offsets] [-defer] [-a <n>] [-adepth <depth>] [-mode <mode>]
-
-	-full		every stackframe is decorated with the value of its local variables and arguments.
-	-offsets	prints frame offset of each frame.
-	-defer		prints deferred function call stack for each frame.
-	-a <n>		prints stacktrace of n ancestors of the selected goroutine (target process must have tracebackancestors enabled)
-	-adepth <depth>	configures depth of ancestor stacktrace
-	-mode <mode>	specifies the stacktrace mode, possible values are:
-			normal	- attempts to automatically switch between cgo frames and go frames
-			simple	- disables automatic switch between cgo and go
-			fromg	- starts from the registers stored in the runtime.g struct
-`},
-		{aliases: []string{"frame"},
-			group: stackCmds,
-			cmdFn: func(t *Term, ctx callContext, arg string) error {
-				return c.frameCommand(t, ctx, arg, frameSet)
-			},
-			helpMsg: `Set the current frame, or execute command on a different frame.
-
-	frame <m>
-	frame <m> <command>
-
-The first form sets frame used by subsequent commands such as "print" or "set".
-The second form runs the command on the given frame.`},
-		{aliases: []string{"up"},
-			group: stackCmds,
-			cmdFn: func(t *Term, ctx callContext, arg string) error {
-				return c.frameCommand(t, ctx, arg, frameUp)
-			},
-			helpMsg: `Move the current frame up.
-
-	up [<m>]
-	up [<m>] <command>
-
-Move the current frame up by <m>. The second form runs the command on the given frame.`},
-		{aliases: []string{"down"},
-			group: stackCmds,
-			cmdFn: func(t *Term, ctx callContext, arg string) error {
-				return c.frameCommand(t, ctx, arg, frameDown)
-			},
-			helpMsg: `Move the current frame down.
-
-	down [<m>]
-	down [<m>] <command>
-
-Move the current frame down by <m>. The second form runs the command on the given frame.`},
-		{aliases: []string{"deferred"}, group: stackCmds, cmdFn: c.deferredCommand, helpMsg: `Executes command in the context of a deferred call.
-
-	deferred <n> <command>
-
-Executes the specified command (print, args, locals) in the context of the n-th deferred call in the current frame.`},
-		{aliases: []string{"source"}, cmdFn: c.sourceCommand, helpMsg: `Executes a file containing a list of delve commands
-
-	source <path>
-	
-If path ends with the .star extension it will be interpreted as a starlark script. See Documentation/cli/starlark.md for the syntax.
-
-If path is a single '-' character an interactive starlark interpreter will start instead. Type 'exit' to exit.`},
-		{aliases: []string{"disassemble", "disass"}, cmdFn: disassCommand, helpMsg: `Disassembler.
-
-	[goroutine <n>] [frame <m>] disassemble [-a <start> <end>] [-l <locspec>]
-
-If no argument is specified the function being executed in the selected stack frame will be executed.
-
-	-a <start> <end>	disassembles the specified address range
-	-l <locspec>		disassembles the specified function`},
-		{aliases: []string{"on"}, group: breakCmds, cmdFn: c.onCmd, helpMsg: `Executes a command when a breakpoint is hit.
-
-	on <breakpoint name or id> <command>
-	on <breakpoint name or id> -edit
-	
-
-Supported commands: print, stack, goroutine, trace and cond. 
-To convert a breakpoint into a tracepoint use:
-	
-	on <breakpoint name or id> trace
-
-The command 'on <bp> cond <cond-arguments>' is equivalent to 'cond <bp> <cond-arguments>'.
-
-The command 'on x -edit' can be used to edit the list of commands executed when the breakpoint is hit.`},
-		{aliases: []string{"condition", "cond"}, group: breakCmds, cmdFn: conditionCmd, allowedPrefixes: onPrefix, helpMsg: `Set breakpoint condition.
-
-	condition <breakpoint name or id> <boolean expression>.
-	condition -hitcount <breakpoint name or id> <operator> <argument>.
-	condition -per-g-hitcount <breakpoint name or id> <operator> <argument>.
-	condition -clear <breakpoint name or id>.
-
-Specifies that the breakpoint, tracepoint or watchpoint should break only if the boolean expression is true.
-
-See Documentation/cli/expr.md for a description of supported expressions and Documentation/cli/cond.md for a description of how breakpoint conditions are evaluated.
-
-With the -hitcount option a condition on the breakpoint hit count can be set, the following operators are supported
-
-	condition -hitcount bp > n
-	condition -hitcount bp >= n
-	condition -hitcount bp < n
-	condition -hitcount bp <= n
-	condition -hitcount bp == n
-	condition -hitcount bp != n
-	condition -hitcount bp % n
-
-The -per-g-hitcount option works like -hitcount, but use per goroutine hitcount to compare with n.
-
-With the -clear option a condition on the breakpoint can removed.
-	
-The '% n' form means we should stop at the breakpoint when the hitcount is a multiple of n.
-
-Examples:
-
-	cond 2 i == 10				breakpoint 2 will stop when variable i equals 10
-	cond name runtime.curg.goid == 5	breakpoint 'name' will stop only on goroutine 5
-	cond -clear 2				the condition on breakpoint 2 will be removed
-`},
-		{aliases: []string{"config"}, cmdFn: configureCmd, helpMsg: `Changes configuration parameters.
-
-	config -list
-
-Show all configuration parameters.
-
-	config -save
-
-Saves the configuration file to disk, overwriting the current configuration file.
-
-	config <parameter> <value>
-
-Changes the value of a configuration parameter.
-
-	config substitute-path <from> <to>
-	config substitute-path <from>
-	config substitute-path -clear
-	config substitute-path -guess
-
-Adds or removes a path substitution rule, if -clear is used all
-substitute-path rules are removed. Without arguments shows the current list
-of substitute-path rules.
-The -guess option causes Delve to try to guess your substitute-path
-configuration automatically.
-See also Documentation/cli/substitutepath.md for how the rules are applied.
-
-	config alias <command> <alias>
-	config alias <alias>
-
-Defines <alias> as an alias to <command> or removes an alias.
-
-	config debug-info-directories -add <path>
-	config debug-info-directories -rm <path>
-	config debug-info-directories -clear
-
-Adds, removes or clears debug-info-directories.`},
-
-		{aliases: []string{"edit", "ed"}, cmdFn: edit, helpMsg: `Open where you are in $DELVE_EDITOR or $EDITOR
-
-	edit [locspec]
-	
-If locspec is omitted edit will open the current source file in the editor, otherwise it will open the specified location.`},
-		{aliases: []string{"libraries"}, cmdFn: libraries, helpMsg: `List loaded dynamic libraries`},
-
-		{aliases: []string{"examinemem", "x"}, group: dataCmds, cmdFn: examineMemoryCmd, helpMsg: `Examine raw memory at the given address.
-
-Examine memory:
-
-	examinemem [-fmt <format>] [-count|-len <count>] [-size <size>] <address>
-	examinemem [-fmt <format>] [-count|-len <count>] [-size <size>] -x <expression>
-
-Format represents the data format and the value is one of this list (default hex): bin(binary), oct(octal), dec(decimal), hex(hexadecimal) and raw.
-Length is the number of bytes (default 1) and must be less than or equal to 1000.
-Address is the memory location of the target to examine. Please note '-len' is deprecated by '-count and -size'.
-Expression can be an integer expression or pointer value of the memory location to examine.
-
-For example:
-
-    x -fmt hex -count 20 -size 1 0xc00008af38
-    x -fmt hex -count 20 -size 1 -x 0xc00008af38 + 8
-    x -fmt hex -count 20 -size 1 -x &myVar
-    x -fmt hex -count 20 -size 1 -x myPtrVar`},
-
-		{aliases: []string{"display"}, group: dataCmds, cmdFn: display, helpMsg: `Print value of an expression every time the program stops.
-
-	display -a [%format] <expression>
-	display -d <number>
-
-The '-a' option adds an expression to the list of expression printed every time the program stops. The '-d' option removes the specified expression from the list.
-
-If display is called without arguments it will print the value of all expression in the list.`},
-
-		{aliases: []string{"dump"}, cmdFn: dump, helpMsg: `Creates a core dump from the current process state
-
-	dump <output file>
-
-The core dump is always written in ELF, even on systems (windows, macOS) where this is not customary. For environments other than linux/amd64 threads and registers are dumped in a format that only Delve can read back.`},
-
-		{aliases: []string{"transcript"}, cmdFn: transcript, helpMsg: `Appends command output to a file.
-
-	transcript [-t] [-x] <output file>
-	transcript -off
-
-Output of Delve's command is appended to the specified output file. If '-t' is specified and the output file exists it is truncated. If '-x' is specified output to stdout is suppressed instead.
-
-Using the -off option disables the transcript.`},
-
-		{aliases: []string{"target"}, cmdFn: target, helpMsg: `Manages child process debugging.
-
-	target follow-exec [-on [regex]] [-off]
-
-Enables or disables follow exec mode. When follow exec mode Delve will automatically attach to new child processes executed by the target process. An optional regular expression can be passed to 'target follow-exec', only child processes with a command line matching the regular expression will be followed.
-
-	target list
-
-List currently attached processes.
-
-	target switch [pid]
-
-Switches to the specified process.`},
+	// Gather all commands from different groups
+	for _, f := range supportedDebugCmds {
+		c.cmds = append(c.cmds, f(c))
 	}
 
-	slices.SortFunc(c.cmds, func(a, b command) int {
+	// Sort commands by first alias
+	slices.SortFunc(c.cmds, func(a, b *command) int {
 		return strings.Compare(a.aliases[0], b.aliases[0])
 	})
+
 	return c
 }
 
 // Register custom commands. Expects cf to be a func of type cmdfunc,
 // returning only an error.
-func (c *Commands) Register(cmdstr string, cf cmdfunc, helpMsg string) {
+func (c *DebugSession) Register(cmdstr string, cf cmdfunc, helpMsg string) {
 	for _, v := range c.cmds {
 		if v.match(cmdstr) {
 			v.cmdFn = cf
@@ -650,16 +139,16 @@ func (c *Commands) Register(cmdstr string, cf cmdfunc, helpMsg string) {
 		}
 	}
 
-	c.cmds = append(c.cmds, command{aliases: []string{cmdstr}, cmdFn: cf, helpMsg: helpMsg})
+	c.cmds = append(c.cmds, &command{aliases: []string{cmdstr}, cmdFn: cf, helpMsg: helpMsg})
 }
 
 // Find will look up the command function for the given command input.
 // If it cannot find the command it will default to noCmdAvailable().
 // If the command is an empty string it will replay the last command.
-func (c *Commands) Find(cmdstr string, prefix cmdPrefix) command {
+func (c *DebugSession) Find(cmdstr string, prefix cmdPrefix) *command {
 	// If <enter> use last command, if there was one.
 	if cmdstr == "" {
-		return command{aliases: []string{"nullcmd"}, cmdFn: nullCommand}
+		return &command{aliases: []string{"nullcmd"}, cmdFn: nullCommand}
 	}
 
 	for _, v := range c.cmds {
@@ -671,11 +160,11 @@ func (c *Commands) Find(cmdstr string, prefix cmdPrefix) command {
 		}
 	}
 
-	return command{aliases: []string{"nocmd"}, cmdFn: noCmdAvailable}
+	return &command{aliases: []string{"nocmd"}, cmdFn: noCmdAvailable}
 }
 
 // CallWithContext takes a command and a context that command should be executed in.
-func (c *Commands) CallWithContext(cmdstr string, t *Term, ctx callContext) error {
+func (c *DebugSession) CallWithContext(cmdstr string, t *Term, ctx callContext) error {
 	vals := strings.SplitN(strings.TrimSpace(cmdstr), " ", 2)
 	cmdname := vals[0]
 	var args string
@@ -686,13 +175,13 @@ func (c *Commands) CallWithContext(cmdstr string, t *Term, ctx callContext) erro
 }
 
 // Call takes a command to execute.
-func (c *Commands) Call(cmdstr string, t *Term) error {
+func (c *DebugSession) Call(cmdstr string, t *Term) error {
 	ctx := callContext{Prefix: noPrefix, Scope: api.EvalScope{GoroutineID: -1, Frame: c.frame, DeferredCall: 0}}
 	return c.CallWithContext(cmdstr, t, ctx)
 }
 
 // Merge takes aliases defined in the config struct and merges them with the default aliases.
-func (c *Commands) Merge(allAliases map[string][]string) {
+func (c *DebugSession) Merge(allAliases map[string][]string) {
 	for i := range c.cmds {
 		if c.cmds[i].builtinAliases != nil {
 			c.cmds[i].aliases = append(c.cmds[i].aliases[:0], c.cmds[i].builtinAliases...)
@@ -719,7 +208,7 @@ func nullCommand(t *Term, ctx callContext, args string) error {
 	return nil
 }
 
-func (c *Commands) help(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) help(t *Term, ctx callContext, args string) error {
 	if args != "" {
 		for _, cmd := range c.cmds {
 			for _, alias := range cmd.aliases {
@@ -822,7 +311,7 @@ func thread(t *Term, ctx callContext, args string) error {
 	return nil
 }
 
-func (c *Commands) printGoroutines(t *Term, ctx callContext, indent string, gs []*api.Goroutine, fgl api.FormatGoroutineLoc, flags api.PrintGoroutinesFlags, depth int, cmd string, pdone *bool, state *api.DebuggerState) error {
+func (c *DebugSession) printGoroutines(t *Term, ctx callContext, indent string, gs []*api.Goroutine, fgl api.FormatGoroutineLoc, flags api.PrintGoroutinesFlags, depth int, cmd string, pdone *bool, state *api.DebuggerState) error {
 	for _, g := range gs {
 		if t.longCommandCanceled() || (pdone != nil && *pdone) {
 			break
@@ -852,7 +341,7 @@ func (c *Commands) printGoroutines(t *Term, ctx callContext, indent string, gs [
 	return nil
 }
 
-func (c *Commands) goroutines(t *Term, ctx callContext, argstr string) error {
+func (c *DebugSession) goroutines(t *Term, ctx callContext, argstr string) error {
 	filters, group, fgl, flags, depth, batchSize, cmd, err := api.ParseGoroutineArgs(argstr)
 	if err != nil {
 		return err
@@ -918,7 +407,7 @@ func selectedGID(state *api.DebuggerState) int64 {
 	return state.SelectedGoroutine.ID
 }
 
-func (c *Commands) goroutine(t *Term, ctx callContext, argstr string) error {
+func (c *DebugSession) goroutine(t *Term, ctx callContext, argstr string) error {
 	args := config.Split2PartsBySpace(argstr)
 
 	if ctx.Prefix == onPrefix {
@@ -960,7 +449,7 @@ func (c *Commands) goroutine(t *Term, ctx callContext, argstr string) error {
 }
 
 // Handle "frame", "up", "down" commands.
-func (c *Commands) frameCommand(t *Term, ctx callContext, argstr string, direction frameDirection) error {
+func (c *DebugSession) frameCommand(t *Term, ctx callContext, argstr string, direction frameDirection) error {
 	frame := 1
 	arg := ""
 	if len(argstr) == 0 {
@@ -1009,7 +498,7 @@ func (c *Commands) frameCommand(t *Term, ctx callContext, argstr string, directi
 	return nil
 }
 
-func (c *Commands) deferredCommand(t *Term, ctx callContext, argstr string) error {
+func (c *DebugSession) deferredCommand(t *Term, ctx callContext, argstr string) error {
 	ctx.Prefix = deferredPrefix
 
 	space := strings.IndexRune(argstr, ' ')
@@ -1282,7 +771,7 @@ func printcontextNoState(t *Term) {
 	printcontext(t, state)
 }
 
-func (c *Commands) rebuild(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) rebuild(t *Term, ctx callContext, args string) error {
 	defer t.onStop()
 	discarded, err := t.client.Restart(true)
 	if len(discarded) > 0 {
@@ -1291,7 +780,7 @@ func (c *Commands) rebuild(t *Term, ctx callContext, args string) error {
 	return err
 }
 
-func (c *Commands) cont(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) cont(t *Term, ctx callContext, args string) error {
 	if args != "" {
 		tmp, err := setBreakpoint(t, ctx, false, args)
 		if err != nil {
@@ -1399,7 +888,7 @@ func exitedToError(state *api.DebuggerState, err error) (*api.DebuggerState, err
 	return state, err
 }
 
-func (c *Commands) step(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) step(t *Term, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -1417,12 +906,12 @@ func (c *Commands) step(t *Term, ctx callContext, args string) error {
 var errNotOnFrameZero = errors.New("not on topmost frame")
 
 // stepInstruction implements the step-instruction (stepi) command.
-func (c *Commands) stepInstruction(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) stepInstruction(t *Term, ctx callContext, args string) error {
 	return stepInstruction(t, ctx, c.frame, false)
 }
 
 // nextInstruction implements the next-instruction (nexti) command.
-func (c *Commands) nextInstruction(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) nextInstruction(t *Term, ctx callContext, args string) error {
 	return stepInstruction(t, ctx, c.frame, true)
 }
 
@@ -1449,7 +938,7 @@ func stepInstruction(t *Term, ctx callContext, frame int, skipCalls bool) error 
 	return nil
 }
 
-func (c *Commands) revCmd(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) revCmd(t *Term, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("not enough arguments")
 	}
@@ -1458,7 +947,7 @@ func (c *Commands) revCmd(t *Term, ctx callContext, args string) error {
 	return c.CallWithContext(args, t, ctx)
 }
 
-func (c *Commands) next(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) next(t *Term, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -1493,7 +982,7 @@ func (c *Commands) next(t *Term, ctx callContext, args string) error {
 	return nil
 }
 
-func (c *Commands) stepout(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) stepout(t *Term, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -1512,7 +1001,7 @@ func (c *Commands) stepout(t *Term, ctx callContext, args string) error {
 	return continueUntilCompleteNext(t, state, "stepout", true)
 }
 
-func (c *Commands) call(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) call(t *Term, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -2083,7 +1572,7 @@ func parseFormatArg(args string) (fmtstr, argsOut string) {
 
 const maxPrintVarChanGoroutines = 100
 
-func (c *Commands) printVar(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) printVar(t *Term, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("not enough arguments")
 	}
@@ -2482,7 +1971,7 @@ func listCommand(t *Term, ctx callContext, args string) error {
 	return printfile(t, file, lineno, showarrow)
 }
 
-func (c *Commands) sourceCommand(t *Term, ctx callContext, args string) error {
+func (c *DebugSession) sourceCommand(t *Term, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("wrong number of arguments: source <filename>")
 	}
@@ -2988,7 +2477,7 @@ func getBreakpointByIDOrName(t *Term, arg string) (*api.Breakpoint, error) {
 	return t.client.GetBreakpointByName(arg)
 }
 
-func (c *Commands) onCmd(t *Term, ctx callContext, argstr string) error {
+func (c *DebugSession) onCmd(t *Term, ctx callContext, argstr string) error {
 	args := config.Split2PartsBySpace(argstr)
 
 	if len(args) < 2 {
@@ -3046,7 +2535,7 @@ func (c *Commands) onCmd(t *Term, ctx callContext, argstr string) error {
 	return t.client.AmendBreakpoint(ctx.Breakpoint)
 }
 
-func (c *Commands) parseBreakpointAttrs(t *Term, ctx callContext, r io.Reader) error {
+func (c *DebugSession) parseBreakpointAttrs(t *Term, ctx callContext, r io.Reader) error {
 	ctx.Breakpoint.Tracepoint = false
 	ctx.Breakpoint.Goroutine = false
 	ctx.Breakpoint.Stacktrace = 0
@@ -3066,7 +2555,7 @@ func (c *Commands) parseBreakpointAttrs(t *Term, ctx callContext, r io.Reader) e
 	return scan.Err()
 }
 
-func conditionCmd(t *Term, ctx callContext, argstr string) error {
+func condition(t *Term, ctx callContext, argstr string) error {
 	args := config.Split2PartsBySpace(argstr)
 
 	if len(args) < 2 {
@@ -3122,7 +2611,7 @@ func conditionCmd(t *Term, ctx callContext, argstr string) error {
 	return t.client.AmendBreakpoint(bp)
 }
 
-func (c *Commands) executeFile(t *Term, name string) error {
+func (c *DebugSession) executeFile(t *Term, name string) error {
 	fh, err := os.Open(name)
 	if err != nil {
 		return err

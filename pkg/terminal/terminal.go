@@ -55,7 +55,7 @@ type Term struct {
 	conf     *config.Config
 	prompt   string
 	line     *liner.State
-	cmds     *Commands
+	cmds     *DebugSession
 	stdout   *transcriptWriter
 	InitFile string
 	displays []displayEntry
@@ -89,7 +89,7 @@ type displayEntry struct {
 
 // New returns a new Term.
 func New(client service.Client, conf *config.Config) *Term {
-	cmds := DebugCommands(client)
+	cmds := NewDebugSession(client)
 	if conf != nil && conf.Aliases != nil {
 		cmds.Merge(conf.Aliases)
 	}

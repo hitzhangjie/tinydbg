@@ -9,6 +9,7 @@ const (
 	dataCmds
 	goroutineCmds
 	stackCmds
+	sourceCmds
 )
 
 type commandGroupDescription struct {
@@ -19,8 +20,9 @@ type commandGroupDescription struct {
 var commandGroupDescriptions = []commandGroupDescription{
 	{"Running the program", runCmds},
 	{"Manipulating breakpoints", breakCmds},
-	{"Viewing program variables and memory", dataCmds},
+	{"Inspect program variables and memory", dataCmds},
+	{"Inspect the call stack and selecting frames", stackCmds},
+	{"Viewing source and disassembly, Listing pkgs, funcs, types", sourceCmds},
 	{"Listing and switching between threads and goroutines", goroutineCmds},
-	{"Viewing the call stack and selecting frames", stackCmds},
 	{"Other commands", otherCmds},
 }

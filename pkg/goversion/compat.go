@@ -2,7 +2,6 @@ package goversion
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/hitzhangjie/tinydbg/pkg/logflags"
 )
@@ -12,9 +11,9 @@ var (
 	MinSupportedVersionOfGoMinor = 21
 	MaxSupportedVersionOfGoMajor = 1
 	MaxSupportedVersionOfGoMinor = 24
-	goTooOldErr                  = fmt.Sprintf("Go version %%s is too old for this version of Delve (minimum supported version %d.%d, suppress this error with --check-go-version=false)", MinSupportedVersionOfGoMajor, MinSupportedVersionOfGoMinor)
+	goTooOldErr                  = fmt.Sprintf("Go version %%s is too old for this version of Delve (minimum supported version %d.%d)", MinSupportedVersionOfGoMajor, MinSupportedVersionOfGoMinor)
 	goTooOldWarn                 = fmt.Sprintf("WARNING: undefined behavior - Go version %%s is too old for this version of Delve (minimum supported version %d.%d)", MinSupportedVersionOfGoMajor, MinSupportedVersionOfGoMinor)
-	dlvTooOldErr                 = fmt.Sprintf("Version of Delve is too old for Go version %%s (maximum supported version %d.%d, suppress this error with --check-go-version=false)", MaxSupportedVersionOfGoMajor, MaxSupportedVersionOfGoMinor)
+	dlvTooOldErr                 = fmt.Sprintf("Version of Delve is too old for Go version %%s (maximum supported version %d.%d)", MaxSupportedVersionOfGoMajor, MaxSupportedVersionOfGoMinor)
 	dlvTooOldWarn                = fmt.Sprintf("WARNING: undefined behavior - version of Delve is too old for Go version %%s (maximum supported version %d.%d)", MaxSupportedVersionOfGoMajor, MaxSupportedVersionOfGoMinor)
 )
 
@@ -24,13 +23,6 @@ func Compatible(producer string, warnonly bool) error {
 	ver := ParseProducer(producer)
 	if ver.IsOldDevel() {
 		return nil
-	}
-	if runtime.GOARCH == "riscv64" && !ver.AfterOrEqual(GoVersion{1, 24, versionedDevel, "", ""}) {
-		if warnonly {
-			logflags.WriteError(fmt.Sprintf(goTooOldWarn, ver.String()))
-			return nil
-		}
-		return fmt.Errorf(goTooOldErr, ver.String())
 	}
 	if !ver.AfterOrEqual(GoVersion{MinSupportedVersionOfGoMajor, MinSupportedVersionOfGoMinor, betaRev(0), "", ""}) {
 		if warnonly {

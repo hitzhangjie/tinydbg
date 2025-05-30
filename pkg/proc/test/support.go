@@ -266,12 +266,6 @@ func MustSupportFunctionCalls(t *testing.T) {
 	}
 }
 
-// DefaultTestBackend changes the value of testBackend to be the default
-// test backend for the OS, if testBackend isn't already set.
-func DefaultTestBackend(testBackend *string) {
-	*testBackend = "native"
-}
-
 // WithPlugins builds the fixtures in plugins as plugins and returns them.
 // The test calling WithPlugins will be skipped if the current combination
 // of OS, architecture and version of GO doesn't support plugins or
@@ -362,10 +356,6 @@ func GetDlvBinary(t *testing.T) string {
 		tags = []string{"-tags=exp.linuxloong64"}
 	}
 	return getDlvBinInternal(t, tags...)
-}
-
-func GetDlvBinaryEBPF(t *testing.T) string {
-	return getDlvBinInternal(t, "-tags", "ebpf")
 }
 
 func getDlvBinInternal(t *testing.T, goflags ...string) string {

@@ -34,7 +34,6 @@ func Prepare(cmd *cobra.Command) {
 	case "connect":
 		hideFlag(cmd, "accept-multiclient")
 		hideFlag(cmd, "allow-non-terminal-interactive")
-		hideFlag(cmd, "api-version")
 		hideFlag(cmd, "build-flags")
 		hideFlag(cmd, "disable-aslr")
 		hideFlag(cmd, "headless")
@@ -48,7 +47,6 @@ func Prepare(cmd *cobra.Command) {
 	case "trace":
 		hideFlag(cmd, "accept-multiclient")
 		hideFlag(cmd, "allow-non-terminal-interactive")
-		hideFlag(cmd, "api-version")
 		hideFlag(cmd, "headless")
 		hideFlag(cmd, "init")
 		hideFlag(cmd, "listen")

@@ -4,7 +4,7 @@
 			"path": "pkg/terminal/command.go",
 			"bookmarks": [
 				{
-					"line": 107,
+					"line": 115,
 					"column": 0,
 					"label": "cmds: in debugger session"
 				}

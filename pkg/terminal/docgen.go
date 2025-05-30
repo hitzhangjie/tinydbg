@@ -48,7 +48,7 @@ func fixLessThan(s string) string {
 	return strings.Join(v, "\n")
 }
 
-func (c *Commands) WriteMarkdown(w io.Writer) {
+func (c *DebugSession) WriteMarkdown(w io.Writer) {
 	fmt.Fprint(w, "# Configuration and Command History\n\n")
 	fmt.Fprint(w, "If `$XDG_CONFIG_HOME` is set, then configuration and command history files are located in `$XDG_CONFIG_HOME/dlv`. ")
 	fmt.Fprint(w, "Otherwise, they are located in `$HOME/.config/dlv` on Linux and `$HOME/.dlv` on other systems.\n\n")

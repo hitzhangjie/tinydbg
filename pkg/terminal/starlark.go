@@ -23,7 +23,7 @@ func (ctx starlarkContext) RegisterCommand(name, helpMsg string, fn func(args st
 
 	found := false
 	for i := range ctx.term.cmds.cmds {
-		cmd := &ctx.term.cmds.cmds[i]
+		cmd := ctx.term.cmds.cmds[i]
 		for _, alias := range cmd.aliases {
 			if alias == name {
 				cmd.cmdFn = cmdfn
@@ -37,7 +37,7 @@ func (ctx starlarkContext) RegisterCommand(name, helpMsg string, fn func(args st
 		}
 	}
 	if !found {
-		newcmd := command{
+		newcmd := &command{
 			aliases: []string{name},
 			helpMsg: helpMsg,
 			cmdFn:   cmdfn,

@@ -44,7 +44,6 @@ func TestMain(m *testing.M) {
 	var logOutput string
 	flag.StringVar(&logOutput, "log-output", "", "configures log output")
 	flag.Parse()
-	protest.DefaultTestBackend(&testBackend)
 	if buildMode != "" && buildMode != "pie" {
 		fmt.Fprintf(os.Stderr, "unknown build mode %q", buildMode)
 		os.Exit(1)

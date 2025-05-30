@@ -46,6 +46,8 @@ func TestDebugger_LaunchNoExecutablePerm(t *testing.T) {
 	}
 }
 
+var backend = "native"
+
 func TestDebugger_LaunchWithTTY(t *testing.T) {
 	// Ensure no env meddling is leftover from previous tests.
 	t.Setenv("GOOS", runtime.GOOS)
@@ -66,8 +68,6 @@ func TestDebugger_LaunchWithTTY(t *testing.T) {
 		t.Fatalf("go build error %v", err)
 	}
 	defer os.Remove(exepath)
-	var backend string
-	protest.DefaultTestBackend(&backend)
 	conf := &Config{TTY: tty.Name()}
 	pArgs := []string{exepath}
 	d, err := New(conf, pArgs)
