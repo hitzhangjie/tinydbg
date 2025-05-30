@@ -18,7 +18,7 @@ User -> FE: input `godbg attach <pid>`
 activate FE
 FE -> BE: API Call `client.Attach(pid)`
 BE -> BE: jsonrpc.ReadRequest(&req)\nreq.Method = "Attach"\nserver.Attach(pid)
-activate BE
+activate BE #ff0000
 
 BE -> TP: syscall `ptrace(PTRACE_ATTACH, pid, nil, nil)`
 activate TP

@@ -1,0 +1,41 @@
+@startuml
+
+hide footbox
+
+actor User
+participant "Debugger Frontend" as FE
+participant "Debugger Backend" as BE
+participant "Tracee" as TP
+
+== initialization ==
+
+activate BE
+
+BE -> BE: ln, _ := listen(ipport)\nconn, err := ln.accept()\nserveConn(conn)
+activate BE
+deactivate BE
+
+== send debugging request ==
+
+User -> FE: input `godbg debug /path-to/mainpkg`
+activate FE
+FE -> BE: API Call `client.Debug(path)`
+BE -> BE: jsonrpc.ReadRequest(&req)\nreq.Method = "Debug"\nserver.Debug(path)
+
+activate BE #ff0000
+
+== process debugging request ==
+BE -> BE: Execute `go build -gcflags='all=-N -l'` to build __debug_bin
+BE -> TP: Launch __debug_bin with ptrace options (e.g., PTRACE_TRACEME)
+activate TP
+TP --> BE: wait4(pid, status)\nStopped
+deactivate TP
+
+== send debugging response ==
+
+BE --> FE: Return Response {msg: debug ok, pc: 0x1234, file: f, line: 123}
+deactivate BE
+
+FE --> User: Display Data `tracee stopped at 0x1234 in f:123`
+
+@enduml
