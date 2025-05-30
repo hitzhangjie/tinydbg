@@ -54,7 +54,3 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.StopRecording"] = &methodType{method: reflect.ValueOf(s.StopRecording)}
 	methods["RPCServer.ToggleBreakpoint"] = &methodType{method: reflect.ValueOf(s.ToggleBreakpoint)}
 }
-
-func suitableMethodsCommon(s *RPCServer, methods map[string]*methodType) {
-	methods["RPCServer.GetVersion"] = &methodType{method: reflect.ValueOf(s.GetVersion)}
-}

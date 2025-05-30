@@ -1826,7 +1826,19 @@ func (d *Debugger) ExamineMemory(address uint64, length int) ([]byte, error) {
 	return data, nil
 }
 
-func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
+type dlvVersion struct {
+	DelveVersion    string
+	APIVersion      int
+	Backend         string // backend currently in use
+	TargetGoVersion string
+
+	MinSupportedVersionOfGo string
+	MaxSupportedVersionOfGo string
+}
+
+func (d *Debugger) getVersion() error {
+	var out dlvVersion
+
 	if d.config.CoreFile != "" {
 		out.Backend = "core"
 	} else {
@@ -1839,6 +1851,9 @@ func (d *Debugger) GetVersion(out *api.GetVersionOut) error {
 
 	out.MinSupportedVersionOfGo = fmt.Sprintf("%d.%d.0", goversion.MinSupportedVersionOfGoMajor, goversion.MinSupportedVersionOfGoMinor)
 	out.MaxSupportedVersionOfGo = fmt.Sprintf("%d.%d.0", goversion.MaxSupportedVersionOfGoMajor, goversion.MaxSupportedVersionOfGoMinor)
+
+	logger := logflags.DebuggerLogger()
+	logger.Debugf("debugger version: \n\n%+v\n", out)
 
 	return nil
 }

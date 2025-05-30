@@ -516,21 +516,6 @@ type AsmInstruction struct {
 // AsmInstructions is a slice of single instructions.
 type AsmInstructions []AsmInstruction
 
-// GetVersionIn is the argument for GetVersion.
-type GetVersionIn struct {
-}
-
-// GetVersionOut is the result of GetVersion.
-type GetVersionOut struct {
-	DelveVersion    string
-	APIVersion      int
-	Backend         string // backend currently in use
-	TargetGoVersion string
-
-	MinSupportedVersionOfGo string
-	MaxSupportedVersionOfGo string
-}
-
 // Register holds information on a CPU register.
 type Register struct {
 	Name        string

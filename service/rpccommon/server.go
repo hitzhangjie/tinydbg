@@ -15,7 +15,6 @@ import (
 	"sync"
 
 	"github.com/hitzhangjie/tinydbg/pkg/logflags"
-	"github.com/hitzhangjie/tinydbg/pkg/version"
 	"github.com/hitzhangjie/tinydbg/service"
 	"github.com/hitzhangjie/tinydbg/service/api"
 	"github.com/hitzhangjie/tinydbg/service/debugger"
@@ -107,13 +106,9 @@ func (s *ServerImpl) Run() error {
 	}
 
 	s.s2 = rpc2.NewServer(s.config, s.debugger)
-
-	rpcServer := &RPCServer{s}
-
 	s.methodMap = make(map[string]*methodType)
 
 	suitableMethods2(s.s2, s.methodMap)
-	suitableMethodsCommon(rpcServer, s.methodMap)
 	finishMethodsMapInit(s.methodMap)
 
 	go func() {
@@ -324,13 +319,6 @@ func (cb *RPCCallback) hasDisconnected() bool {
 
 func (cb *RPCCallback) SetupDoneChan() chan struct{} {
 	return cb.setupDone
-}
-
-// GetVersion returns the version of delve as well as the API version
-// currently served.
-func (s *RPCServer) GetVersion(args api.GetVersionIn, out *api.GetVersionOut) error {
-	out.DelveVersion = version.DelveVersion.String()
-	return s.s.debugger.GetVersion(out)
 }
 
 type internalError struct {
