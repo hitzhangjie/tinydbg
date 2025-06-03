@@ -1,0 +1,1 @@
+"Debug session at -0001-11-30 00:00:00 +0000 UTC\nCurrent scope: api.EvalScope{GoroutineID:-1, Frame:0, DeferredCall:0}\n"

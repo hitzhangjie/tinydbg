@@ -2,15 +2,10 @@
 def print_scope():
     scope = cur_scope()
     print("Current scope:", scope)
+    dlv_command("locals")
 
 # 定义一个函数来设置断点并执行调试命令
 def debug_person():
-    # 在 processPerson 函数处设置断点
-    dlv_command("break main.processPerson")
-    
-    # 继续执行程序
-    dlv_command("continue")
-    
     # 打印当前作用域
     print_scope()
     
@@ -31,10 +26,6 @@ def save_debug_info():
     # 将调试信息写入文件
     debug_info = "Debug session at " + str(time.time()) + "\n"
     debug_info += "Current scope: " + str(scope) + "\n"
-    debug_info += "Variables:\n"
-    
-    # 执行 print 命令并捕获输出
-    dlv_command("print people")
     
     # 保存到文件
     write_file("debug_info.txt", debug_info)
@@ -45,10 +36,14 @@ def main():
     
     # 设置断点
     dlv_command("break main.main")
+    dlv_command("break main.processPerson")
     
-    # 继续执行
+    # 继续执行到main.main
     dlv_command("continue")
     
+    # 继续执行到main.processPerson
+    dlv_command("continue")
+ 
     # 执行调试操作
     debug_person()
     
@@ -57,5 +52,5 @@ def main():
     
     print("Debug session completed.")
 
-# 直接调用 main 函数
-main() 
+# 直接调用 main 函数 (source命令会自动调用定义的 `main` 函数)
+#main() 
