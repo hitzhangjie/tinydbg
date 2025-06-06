@@ -101,7 +101,7 @@ func New(client service.Client, conf *config.Config) *Term {
 	t := &Term{
 		client: client,
 		conf:   conf,
-		prompt: "(dlv) ",
+		prompt: "(tinydbg) ",
 		line:   liner.NewLiner(),
 		cmds:   cmds,
 		stdout: &transcriptWriter{pw: &pagingWriter{w: os.Stdout}},
@@ -632,4 +632,10 @@ func (t *Term) RedirectTo(w io.Writer) {
 func isErrProcessExited(err error) bool {
 	rpcError, ok := err.(rpc.ServerError)
 	return ok && strings.Contains(rpcError.Error(), "has exited with status")
+}
+
+// getColorableWriter simply returns stdout on
+// *nix machines.
+func getColorableWriter() io.Writer {
+	return os.Stdout
 }

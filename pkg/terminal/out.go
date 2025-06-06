@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
+	"unsafe"
 
 	"github.com/hitzhangjie/tinydbg/pkg/terminal/colorize"
 	"github.com/mattn/go-isatty"
@@ -217,4 +219,20 @@ func (w *pagingWriter) largeOutput() bool {
 		}
 	}
 	return false
+}
+
+type winSize struct {
+	row, col       uint16
+	xpixel, ypixel uint16
+}
+
+func (w *pagingWriter) getWindowSize() {
+	var ws winSize
+	ok, _, _ := syscall.Syscall(syscall.SYS_IOCTL, uintptr(syscall.Stdout), syscall.TIOCGWINSZ, uintptr(unsafe.Pointer(&ws)))
+	if int(ok) < 0 {
+		w.mode = pagingWriterNormal
+		return
+	}
+	w.lines = int(ws.row)
+	w.columns = int(ws.col)
 }

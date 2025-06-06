@@ -36,8 +36,6 @@ import (
 	"github.com/hitzhangjie/tinydbg/service/rpc2"
 )
 
-const optimizedFunctionWarning = "Warning: debugging optimized function"
-
 type cmdPrefix int
 
 const (
@@ -84,6 +82,34 @@ func (c command) match(cmdstr string) bool {
 		}
 	}
 	return false
+}
+
+// reprensents the group of commands
+type commandGroup uint8
+
+const (
+	otherCmds commandGroup = iota
+	breakCmds
+	runCmds
+	dataCmds
+	goroutineCmds
+	stackCmds
+	sourceCmds
+)
+
+type commandGroupDescription struct {
+	description string
+	group       commandGroup
+}
+
+var commandGroupDescriptions = []commandGroupDescription{
+	{"Running the program", runCmds},
+	{"Manipulating breakpoints", breakCmds},
+	{"Inspect program variables and memory", dataCmds},
+	{"Inspect the call stack and selecting frames", stackCmds},
+	{"Viewing source and disassembly, Listing pkgs, funcs, types", sourceCmds},
+	{"Listing and switching between threads and goroutines", goroutineCmds},
+	{"Other commands", otherCmds},
 }
 
 // DebugSession represents the commands for Delve terminal process.
@@ -936,15 +962,6 @@ func stepInstruction(t *Term, ctx callContext, frame int, skipCalls bool) error 
 	printcontext(t, state)
 	printPos(t, state.CurrentThread, printPosShowArrow|printPosStepInstruction)
 	return nil
-}
-
-func (s *DebugSession) revCmd(t *Term, ctx callContext, args string) error {
-	if len(args) == 0 {
-		return errors.New("not enough arguments")
-	}
-
-	ctx.Prefix = revPrefix
-	return s.CallWithContext(args, t, ctx)
 }
 
 func (s *DebugSession) next(t *Term, ctx callContext, args string) error {
@@ -2153,6 +2170,8 @@ func printcontext(t *Term, state *api.DebuggerState) {
 		fmt.Fprintf(t.stdout, "%s went out of scope and was cleared\n", formatBreakpointName(watchpoint, true))
 	}
 }
+
+const optimizedFunctionWarning = "Warning: debugging optimized function"
 
 func printcontextLocation(t *Term, loc api.Location) {
 	fmt.Fprintf(t.stdout, "> %s() %s:%d (PC: %#v)\n", loc.Function.Name(), t.formatPath(loc.File), loc.Line, loc.PC)
