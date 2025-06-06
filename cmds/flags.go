@@ -73,3 +73,19 @@ func hideFlag(cmd *cobra.Command, name string) {
 	}
 	hideFlag(cmd.Parent(), name)
 }
+
+func configUsageFunc(cmd *cobra.Command) {
+	for _, subcmd := range cmd.Commands() {
+		configUsageFunc(subcmd)
+	}
+
+	if cmd.Run == nil && cmd.Name() != "tinydbg" {
+		return
+	}
+
+	usage := cmd.UsageFunc()
+	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
+		Prepare(cmd)
+		return usage(cmd)
+	})
+}
