@@ -43,7 +43,6 @@ type TargetGroup struct {
 
 // NewTargetGroupConfig contains the configuration for a new TargetGroup object,
 type NewTargetGroupConfig struct {
-	DebugInfoDirs       []string   // Directories to search for split debug info
 	DisableAsyncPreempt bool       // Go 1.14 asynchronous preemption should be disabled
 	StopReason          StopReason // Initial stop reason
 	CanDump             bool       // Can create core dumps (must implement ProcessInternal.MemoryMap)

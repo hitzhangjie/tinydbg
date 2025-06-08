@@ -51,8 +51,6 @@ func configureSet(t *Term, args string) error {
 	switch cfgname {
 	case "alias":
 		return configureSetAlias(t, rest)
-	case "debug-info-directories":
-		return configureSetDebugInfoDirectories(t, rest)
 	}
 
 	field := config.ConfigureFindFieldByName(t.conf, cfgname, "yaml")
@@ -139,48 +137,5 @@ func configureSetAlias(t *Term, rest string) error {
 		t.conf.Aliases[cmd] = append(t.conf.Aliases[cmd], alias)
 	}
 	t.cmds.Merge(t.conf.Aliases)
-	return nil
-}
-
-func configureSetDebugInfoDirectories(t *Term, rest string) error {
-	v := config.Split2PartsBySpace(rest)
-
-	if t.client != nil {
-		did, err := t.client.GetDebugInfoDirectories()
-		if err == nil {
-			t.conf.DebugInfoDirectories = did
-		}
-	}
-
-	switch v[0] {
-	case "-clear":
-		t.conf.DebugInfoDirectories = t.conf.DebugInfoDirectories[:0]
-	case "-add":
-		if len(v) < 2 {
-			return errors.New("not enough arguments to \"config debug-info-directories\"")
-		}
-		t.conf.DebugInfoDirectories = append(t.conf.DebugInfoDirectories, v[1])
-	case "-rm":
-		if len(v) < 2 {
-			return errors.New("not enough arguments to \"config debug-info-directories\"")
-		}
-		found := false
-		for i := range t.conf.DebugInfoDirectories {
-			if t.conf.DebugInfoDirectories[i] == v[1] {
-				found = true
-				t.conf.DebugInfoDirectories = append(t.conf.DebugInfoDirectories[:i], t.conf.DebugInfoDirectories[i+1:]...)
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("could not find %q in debug-info-directories", v[1])
-		}
-	default:
-		return errors.New("wrong argument to \"config debug-info-directories\"")
-	}
-
-	if t.client != nil {
-		t.client.SetDebugInfoDirectories(t.conf.DebugInfoDirectories)
-	}
 	return nil
 }

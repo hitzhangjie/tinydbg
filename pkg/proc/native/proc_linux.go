@@ -55,7 +55,9 @@ func (os *osProcessDetails) Close() {
 // to be supplied to that process. `wd` is working directory of the program.
 // If the DWARF information cannot be found in the binary, Delve will look
 // for external debug files in the directories passed in.
-func Launch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []string, tty string, stdinPath string, stdoutOR proc.OutputRedirect, stderrOR proc.OutputRedirect) (*proc.TargetGroup, error) {
+//
+// note: we remove the support of reading separate dwarfdata.
+func Launch(cmd []string, wd string, flags proc.LaunchFlags, tty string, stdinPath string, stdoutOR proc.OutputRedirect, stderrOR proc.OutputRedirect) (*proc.TargetGroup, error) {
 	var (
 		process *exec.Cmd
 		err     error
@@ -124,7 +126,7 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []str
 	if err != nil {
 		return nil, fmt.Errorf("waiting for target execve failed: %s", err)
 	}
-	tgt, err := dbp.initialize(cmd[0], debugInfoDirs)
+	tgt, err := dbp.initialize(cmd[0])
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +136,9 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags, debugInfoDirs []str
 // Attach to an existing process with the given PID. Once attached, if
 // the DWARF information cannot be found in the binary, Delve will look
 // for external debug files in the directories passed in.
-func Attach(pid int, waitFor *proc.WaitFor, debugInfoDirs []string) (*proc.TargetGroup, error) {
+//
+// note: we remove the support of reading separate dwarfdata.
+func Attach(pid int, waitFor *proc.WaitFor) (*proc.TargetGroup, error) {
 	if waitFor.Valid() {
 		var err error
 		pid, err = WaitFor(waitFor)
@@ -155,7 +159,7 @@ func Attach(pid int, waitFor *proc.WaitFor, debugInfoDirs []string) (*proc.Targe
 		return nil, err
 	}
 
-	tgt, err := dbp.initialize(findExecutable("", dbp.pid), debugInfoDirs)
+	tgt, err := dbp.initialize(findExecutable("", dbp.pid))
 	if err != nil {
 		_ = detachWithoutGroup(dbp, false)
 		return nil, err

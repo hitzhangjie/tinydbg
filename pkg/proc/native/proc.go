@@ -347,7 +347,7 @@ func (dbp *nativeProcess) initializeBasic() (string, error) {
 
 // initialize will ensure that all relevant information is loaded
 // so the process is ready to be debugged.
-func (dbp *nativeProcess) initialize(path string, debugInfoDirs []string) (*proc.TargetGroup, error) {
+func (dbp *nativeProcess) initialize(path string) (*proc.TargetGroup, error) {
 	cmdline, err := dbp.initializeBasic()
 	if err != nil {
 		return nil, err
@@ -358,8 +358,6 @@ func (dbp *nativeProcess) initialize(path string, debugInfoDirs []string) (*proc
 	}
 	procgrp := &processGroup{}
 	grp, addTarget := proc.NewGroup(procgrp, proc.NewTargetGroupConfig{
-		DebugInfoDirs: debugInfoDirs,
-
 		// We disable asyncpreempt for the following reasons:
 		//  - on Windows asyncpreempt is incompatible with debuggers, see:
 		//    https://github.com/golang/go/issues/36494

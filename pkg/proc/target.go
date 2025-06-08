@@ -165,7 +165,7 @@ func (grp *TargetGroup) newTarget(p ProcessInternal, pid int, currentThread Thre
 		return nil, err
 	}
 
-	err = p.BinInfo().LoadBinaryInfo(path, entryPoint, grp.cfg.DebugInfoDirs)
+	err = p.BinInfo().LoadBinaryInfo(path, entryPoint)
 	if err != nil {
 		return nil, err
 	}

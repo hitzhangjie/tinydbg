@@ -49,7 +49,7 @@ func FuzzEvalExpression(f *testing.F) {
 		f.Skip("not setup")
 	}
 	bi := proc.NewBinaryInfo("linux", "amd64")
-	assertNoError(bi.LoadBinaryInfo(fuzzExecutable, 0, nil), f, "LoadBinaryInfo")
+	assertNoError(bi.LoadBinaryInfo(fuzzExecutable, 0), f, "LoadBinaryInfo")
 	fh, err := os.Open(fuzzInfoPath)
 	assertNoError(err, f, "Open fuzzInfoPath")
 	defer fh.Close()
@@ -113,7 +113,7 @@ func doFuzzEvalExpressionSetup(f *testing.F) {
 
 	// 2. Open the core file and search for the correct goroutine
 
-	cgrp, err := core.OpenCore(fuzzCoredump, fuzzExecutable, nil)
+	cgrp, err := core.OpenCore(fuzzCoredump, fuzzExecutable)
 	c := cgrp.Selected
 	assertNoError(err, f, "OpenCore")
 	gs, _, err := proc.GoroutinesInfo(c, 0, 0)

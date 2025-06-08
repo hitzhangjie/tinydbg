@@ -92,10 +92,6 @@ type Config struct {
 	// called (i.e. when execution stops, listCommand is used, etc)
 	SourceListLineCount *int `yaml:"source-list-line-count,omitempty"`
 
-	// DebugInfoDirectories is the list of directories Delve will use
-	// in order to resolve external debug info files.
-	DebugInfoDirectories []string `yaml:"debug-info-directories"`
-
 	// Position controls how the current position in the program is displayed.
 	// There are three possible values:
 	//  - source: always show the current position in the program's source
@@ -183,10 +179,6 @@ func LoadConfig() (*Config, error) {
 	err = yaml.Unmarshal(data, &c)
 	if err != nil {
 		return &Config{}, fmt.Errorf("unable to decode config file: %v", err)
-	}
-
-	if len(c.DebugInfoDirectories) == 0 {
-		c.DebugInfoDirectories = []string{"/usr/lib/debug/.build-id"}
 	}
 
 	return &c, nil

@@ -111,7 +111,7 @@ func startTestProcessArgs(fixture protest.Fixture, t testing.TB, wd string, args
 
 	switch testBackend {
 	case "native":
-		grp, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, []string{}, "", "", proc.OutputRedirect{}, proc.OutputRedirect{})
+		grp, err = native.Launch(append([]string{fixture.Path}, args...), wd, 0, "", "", proc.OutputRedirect{}, proc.OutputRedirect{})
 	default:
 		t.Fatal("unknown backend")
 	}
@@ -1914,7 +1914,7 @@ func TestUnsupportedArch(t *testing.T) {
 
 	switch testBackend {
 	case "native":
-		p, err = native.Launch([]string{outfile}, ".", 0, []string{}, "", "", proc.OutputRedirect{}, proc.OutputRedirect{})
+		p, err = native.Launch([]string{outfile}, ".", 0, "", "", proc.OutputRedirect{}, proc.OutputRedirect{})
 	default:
 		t.Skip("test not valid for this backend")
 	}
@@ -2414,7 +2414,7 @@ func TestAttachDetach(t *testing.T) {
 
 	switch testBackend {
 	case "native":
-		p, err = native.Attach(cmd.Process.Pid, nil, []string{})
+		p, err = native.Attach(cmd.Process.Pid, nil)
 	default:
 		err = fmt.Errorf("unknown backend %q", testBackend)
 	}
@@ -4363,7 +4363,7 @@ func TestIssue2319(t *testing.T) {
 
 	// Load up the binary and make sure there are no crashes.
 	bi := proc.NewBinaryInfo("linux", "amd64")
-	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0, nil), t, "LoadBinaryInfo")
+	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0), t, "LoadBinaryInfo")
 }
 
 func TestCompositeMemoryWrite(t *testing.T) {
@@ -5059,7 +5059,7 @@ func TestWaitForAttach(t *testing.T) {
 
 	switch testBackend {
 	case "native":
-		p, err = native.Attach(0, waitFor, []string{})
+		p, err = native.Attach(0, waitFor)
 	default:
 		err = fmt.Errorf("unknown backend %q", testBackend)
 	}

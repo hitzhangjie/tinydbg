@@ -203,7 +203,9 @@ var ErrUnrecognizedFormat = errors.New("unrecognized core format")
 // OpenCore will open the core file and return a *proc.TargetGroup.
 // If the DWARF information cannot be found in the binary, Delve will look
 // for external debug files in the directories passed in.
-func OpenCore(corePath, exePath string, debugInfoDirs []string) (*proc.TargetGroup, error) {
+//
+// note: we remove the support of reading seprate dwarfdata.
+func OpenCore(corePath, exePath string) (*proc.TargetGroup, error) {
 	p, currentThread, err := readLinuxOrPlatformIndependentCore(corePath, exePath)
 	if err != nil {
 		return nil, err
@@ -214,7 +216,6 @@ func OpenCore(corePath, exePath string, debugInfoDirs []string) (*proc.TargetGro
 	}
 
 	grp, addTarget := proc.NewGroup(p, proc.NewTargetGroupConfig{
-		DebugInfoDirs:       debugInfoDirs,
 		DisableAsyncPreempt: false,
 		CanDump:             false,
 	})

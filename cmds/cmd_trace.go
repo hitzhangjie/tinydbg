@@ -126,9 +126,8 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 			ProcessArgs: processArgs,
 			APIVersion:  2,
 			Debugger: debugger.Config{
-				AttachPid:            traceAttachPid,
-				WorkingDir:           workingDir,
-				DebugInfoDirectories: conf.DebugInfoDirectories,
+				AttachPid:  traceAttachPid,
+				WorkingDir: workingDir,
 			},
 		})
 		if err := server.Run(); err != nil {

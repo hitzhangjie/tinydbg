@@ -17,7 +17,6 @@ func suitableMethods2(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.Command"] = &methodType{method: reflect.ValueOf(s.Command)}
 	methods["RPCServer.CreateBreakpoint"] = &methodType{method: reflect.ValueOf(s.CreateBreakpoint)}
 	methods["RPCServer.CreateWatchpoint"] = &methodType{method: reflect.ValueOf(s.CreateWatchpoint)}
-	methods["RPCServer.DebugInfoDirectories"] = &methodType{method: reflect.ValueOf(s.DebugInfoDirectories)}
 	methods["RPCServer.Detach"] = &methodType{method: reflect.ValueOf(s.Detach)}
 	methods["RPCServer.Disassemble"] = &methodType{method: reflect.ValueOf(s.Disassemble)}
 	methods["RPCServer.DumpCancel"] = &methodType{method: reflect.ValueOf(s.DumpCancel)}

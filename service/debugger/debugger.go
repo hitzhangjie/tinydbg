@@ -115,10 +115,6 @@ type Config struct {
 	// Foreground lets target process access stdin.
 	Foreground bool
 
-	// DebugInfoDirectories is the list of directories to look for
-	// when resolving external debug info files.
-	DebugInfoDirectories []string
-
 	// TTY is passed along to the target process on creation. Used to specify a
 	// TTY for that process.
 	TTY string
@@ -188,7 +184,7 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 	case d.config.CoreFile != "":
 		var err error
 		d.log.Infof("opening core file %s (executable %s)", d.config.CoreFile, d.processArgs[0])
-		d.target, err = core.OpenCore(d.config.CoreFile, d.processArgs[0], d.config.DebugInfoDirectories)
+		d.target, err = core.OpenCore(d.config.CoreFile, d.processArgs[0])
 		if err != nil {
 			err = go11DecodeErrorCheck(err)
 			return nil, err
@@ -261,12 +257,12 @@ func (d *Debugger) Launch(processArgs []string, wd string) (*proc.TargetGroup, e
 		launchFlags |= proc.LaunchDisableASLR
 	}
 
-	return native.Launch(processArgs, wd, launchFlags, d.config.DebugInfoDirectories, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
+	return native.Launch(processArgs, wd, launchFlags, d.config.TTY, d.config.Stdin, d.config.Stdout, d.config.Stderr)
 }
 
 // Attach will attach to the process specified by 'pid'.
 func (d *Debugger) Attach(pid int, path string, waitFor *proc.WaitFor) (*proc.TargetGroup, error) {
-	return native.Attach(pid, waitFor, d.config.DebugInfoDirectories)
+	return native.Attach(pid, waitFor)
 }
 
 // ProcessPid returns the PID of the process
@@ -2002,21 +1998,6 @@ func (d *Debugger) FollowExecEnabled() bool {
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
 	return d.target.FollowExecEnabled()
-}
-
-func (d *Debugger) SetDebugInfoDirectories(v []string) {
-	d.recordMutex.Lock()
-	defer d.recordMutex.Unlock()
-	it := proc.ValidTargets{Group: d.target}
-	for it.Next() {
-		it.BinInfo().DebugInfoDirectories = v
-	}
-}
-
-func (d *Debugger) DebugInfoDirectories() []string {
-	d.recordMutex.Lock()
-	defer d.recordMutex.Unlock()
-	return d.target.Selected.BinInfo().DebugInfoDirectories
 }
 
 // ChanGoroutines returns the list of goroutines waiting on the channel specified by expr.

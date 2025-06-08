@@ -50,8 +50,6 @@ type BinaryInfo struct {
 	// GOOS operating system this binary is executing on.
 	GOOS string
 
-	DebugInfoDirectories []string
-
 	// Functions is a list of all DW_TAG_subprogram entries in debug_info, sorted by entry point
 	Functions []Function
 	// Sources is a list of all source files found in debug_line.
@@ -789,12 +787,13 @@ func NewBinaryInfo(goos, goarch string) *BinaryInfo {
 }
 
 // LoadBinaryInfo will load and store the information from the binary at 'path'.
-func (bi *BinaryInfo) LoadBinaryInfo(path string, entryPoint uint64, debugInfoDirs []string) error {
+//
+// note: we remove the support of reading separate dwarfdata.
+func (bi *BinaryInfo) LoadBinaryInfo(path string, entryPoint uint64) error {
 	_, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
-	bi.DebugInfoDirectories = debugInfoDirs
 	return bi.AddImage(path, entryPoint)
 }
 

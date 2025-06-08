@@ -519,16 +519,6 @@ func (c *RPCClient) FollowExecEnabled() bool {
 	return out.Enabled
 }
 
-func (c *RPCClient) SetDebugInfoDirectories(v []string) error {
-	return c.call("DebugInfoDirectories", DebugInfoDirectoriesIn{Set: true, List: v}, &DebugInfoDirectoriesOut{})
-}
-
-func (c *RPCClient) GetDebugInfoDirectories() ([]string, error) {
-	out := &DebugInfoDirectoriesOut{}
-	err := c.call("DebugInfoDirectories", DebugInfoDirectoriesIn{Set: false, List: nil}, out)
-	return out.List, err
-}
-
 type goListEntry struct {
 	Dir        string
 	ImportPath string

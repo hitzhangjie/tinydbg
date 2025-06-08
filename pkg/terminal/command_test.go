@@ -662,24 +662,12 @@ func assertNoErrorConfigureCmd(t *testing.T, term *Term, cmdstr string) {
 }
 
 func assertSubstitutePath(t *testing.T, sp config.SubstitutePathRules, v ...string) {
-	t.Helper()
 	if len(sp) != len(v)/2 {
-		t.Fatalf("wrong number of substitute path rules (expected: %d): %#v", len(v)/2, sp)
+		t.Fatalf("wrong number of substitute-path rules: %d (expected %d)", len(sp), len(v)/2)
 	}
-	for i := range sp {
-		if sp[i].From != v[i*2] || sp[i].To != v[i*2+1] {
-			t.Fatalf("wrong substitute path rule %#v expected (from: %q to %q)", sp[i], v[i*2], v[i*2+1])
-		}
-	}
-}
-
-func assertDebugInfoDirs(t *testing.T, got []string, tgt ...string) {
-	if len(got) != len(tgt) {
-		t.Fatalf("wrong number of debug info directories (got %d expected %d)", len(got), len(tgt))
-	}
-	for i := range got {
-		if got[i] != tgt[i] {
-			t.Fatalf("debug info directories mismatch got: %v expected: %v", got, tgt)
+	for i := 0; i < len(v); i += 2 {
+		if sp[i/2].From != v[i] || sp[i/2].To != v[i+1] {
+			t.Fatalf("wrong substitute-path rule: %v (expected %v)", sp[i/2], config.SubstitutePathRule{From: v[i], To: v[i+1]})
 		}
 	}
 }
@@ -773,19 +761,6 @@ func TestConfig(t *testing.T) {
 
 	assertNoErrorConfigureCmd(t, &term, "substitute-path somethingelse \"\"")
 	assertSubstitutePath(t, term.conf.SubstitutePath, "", "something", "somethingelse", "")
-
-	assertDebugInfoDirs(t, term.conf.DebugInfoDirectories)
-
-	assertNoErrorConfigureCmd(t, &term, "debug-info-directories -add a")
-	assertDebugInfoDirs(t, term.conf.DebugInfoDirectories, "a")
-	assertNoErrorConfigureCmd(t, &term, "debug-info-directories -add b")
-	assertDebugInfoDirs(t, term.conf.DebugInfoDirectories, "a", "b")
-	assertNoErrorConfigureCmd(t, &term, "debug-info-directories -add c")
-	assertDebugInfoDirs(t, term.conf.DebugInfoDirectories, "a", "b", "c")
-	assertNoErrorConfigureCmd(t, &term, "debug-info-directories -rm b")
-	assertDebugInfoDirs(t, term.conf.DebugInfoDirectories, "a", "c")
-	assertNoErrorConfigureCmd(t, &term, "debug-info-directories -clear")
-	assertDebugInfoDirs(t, term.conf.DebugInfoDirectories)
 }
 
 func TestIssue1090(t *testing.T) {

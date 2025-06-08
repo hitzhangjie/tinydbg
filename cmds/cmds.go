@@ -304,7 +304,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 			Packages:              dlvArgs,
 			BuildFlags:            buildFlags,
 			ExecuteKind:           kind,
-			DebugInfoDirectories:  conf.DebugInfoDirectories,
 			TTY:                   tty,
 			Stdin:                 redirects[0],
 			Stdout:                proc.OutputRedirect{Path: redirects[1]},

@@ -95,13 +95,7 @@ See also Documentation/cli/substitutepath.md for how the rules are applied.
 	config alias <command> <alias>
 	config alias <alias>
 
-Defines <alias> as an alias to <command> or removes an alias.
-
-	config debug-info-directories -add <path>
-	config debug-info-directories -rm <path>
-	config debug-info-directories -clear
-
-Adds, removes or clears debug-info-directories.`,
+Defines <alias> as an alias to <command> or removes an alias.`,
 	}
 }
 
