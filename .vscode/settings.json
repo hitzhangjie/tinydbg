@@ -5,6 +5,7 @@
     "files.exclude": {
         "_fixtures": true,
         ".teamcity": true,
+        "**/*_test.go": true,
         "assets": true,
         "vendor": true
     }
