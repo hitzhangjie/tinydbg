@@ -54,9 +54,8 @@ type command struct {
 
 ### 4. revPrefix
 - 最初设计用于支持反向调试
-- 由于反向调试功能已被移除，目前不再使用
 - 原本用于 `continue`、`step` 和 `next` 等命令以支持向后执行
-- 可能在未来的版本中被移除
+- 由于tinydbg反向调试功能已被移除，目前不再使用revprefix
 
 ## 命令执行上下文
 
@@ -97,9 +96,9 @@ func (s *DebugSession) Find(cmdstr string, prefix cmdPrefix) *command {
 - `vars`：不支持前缀（使用 `noPrefix`）
 
 ### 执行控制命令
-- `continue`：当前支持 `revPrefix`（可能被移除）
-- `step`：当前支持 `revPrefix`（可能被移除）
-- `next`：当前支持 `revPrefix`（可能被移除）
+- `continue`：当前支持 `revPrefix`（被移除）
+- `step`：当前支持 `revPrefix`（被移除）
+- `next`：当前支持 `revPrefix`（被移除）
 
 ### 堆栈命令
 - `stack`：支持 `onPrefix`
@@ -119,7 +118,7 @@ func (s *DebugSession) Find(cmdstr string, prefix cmdPrefix) *command {
 
 ## 未来考虑
 
-1. 由于反向调试支持已被移除，`revPrefix` 可能被移除
+1. 由于反向调试支持已被移除，`revPrefix` 被移除
 
 2. 如果需要，可以添加新的前缀来支持其他执行上下文
 
