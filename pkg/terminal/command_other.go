@@ -44,10 +44,10 @@ var sourceCmd = func(c *DebugSession) *command {
 		helpMsg: `Executes a file containing a list of delve commands
 
 	source <path>
-	
-If path ends with the .star extension it will be interpreted as a starlark script. See Documentation/cli/starlark.md for the syntax.
 
-If path is a single '-' character an interactive starlark interpreter will start instead. Type 'exit' to exit.`,
+Note: tinydbg removes the support of the following two features:
+1. If path ends with the .star extension it will be interpreted as a starlark script. See Documentation/cli/starlark.md for the syntax.
+2. If path is a single '-' character an interactive starlark interpreter will start instead. Type 'exit' to exit.`,
 	}
 }
 
