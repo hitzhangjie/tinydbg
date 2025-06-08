@@ -18,36 +18,11 @@ import (
 
 	"github.com/hitzhangjie/tinydbg/pkg/config"
 	"github.com/hitzhangjie/tinydbg/pkg/locspec"
-	"github.com/hitzhangjie/tinydbg/pkg/terminal/colorize"
-	"github.com/hitzhangjie/tinydbg/pkg/terminal/starbind"
 	"github.com/hitzhangjie/tinydbg/service"
 	"github.com/hitzhangjie/tinydbg/service/api"
 )
 
-const (
-	historyFile                 string = ".dbg_history"
-	terminalHighlightEscapeCode string = "\033[%2dm"
-	terminalResetEscapeCode     string = "\033[0m"
-)
-
-const (
-	ansiBlack     = 30
-	ansiRed       = 31
-	ansiGreen     = 32
-	ansiYellow    = 33
-	ansiBlue      = 34
-	ansiMagenta   = 35
-	ansiCyan      = 36
-	ansiWhite     = 37
-	ansiBrBlack   = 90
-	ansiBrRed     = 91
-	ansiBrGreen   = 92
-	ansiBrYellow  = 93
-	ansiBrBlue    = 94
-	ansiBrMagenta = 95
-	ansiBrCyan    = 96
-	ansiBrWhite   = 97
-)
+const historyFile string = ".dbg_history"
 
 // Term represents the terminal running dlv.
 type Term struct {
@@ -56,7 +31,7 @@ type Term struct {
 	prompt   string
 	line     *liner.State
 	cmds     *DebugSession
-	stdout   *transcriptWriter
+	stdout   io.Writer
 	InitFile string
 	displays []displayEntry
 	oldPid   int
@@ -64,8 +39,6 @@ type Term struct {
 	stackTraceColors api.StackTraceColors
 
 	historyFile *os.File
-
-	starlarkEnv *starbind.Env
 
 	substitutePathRulesCache [][2]string
 
@@ -104,17 +77,9 @@ func New(client service.Client, conf *config.Config) *Term {
 		prompt: "(tinydbg) ",
 		line:   liner.NewLiner(),
 		cmds:   cmds,
-		stdout: &transcriptWriter{pw: &pagingWriter{w: os.Stdout}},
+		stdout: os.Stdout,
 	}
 	t.line.SetCtrlZStop(true)
-
-	if strings.ToLower(os.Getenv("TERM")) != "dumb" {
-		t.stdout.pw = &pagingWriter{w: getColorableWriter()}
-		t.stdout.colorEscapes = make(map[colorize.Style]string)
-		t.stdout.colorEscapes[colorize.NormalStyle] = terminalResetEscapeCode
-	}
-
-	t.updateConfig()
 
 	if client != nil {
 		lcfg := t.loadConfig()
@@ -124,60 +89,7 @@ func New(client service.Client, conf *config.Config) *Term {
 		}
 	}
 
-	t.starlarkEnv = starbind.New(starlarkContext{t}, t.stdout)
 	return t
-}
-
-func (t *Term) updateConfig() {
-	// These are always called together.
-	t.updateColorScheme()
-	t.updateTab()
-}
-
-func (t *Term) updateColorScheme() {
-	if t.stdout.colorEscapes == nil {
-		return
-	}
-
-	conf := t.conf
-	wd := func(s string, defaultCode int) string {
-		if s == "" {
-			return fmt.Sprintf(terminalHighlightEscapeCode, defaultCode)
-		}
-		return s
-	}
-	t.stdout.colorEscapes[colorize.KeywordStyle] = conf.SourceListKeywordColor
-	t.stdout.colorEscapes[colorize.StringStyle] = wd(conf.SourceListStringColor, ansiGreen)
-	t.stdout.colorEscapes[colorize.NumberStyle] = conf.SourceListNumberColor
-	t.stdout.colorEscapes[colorize.CommentStyle] = wd(conf.SourceListCommentColor, ansiBrMagenta)
-	t.stdout.colorEscapes[colorize.ArrowStyle] = wd(conf.SourceListArrowColor, ansiYellow)
-	t.stdout.colorEscapes[colorize.TabStyle] = wd(conf.SourceListTabColor, ansiBrBlack)
-	switch x := conf.SourceListLineColor.(type) {
-	case string:
-		t.stdout.colorEscapes[colorize.LineNoStyle] = x
-	case int:
-		if (x > ansiWhite && x < ansiBrBlack) || x < ansiBlack || x > ansiBrWhite {
-			x = ansiBlue
-		}
-		t.stdout.colorEscapes[colorize.LineNoStyle] = fmt.Sprintf(terminalHighlightEscapeCode, x)
-	case nil:
-		t.stdout.colorEscapes[colorize.LineNoStyle] = fmt.Sprintf(terminalHighlightEscapeCode, ansiBlue)
-	}
-
-	wd2 := func(s, defaultStr string) string {
-		if s == "" {
-			return defaultStr
-		}
-		return s
-	}
-
-	t.stackTraceColors.FunctionColor = wd2(conf.StackTraceFunctionColor, "\033[1m")
-	t.stackTraceColors.BasenameColor = wd2(conf.StackTraceBasenameColor, "\033[1m")
-	t.stackTraceColors.NormalColor = terminalResetEscapeCode
-}
-
-func (t *Term) updateTab() {
-	t.stdout.altTabString = t.conf.Tab
 }
 
 func (t *Term) SetTraceNonInteractive() {
@@ -191,15 +103,11 @@ func (t *Term) IsTraceNonInteractive() bool {
 // Close returns the terminal to its previous mode.
 func (t *Term) Close() {
 	t.line.Close()
-	if err := t.stdout.CloseTranscript(); err != nil {
-		fmt.Fprintf(os.Stderr, "error closing transcript file: %v\n", err)
-	}
 }
 
 func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 	for range ch {
 		t.longCommandCancel()
-		t.starlarkEnv.Cancel()
 		state, err := t.client.GetStateNonBlocking()
 		if err == nil && state.Recording {
 			fmt.Fprintf(t.stdout, "received SIGINT, stopping recording (will not forward signal)\n")
@@ -362,7 +270,7 @@ func (t *Term) Run() (int, error) {
 			}
 			return 1, errors.New("Prompt for input failed.\n")
 		}
-		t.stdout.Echo(t.prompt + cmdstr + "\n")
+		fmt.Fprintf(t.stdout, t.prompt+cmdstr+"\n")
 
 		if strings.TrimSpace(cmdstr) == "" {
 			cmdstr = lastCmd
@@ -389,9 +297,6 @@ func (t *Term) Run() (int, error) {
 				fmt.Fprintf(os.Stderr, "Command failed: %s\n", err)
 			}
 		}
-
-		t.stdout.Flush()
-		t.stdout.pw.Reset()
 	}
 }
 
@@ -436,10 +341,6 @@ func (t *Term) formatPath(path string) string {
 }
 
 func (t *Term) promptForInput() (string, error) {
-	if t.stdout.colorEscapes != nil && t.conf.PromptColor != "" {
-		fmt.Fprint(os.Stdout, t.conf.PromptColor)
-		defer fmt.Fprint(os.Stdout, terminalResetEscapeCode)
-	}
 	l, err := t.line.Prompt(t.prompt)
 	if err != nil {
 		return "", err
@@ -625,17 +526,11 @@ func (t *Term) longCommandCanceled() bool {
 
 // RedirectTo redirects the output of this terminal to the specified writer.
 func (t *Term) RedirectTo(w io.Writer) {
-	t.stdout.pw.w = w
+	t.stdout = w
 }
 
 // isErrProcessExited returns true if `err` is an RPC error equivalent of proc.ErrProcessExited
 func isErrProcessExited(err error) bool {
 	rpcError, ok := err.(rpc.ServerError)
 	return ok && strings.Contains(rpcError.Error(), "has exited with status")
-}
-
-// getColorableWriter simply returns stdout on
-// *nix machines.
-func getColorableWriter() io.Writer {
-	return os.Stdout
 }

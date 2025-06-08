@@ -9,7 +9,6 @@ func init() {
 	registerDebugCmd(editCmd)
 	registerDebugCmd(librariesCmd)
 	registerDebugCmd(dumpCmd)
-	registerDebugCmd(transcriptCmd)
 	registerDebugCmd(targetCmd)
 }
 
@@ -135,21 +134,6 @@ var dumpCmd = func(c *DebugSession) *command {
 	dump <output file>
 
 The core dump is always written in ELF, even on systems (windows, macOS) where this is not customary. For environments other than linux/amd64 threads and registers are dumped in a format that only Delve can read back.`,
-	}
-}
-
-var transcriptCmd = func(c *DebugSession) *command {
-	return &command{
-		aliases: []string{"transcript"},
-		cmdFn:   transcript,
-		helpMsg: `Appends command output to a file.
-
-	transcript [-t] [-x] <output file>
-	transcript -off
-
-Output of Delve's command is appended to the specified output file. If '-t' is specified and the output file exists it is truncated. If '-x' is specified output to stdout is suppressed instead.
-
-Using the -off option disables the transcript.`,
 	}
 }
 

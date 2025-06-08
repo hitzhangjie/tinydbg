@@ -27,7 +27,6 @@ func configureCmd(t *Term, ctx callContext, args string) error {
 		if t.client != nil { // only happens in tests
 			lcfg := t.loadConfig()
 			t.client.SetReturnValuesLoadConfig(&lcfg)
-			t.updateConfig()
 		}
 		return nil
 	}

@@ -288,7 +288,6 @@ func threads(t *Term, ctx callContext, args string) error {
 	}
 	slices.SortFunc(threads, func(a, b *api.Thread) int { return cmp.Compare(a.ID, b.ID) })
 	done := false
-	t.stdout.pw.PageMaybe(func() { done = false })
 	for _, th := range threads {
 		if done {
 			break
@@ -385,7 +384,6 @@ func (s *DebugSession) goroutines(t *Term, ctx callContext, argstr string) error
 		tooManyGroups bool
 	)
 	done := false
-	t.stdout.pw.PageMaybe(func() { done = true })
 	t.longCommandStart()
 	for start >= 0 {
 		if t.longCommandCanceled() || done {
@@ -1551,8 +1549,6 @@ loop:
 		}
 	}
 
-	t.stdout.pw.PageMaybe(nil)
-
 	start := address
 	remsz := int(count * size)
 
@@ -1602,8 +1598,6 @@ func (s *DebugSession) printVar(t *Term, ctx callContext, args string) error {
 	if err != nil {
 		return err
 	}
-
-	t.stdout.pw.PageMaybe(nil)
 
 	fmt.Fprintln(t.stdout, val.MultilineString("", fmtstr))
 
@@ -1675,7 +1669,6 @@ func (t *Term) printFilteredVariables(varType string, vars []api.Variable, filte
 		return err
 	}
 	match := false
-	t.stdout.pw.PageMaybe(nil)
 	for _, v := range vars {
 		if reg == nil || reg.Match([]byte(v.Name)) {
 			match = true
@@ -1702,7 +1695,6 @@ func (t *Term) printSortedStrings(v []string, err error) error {
 	}
 	sort.Strings(v)
 	done := false
-	t.stdout.pw.PageMaybe(func() { done = false })
 	for _, d := range v {
 		if done {
 			break
@@ -1824,7 +1816,6 @@ func stackCommand(t *Term, ctx callContext, args string) error {
 	if err != nil {
 		return err
 	}
-	t.stdout.pw.PageMaybe(nil)
 	printStack(t, t.stdout, stack, "", sa.offsets)
 	if sa.ancestors > 0 {
 		ancestors, err := t.client.Ancestors(ctx.Scope.GoroutineID, sa.ancestors, sa.ancestorDepth)
@@ -1988,13 +1979,11 @@ func listCommand(t *Term, ctx callContext, args string) error {
 	return printfile(t, file, lineno, showarrow)
 }
 
+// we remove the support for starlark scripts `*.star` and starlark repl,
+// we only leave the ordinary dlv commands saved here.
 func (s *DebugSession) sourceCommand(t *Term, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("wrong number of arguments: source <filename>")
-	}
-
-	if args == "-" {
-		return t.starlarkEnv.REPL()
 	}
 
 	if runtime.GOOS != "windows" && strings.HasPrefix(args, "~") {
@@ -2006,11 +1995,6 @@ func (s *DebugSession) sourceCommand(t *Term, ctx callContext, args string) erro
 				args = filepath.Join(home, args[2:])
 			}
 		}
-	}
-
-	if filepath.Ext(args) == ".star" {
-		_, err := t.starlarkEnv.Execute(args, nil, "main", nil)
-		return err
 	}
 
 	return s.executeFile(t, args)
@@ -2029,8 +2013,6 @@ func disassCommand(t *Term, ctx callContext, args string) error {
 		cmd = argv[0]
 		rest = argv[1]
 	}
-
-	t.stdout.pw.PageMaybe(nil)
 
 	flavor := t.conf.GetDisassembleFlavour()
 
@@ -2156,7 +2138,7 @@ func printcontext(t *Term, state *api.DebuggerState) {
 
 	if th.File == "" {
 		fmt.Fprintf(t.stdout, "Stopped at: 0x%x\n", state.CurrentThread.PC)
-		t.stdout.ColorizePrint("", bytes.NewReader([]byte("no source available")), 1, 10, 1)
+		Print(t.stdout, bytes.NewReader([]byte("no source available")), 1, 10, 1)
 		return
 	}
 
@@ -2425,7 +2407,7 @@ func printfile(t *Term, filename string, line int, showArrow bool) error {
 	}
 	defer file.Close()
 
-	return t.stdout.ColorizePrint(file.Name(), file, line-lineCount, line+lineCount+1, arrowLine)
+	return Print(t.stdout, file, line-lineCount, line+lineCount+1, arrowLine)
 }
 
 func printdisass(t *Term, pc uint64) error {
@@ -2717,57 +2699,6 @@ func dump(t *Term, ctx callContext, args string) error {
 	} else if dumpState.MemDone != dumpState.MemTotal {
 		fmt.Fprintf(t.stdout, "Core dump could be incomplete\n")
 	}
-	return nil
-}
-
-func transcript(t *Term, ctx callContext, args string) error {
-	argv := strings.SplitN(args, " ", -1)
-	truncate := false
-	fileOnly := false
-	disable := false
-	path := ""
-	for _, arg := range argv {
-		switch arg {
-		case "-x":
-			fileOnly = true
-		case "-t":
-			truncate = true
-		case "-off":
-			disable = true
-		default:
-			if path != "" || strings.HasPrefix(arg, "-") {
-				return fmt.Errorf("unrecognized option %q", arg)
-			} else {
-				path = arg
-			}
-		}
-	}
-
-	if disable {
-		if path != "" {
-			return errors.New("-o option specified with an output path")
-		}
-		return t.stdout.CloseTranscript()
-	}
-
-	if path == "" {
-		return errors.New("no output path specified")
-	}
-
-	flags := os.O_APPEND | os.O_WRONLY | os.O_CREATE
-	if truncate {
-		flags |= os.O_TRUNC
-	}
-	fh, err := os.OpenFile(path, flags, 0660)
-	if err != nil {
-		return err
-	}
-
-	if err := t.stdout.CloseTranscript(); err != nil {
-		return err
-	}
-
-	t.stdout.TranscribeTo(fh, fileOnly)
 	return nil
 }
 

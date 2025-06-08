@@ -52,27 +52,12 @@ const logCommandOutput = false
 
 func (ft *FakeTerminal) Exec(cmdstr string) (outstr string, err error) {
 	var buf bytes.Buffer
-	ft.Term.stdout.pw.w = &buf
-	ft.Term.starlarkEnv.Redirect(ft.Term.stdout)
+	ft.Term.stdout = &buf
 	err = ft.cmds.Call(cmdstr, ft.Term)
 	outstr = buf.String()
 	if logCommandOutput {
 		ft.t.Logf("command %q -> %q", cmdstr, outstr)
 	}
-	ft.Term.stdout.Flush()
-	return
-}
-
-func (ft *FakeTerminal) ExecStarlark(starlarkProgram string) (outstr string, err error) {
-	var buf bytes.Buffer
-	ft.Term.stdout.pw.w = &buf
-	ft.Term.starlarkEnv.Redirect(ft.Term.stdout)
-	_, err = ft.Term.starlarkEnv.Execute("<stdin>", starlarkProgram, "main", nil)
-	outstr = buf.String()
-	if logCommandOutput {
-		ft.t.Logf("command %q -> %q", starlarkProgram, outstr)
-	}
-	ft.Term.stdout.Flush()
 	return
 }
 
@@ -82,15 +67,6 @@ func (ft *FakeTerminal) MustExec(cmdstr string) string {
 	if err != nil {
 		ft.t.Errorf("output of %q: %q", cmdstr, outstr)
 		ft.t.Fatalf("Error executing <%s>: %v", cmdstr, err)
-	}
-	return outstr
-}
-
-func (ft *FakeTerminal) MustExecStarlark(starlarkProgram string) string {
-	outstr, err := ft.ExecStarlark(starlarkProgram)
-	if err != nil {
-		ft.t.Errorf("output of %q: %q", starlarkProgram, outstr)
-		ft.t.Fatalf("Error executing <%s>: %v", starlarkProgram, err)
 	}
 	return outstr
 }
@@ -713,7 +689,7 @@ func TestConfig(t *testing.T) {
 	var term Term
 	term.conf = &config.Config{}
 	term.cmds = NewDebugSession(nil)
-	term.stdout = &transcriptWriter{pw: &pagingWriter{w: &buf}}
+	term.stdout = &buf
 
 	err := configureCmd(&term, callContext{}, "nonexistent-parameter 10")
 	if err == nil {
@@ -941,10 +917,6 @@ func TestIssue1493(t *testing.T) {
 			t.Fatalf("'regs' returned too many registers (%d) compared to 'regs -a' (%d)", nr, nra)
 		}
 	})
-}
-
-func findStarFile(name string) string {
-	return filepath.Join(test.FindFixturesDir(), name+".star")
 }
 
 func TestIssue1598(t *testing.T) {
