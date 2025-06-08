@@ -42,7 +42,6 @@ const (
 	noPrefix = cmdPrefix(0)
 	onPrefix = cmdPrefix(1 << iota)
 	deferredPrefix
-	revPrefix
 )
 
 type callContext struct {

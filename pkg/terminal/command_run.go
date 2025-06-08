@@ -43,20 +43,18 @@ A list of file redirections can be specified after the new argument list to over
 
 var rebuildCmd = func(c *DebugSession) *command {
 	return &command{
-		aliases:         []string{"rebuild"},
-		group:           runCmds,
-		cmdFn:           c.rebuild,
-		allowedPrefixes: revPrefix,
-		helpMsg:         "Rebuild the target executable and restarts it. It does not work if the executable was not built by delve.",
+		aliases: []string{"rebuild"},
+		group:   runCmds,
+		cmdFn:   c.rebuild,
+		helpMsg: "Rebuild the target executable and restarts it. It does not work if the executable was not built by delve.",
 	}
 }
 
 var continueCmd = func(c *DebugSession) *command {
 	return &command{
-		aliases:         []string{"continue", "c"},
-		group:           runCmds,
-		cmdFn:           c.cont,
-		allowedPrefixes: revPrefix,
+		aliases: []string{"continue", "c"},
+		group:   runCmds,
+		cmdFn:   c.cont,
 		helpMsg: `Run until breakpoint or program termination.
 
 	continue [<locspec>]
@@ -73,40 +71,36 @@ For example:
 
 var stepCmd = func(c *DebugSession) *command {
 	return &command{
-		aliases:         []string{"step", "s"},
-		group:           runCmds,
-		cmdFn:           c.step,
-		allowedPrefixes: revPrefix,
-		helpMsg:         "Single step through program.",
+		aliases: []string{"step", "s"},
+		group:   runCmds,
+		cmdFn:   c.step,
+		helpMsg: "Single step through program.",
 	}
 }
 
 var stepInstructionCmd = func(c *DebugSession) *command {
 	return &command{
-		aliases:         []string{"step-instruction", "si", "stepi"},
-		group:           runCmds,
-		allowedPrefixes: revPrefix,
-		cmdFn:           c.stepInstruction,
-		helpMsg:         "Single step a single cpu instruction.",
+		aliases: []string{"step-instruction", "si", "stepi"},
+		group:   runCmds,
+		cmdFn:   c.stepInstruction,
+		helpMsg: "Single step a single cpu instruction.",
 	}
 }
 
 var nextInstructionCmd = func(c *DebugSession) *command {
 	return &command{
-		aliases:         []string{"next-instruction", "ni", "nexti"},
-		group:           runCmds,
-		allowedPrefixes: revPrefix,
-		cmdFn:           c.nextInstruction,
-		helpMsg:         "Single step a single cpu instruction, skipping function calls.",
+		aliases: []string{"next-instruction", "ni", "nexti"},
+		group:   runCmds,
+		cmdFn:   c.nextInstruction,
+		helpMsg: "Single step a single cpu instruction, skipping function calls.",
 	}
 }
 
 var nextCmd = func(c *DebugSession) *command {
 	return &command{
-		aliases:         []string{"next", "n"},
-		group:           runCmds,
-		cmdFn:           c.next,
-		allowedPrefixes: revPrefix,
+		aliases: []string{"next", "n"},
+		group:   runCmds,
+		cmdFn:   c.next,
 		helpMsg: `Step over to next source line.
 
 	next [count]
@@ -118,11 +112,10 @@ Optional [count] argument allows you to skip multiple lines.
 
 var stepoutCmd = func(c *DebugSession) *command {
 	return &command{
-		aliases:         []string{"stepout", "so"},
-		group:           runCmds,
-		allowedPrefixes: revPrefix,
-		cmdFn:           c.stepout,
-		helpMsg:         "Step out of the current function.",
+		aliases: []string{"stepout", "so"},
+		group:   runCmds,
+		cmdFn:   c.stepout,
+		helpMsg: "Step out of the current function.",
 	}
 }
 
