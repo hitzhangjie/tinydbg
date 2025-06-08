@@ -12,7 +12,7 @@ func init() {
 	registerDebugCmd(displayCmd)
 }
 
-var printCmd = func(c *DebugSession) *command {
+var printCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases:         []string{"print", "p"},
 		group:           dataCmds,
@@ -29,7 +29,7 @@ The optional format argument is a format specifier, like the ones used by the fm
 }
 
 // dataCommands returns all data-related commands
-var whatisCmd = func(c *DebugSession) *command {
+var whatisCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"whatis"},
 		group:   dataCmds,
@@ -40,7 +40,7 @@ var whatisCmd = func(c *DebugSession) *command {
 	}
 }
 
-var setCmd = func(c *DebugSession) *command {
+var setCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"set"},
 		group:   dataCmds,
@@ -53,7 +53,7 @@ See Documentation/cli/expr.md for a description of supported expressions. Only n
 	}
 }
 
-var argsCmd = func(c *DebugSession) *command {
+var argsCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases:         []string{"args"},
 		allowedPrefixes: onPrefix | deferredPrefix,
@@ -67,7 +67,7 @@ If regex is specified only function arguments with a name matching it will be re
 	}
 }
 
-var localsCmd = func(c *DebugSession) *command {
+var localsCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases:         []string{"locals"},
 		allowedPrefixes: onPrefix | deferredPrefix,
@@ -83,7 +83,7 @@ If regex is specified only local variables with a name matching it will be retur
 	}
 }
 
-var varsCmd = func(c *DebugSession) *command {
+var varsCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"vars"},
 		cmdFn:   vars,
@@ -96,7 +96,7 @@ If regex is specified only package variables with a name matching it will be ret
 	}
 }
 
-var regsCmd = func(c *DebugSession) *command {
+var regsCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"regs"},
 		cmdFn:   regs,
@@ -109,7 +109,7 @@ Argument -a shows more registers. Individual registers can also be displayed by 
 	}
 }
 
-var examinememCmd = func(c *DebugSession) *command {
+var examinememCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"examinemem", "x"},
 		group:   dataCmds,
@@ -135,7 +135,7 @@ For example:
 	}
 }
 
-var displayCmd = func(c *DebugSession) *command {
+var displayCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"display"},
 		group:   dataCmds,

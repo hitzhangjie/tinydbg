@@ -12,7 +12,7 @@ func init() {
 	registerDebugCmd(callCmd)
 }
 
-var restartCmd = func(c *DebugSession) *command {
+var restartCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"restart", "r"},
 		group:   runCmds,
@@ -41,7 +41,7 @@ A list of file redirections can be specified after the new argument list to over
 	}
 }
 
-var rebuildCmd = func(c *DebugSession) *command {
+var rebuildCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"rebuild"},
 		group:   runCmds,
@@ -50,7 +50,7 @@ var rebuildCmd = func(c *DebugSession) *command {
 	}
 }
 
-var continueCmd = func(c *DebugSession) *command {
+var continueCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"continue", "c"},
 		group:   runCmds,
@@ -69,7 +69,7 @@ For example:
 	}
 }
 
-var stepCmd = func(c *DebugSession) *command {
+var stepCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"step", "s"},
 		group:   runCmds,
@@ -78,7 +78,7 @@ var stepCmd = func(c *DebugSession) *command {
 	}
 }
 
-var stepInstructionCmd = func(c *DebugSession) *command {
+var stepInstructionCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"step-instruction", "si", "stepi"},
 		group:   runCmds,
@@ -87,7 +87,7 @@ var stepInstructionCmd = func(c *DebugSession) *command {
 	}
 }
 
-var nextInstructionCmd = func(c *DebugSession) *command {
+var nextInstructionCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"next-instruction", "ni", "nexti"},
 		group:   runCmds,
@@ -96,7 +96,7 @@ var nextInstructionCmd = func(c *DebugSession) *command {
 	}
 }
 
-var nextCmd = func(c *DebugSession) *command {
+var nextCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"next", "n"},
 		group:   runCmds,
@@ -110,7 +110,7 @@ Optional [count] argument allows you to skip multiple lines.
 	}
 }
 
-var stepoutCmd = func(c *DebugSession) *command {
+var stepoutCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"stepout", "so"},
 		group:   runCmds,
@@ -119,7 +119,7 @@ var stepoutCmd = func(c *DebugSession) *command {
 	}
 }
 
-var callCmd = func(c *DebugSession) *command {
+var callCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"call"},
 		group:   runCmds,

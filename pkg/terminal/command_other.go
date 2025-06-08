@@ -12,7 +12,7 @@ func init() {
 	registerDebugCmd(targetCmd)
 }
 
-var helpCmd = func(c *DebugSession) *command {
+var helpCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"help", "h"},
 		cmdFn:   c.help,
@@ -24,7 +24,7 @@ Type "help" followed by the name of a command for more information about it.`,
 	}
 }
 
-var exitCmd = func(c *DebugSession) *command {
+var exitCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"exit", "quit", "q"},
 		cmdFn:   exitCommand,
@@ -36,7 +36,7 @@ When connected to a headless instance started with the --accept-multiclient, pas
 	}
 }
 
-var sourceCmd = func(c *DebugSession) *command {
+var sourceCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"source"},
 		cmdFn:   c.sourceCommand,
@@ -50,7 +50,7 @@ Note: tinydbg removes the support of the following two features:
 	}
 }
 
-var sourcesCmd = func(c *DebugSession) *command {
+var sourcesCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"sources"},
 		cmdFn:   sources,
@@ -62,7 +62,7 @@ If regex is specified only the source files matching it will be returned.`,
 	}
 }
 
-var configCmd = func(c *DebugSession) *command {
+var configCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"config"},
 		cmdFn:   configureCmd,
@@ -99,7 +99,7 @@ Defines <alias> as an alias to <command> or removes an alias.`,
 	}
 }
 
-var editCmd = func(c *DebugSession) *command {
+var editCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"edit", "ed"},
 		cmdFn:   edit,
@@ -111,7 +111,7 @@ If locspec is omitted edit will open the current source file in the editor, othe
 	}
 }
 
-var librariesCmd = func(c *DebugSession) *command {
+var librariesCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"libraries"},
 		cmdFn:   libraries,
@@ -119,7 +119,7 @@ var librariesCmd = func(c *DebugSession) *command {
 	}
 }
 
-var dumpCmd = func(c *DebugSession) *command {
+var dumpCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"dump"},
 		cmdFn:   dump,
@@ -131,7 +131,7 @@ The core dump is always written in ELF, even on systems (windows, macOS) where t
 	}
 }
 
-var targetCmd = func(c *DebugSession) *command {
+var targetCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"target"},
 		cmdFn:   target,

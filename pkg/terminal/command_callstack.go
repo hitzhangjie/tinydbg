@@ -8,7 +8,7 @@ func init() {
 	registerDebugCmd(deferredCmd)
 }
 
-var stackCmd = func(c *DebugSession) *command {
+var stackCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases:         []string{"stack", "bt"},
 		allowedPrefixes: onPrefix,
@@ -31,11 +31,11 @@ var stackCmd = func(c *DebugSession) *command {
 	}
 }
 
-var frameCmd = func(c *DebugSession) *command {
+var frameCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"frame"},
 		group:   stackCmds,
-		cmdFn: func(t *Term, ctx callContext, arg string) error {
+		cmdFn: func(t *DebugSession, ctx callContext, arg string) error {
 			return c.frameCommand(t, ctx, arg, frameSet)
 		},
 		helpMsg: `Set the current frame, or execute command on a different frame.
@@ -48,11 +48,11 @@ The second form runs the command on the given frame.`,
 	}
 }
 
-var upCmd = func(c *DebugSession) *command {
+var upCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"up"},
 		group:   stackCmds,
-		cmdFn: func(t *Term, ctx callContext, arg string) error {
+		cmdFn: func(t *DebugSession, ctx callContext, arg string) error {
 			return c.frameCommand(t, ctx, arg, frameUp)
 		},
 		helpMsg: `Move the current frame up.
@@ -64,11 +64,11 @@ Move the current frame up by <m>. The second form runs the command on the given 
 	}
 }
 
-var downCmd = func(c *DebugSession) *command {
+var downCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"down"},
 		group:   stackCmds,
-		cmdFn: func(t *Term, ctx callContext, arg string) error {
+		cmdFn: func(t *DebugSession, ctx callContext, arg string) error {
 			return c.frameCommand(t, ctx, arg, frameDown)
 		},
 		helpMsg: `Move the current frame down.
@@ -80,7 +80,7 @@ Move the current frame down by <m>. The second form runs the command on the give
 	}
 }
 
-var deferredCmd = func(c *DebugSession) *command {
+var deferredCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"deferred"},
 		group:   stackCmds,

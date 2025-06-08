@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 }
 
 type FakeTerminal struct {
-	*Term
+	*DebugSession
 	t testing.TB
 }
 
@@ -52,8 +52,8 @@ const logCommandOutput = false
 
 func (ft *FakeTerminal) Exec(cmdstr string) (outstr string, err error) {
 	var buf bytes.Buffer
-	ft.Term.stdout = &buf
-	err = ft.cmds.Call(cmdstr, ft.Term)
+	ft.DebugSession.stdout = &buf
+	err = ft.cmds.Call(cmdstr, ft.DebugSession)
 	outstr = buf.String()
 	if logCommandOutput {
 		ft.t.Logf("command %q -> %q", cmdstr, outstr)
@@ -116,15 +116,15 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 	}()
 
 	ft := &FakeTerminal{
-		t:    t,
-		Term: New(client, &config.Config{}),
+		t:            t,
+		DebugSession: New(client, &config.Config{}),
 	}
 	fn(ft)
 }
 
 func TestCommandDefault(t *testing.T) {
 	var (
-		cmds = DebugSession{}
+		cmds = DebugCommands{}
 		cmd  = cmds.Find("non-existent-command", noPrefix).cmdFn
 	)
 
@@ -140,7 +140,7 @@ func TestCommandDefault(t *testing.T) {
 
 func TestCommandReplayWithoutPreviousCommand(t *testing.T) {
 	var (
-		cmds = NewDebugSession(nil)
+		cmds = NewDebugCommands(nil)
 		cmd  = cmds.Find("", noPrefix).cmdFn
 		err  = cmd(nil, callContext{}, "")
 	)
@@ -152,7 +152,7 @@ func TestCommandReplayWithoutPreviousCommand(t *testing.T) {
 
 func TestCommandThread(t *testing.T) {
 	var (
-		cmds = NewDebugSession(nil)
+		cmds = NewDebugCommands(nil)
 		cmd  = cmds.Find("thread", noPrefix).cmdFn
 	)
 
@@ -169,14 +169,14 @@ func TestCommandThread(t *testing.T) {
 func TestExecuteFile(t *testing.T) {
 	breakCount := 0
 	traceCount := 0
-	c := &DebugSession{
+	c := &DebugCommands{
 		client: nil,
 		cmds: []*command{
-			{aliases: []string{"trace"}, cmdFn: func(t *Term, ctx callContext, args string) error {
+			{aliases: []string{"trace"}, cmdFn: func(t *DebugSession, ctx callContext, args string) error {
 				traceCount++
 				return nil
 			}},
-			{aliases: []string{"break"}, cmdFn: func(t *Term, ctx callContext, args string) error {
+			{aliases: []string{"break"}, cmdFn: func(t *DebugSession, ctx callContext, args string) error {
 				breakCount++
 				return nil
 			}},
@@ -195,8 +195,8 @@ func TestExecuteFile(t *testing.T) {
 }
 
 func TestIssue354(t *testing.T) {
-	printStack(&Term{}, os.Stdout, []api.Stackframe{}, "", false)
-	printStack(&Term{}, os.Stdout, []api.Stackframe{
+	printStack(&DebugSession{}, os.Stdout, []api.Stackframe{}, "", false)
+	printStack(&DebugSession{}, os.Stdout, []api.Stackframe{
 		{Location: api.Location{PC: 0, File: "irrelevant.go", Line: 10, Function: nil},
 			Bottom: true}}, "", false)
 }
@@ -636,7 +636,7 @@ func TestIssue827(t *testing.T) {
 	})
 }
 
-func findCmdName(c *DebugSession, cmdstr string, prefix cmdPrefix) string {
+func findCmdName(c *DebugCommands, cmdstr string, prefix cmdPrefix) string {
 	for _, v := range c.cmds {
 		if v.match(cmdstr) {
 			if prefix != noPrefix && v.allowedPrefixes&prefix == 0 {
@@ -655,7 +655,7 @@ func assertNoError(t *testing.T, err error, str string) {
 	}
 }
 
-func assertNoErrorConfigureCmd(t *testing.T, term *Term, cmdstr string) {
+func assertNoErrorConfigureCmd(t *testing.T, term *DebugSession, cmdstr string) {
 	t.Helper()
 	err := configureCmd(term, callContext{}, cmdstr)
 	assertNoError(t, err, fmt.Sprintf("error executing configureCmd(%s)", cmdstr))
@@ -674,9 +674,9 @@ func assertSubstitutePath(t *testing.T, sp config.SubstitutePathRules, v ...stri
 
 func TestConfig(t *testing.T) {
 	var buf bytes.Buffer
-	var term Term
+	var term DebugSession
 	term.conf = &config.Config{}
-	term.cmds = NewDebugSession(nil)
+	term.cmds = NewDebugCommands(nil)
 	term.stdout = &buf
 
 	err := configureCmd(&term, callContext{}, "nonexistent-parameter 10")
@@ -1176,8 +1176,8 @@ func TestClearCondBreakpoint(t *testing.T) {
 
 func TestBreakpointEditing(t *testing.T) {
 	term := &FakeTerminal{
-		t:    t,
-		Term: New(nil, &config.Config{}),
+		t:            t,
+		DebugSession: New(nil, &config.Config{}),
 	}
 	_ = term
 

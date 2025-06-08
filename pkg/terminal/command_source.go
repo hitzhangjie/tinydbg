@@ -8,7 +8,7 @@ func init() {
 	registerDebugCmd(disassembleCmd)
 }
 
-var funcsCmd = func(c *DebugSession) *command {
+var funcsCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"funcs"},
 		cmdFn:   funcs,
@@ -21,7 +21,7 @@ If regex is specified only the functions matching it will be returned.`,
 	}
 }
 
-var typesCmd = func(c *DebugSession) *command {
+var typesCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"types"},
 		cmdFn:   types,
@@ -34,7 +34,7 @@ If regex is specified only the types matching it will be returned.`,
 	}
 }
 
-var packagesCmd = func(c *DebugSession) *command {
+var packagesCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"packages"},
 		cmdFn:   packages,
@@ -47,7 +47,7 @@ If regex is specified only the packages matching it will be returned.`,
 	}
 }
 
-var listCmd = func(c *DebugSession) *command {
+var listCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"list", "ls", "l"},
 		cmdFn:   listCommand,
@@ -67,7 +67,7 @@ For example:
 	}
 }
 
-var disassembleCmd = func(c *DebugSession) *command {
+var disassembleCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"disassemble", "disass"},
 		cmdFn:   disassCommand,

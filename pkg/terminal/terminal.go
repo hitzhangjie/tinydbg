@@ -24,19 +24,17 @@ import (
 
 const historyFile string = ".dbg_history"
 
-// Term represents the terminal running dlv.
-type Term struct {
+// DebugSession represents the terminal running dlv.
+type DebugSession struct {
 	client   service.Client
 	conf     *config.Config
 	prompt   string
 	line     *liner.State
-	cmds     *DebugSession
+	cmds     *DebugCommands
 	stdout   io.Writer
 	InitFile string
 	displays []displayEntry
 	oldPid   int
-
-	stackTraceColors api.StackTraceColors
 
 	historyFile *os.File
 
@@ -61,8 +59,8 @@ type displayEntry struct {
 }
 
 // New returns a new Term.
-func New(client service.Client, conf *config.Config) *Term {
-	cmds := NewDebugSession(client)
+func New(client service.Client, conf *config.Config) *DebugSession {
+	cmds := NewDebugCommands(client)
 	if conf != nil && conf.Aliases != nil {
 		cmds.Merge(conf.Aliases)
 	}
@@ -71,7 +69,7 @@ func New(client service.Client, conf *config.Config) *Term {
 		conf = &config.Config{}
 	}
 
-	t := &Term{
+	t := &DebugSession{
 		client: client,
 		conf:   conf,
 		prompt: "(tinydbg) ",
@@ -92,20 +90,20 @@ func New(client service.Client, conf *config.Config) *Term {
 	return t
 }
 
-func (t *Term) SetTraceNonInteractive() {
+func (t *DebugSession) SetTraceNonInteractive() {
 	t.traceNonInteractive = true
 }
 
-func (t *Term) IsTraceNonInteractive() bool {
+func (t *DebugSession) IsTraceNonInteractive() bool {
 	return t.traceNonInteractive
 }
 
 // Close returns the terminal to its previous mode.
-func (t *Term) Close() {
+func (t *DebugSession) Close() {
 	t.line.Close()
 }
 
-func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
+func (t *DebugSession) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 	for range ch {
 		t.longCommandCancel()
 		state, err := t.client.GetStateNonBlocking()
@@ -162,7 +160,7 @@ func (t *Term) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 }
 
 // Run begins running dlv in the terminal.
-func (t *Term) Run() (int, error) {
+func (t *DebugSession) Run() (int, error) {
 	defer t.Close()
 
 	multiClient := t.client.IsMulticlient()
@@ -310,14 +308,14 @@ func (t *Term) Run() (int, error) {
 // If more than one substitution rule is defined, the rules are applied
 // in the order they are defined, first rule that matches is used for
 // substitution.
-func (t *Term) substitutePath(path string) string {
+func (t *DebugSession) substitutePath(path string) string {
 	if t.conf == nil {
 		return path
 	}
 	return locspec.SubstitutePath(path, t.substitutePathRules())
 }
 
-func (t *Term) substitutePathRules() [][2]string {
+func (t *DebugSession) substitutePathRules() [][2]string {
 	if t.substitutePathRulesCache != nil {
 		return t.substitutePathRulesCache
 	}
@@ -334,13 +332,13 @@ func (t *Term) substitutePathRules() [][2]string {
 
 // formatPath applies path substitution rules and shortens the resulting
 // path by replacing the current directory with './'
-func (t *Term) formatPath(path string) string {
+func (t *DebugSession) formatPath(path string) string {
 	path = t.substitutePath(path)
 	workingDir, _ := os.Getwd()
 	return strings.Replace(path, workingDir, ".", 1)
 }
 
-func (t *Term) promptForInput() (string, error) {
+func (t *DebugSession) promptForInput() (string, error) {
 	l, err := t.line.Prompt(t.prompt)
 	if err != nil {
 		return "", err
@@ -373,7 +371,7 @@ func yesno(line *liner.State, question, defaultAnswer string) (bool, error) {
 	}
 }
 
-func (t *Term) handleExit() (int, error) {
+func (t *DebugSession) handleExit() (int, error) {
 	if t.historyFile != nil {
 		if _, err := t.line.WriteHistory(t.historyFile); err != nil {
 			fmt.Println("readline history error:", err)
@@ -446,7 +444,7 @@ func (t *Term) handleExit() (int, error) {
 
 // loadConfig returns an api.LoadConfig with the parameters specified in
 // the configuration file.
-func (t *Term) loadConfig() api.LoadConfig {
+func (t *DebugSession) loadConfig() api.LoadConfig {
 	r := api.LoadConfig{FollowPointers: true, MaxVariableRecurse: 1, MaxStringLen: 64, MaxArrayValues: 64, MaxStructFields: -1}
 
 	if t.conf != nil && t.conf.MaxStringLen != nil {
@@ -462,7 +460,7 @@ func (t *Term) loadConfig() api.LoadConfig {
 	return r
 }
 
-func (t *Term) removeDisplay(n int) error {
+func (t *DebugSession) removeDisplay(n int) error {
 	if n < 0 || n >= len(t.displays) {
 		return fmt.Errorf("%d is out of range", n)
 	}
@@ -477,11 +475,11 @@ func (t *Term) removeDisplay(n int) error {
 	return nil
 }
 
-func (t *Term) addDisplay(expr, fmtstr string) {
+func (t *DebugSession) addDisplay(expr, fmtstr string) {
 	t.displays = append(t.displays, displayEntry{expr: expr, fmtstr: fmtstr})
 }
 
-func (t *Term) printDisplay(i int) {
+func (t *DebugSession) printDisplay(i int) {
 	expr, fmtstr := t.displays[i].expr, t.displays[i].fmtstr
 	val, err := t.client.EvalVariable(api.EvalScope{GoroutineID: -1}, expr, ShortLoadConfig)
 	if err != nil {
@@ -494,7 +492,7 @@ func (t *Term) printDisplay(i int) {
 	fmt.Fprintf(t.stdout, "%d: %s = %s\n", i, val.Name, val.SinglelineStringFormatted(fmtstr))
 }
 
-func (t *Term) printDisplays() {
+func (t *DebugSession) printDisplays() {
 	for i := range t.displays {
 		if t.displays[i].expr != "" {
 			t.printDisplay(i)
@@ -502,30 +500,30 @@ func (t *Term) printDisplays() {
 	}
 }
 
-func (t *Term) onStop() {
+func (t *DebugSession) onStop() {
 	t.printDisplays()
 }
 
-func (t *Term) longCommandCancel() {
+func (t *DebugSession) longCommandCancel() {
 	t.longCommandMu.Lock()
 	defer t.longCommandMu.Unlock()
 	t.longCommandCancelFlag = true
 }
 
-func (t *Term) longCommandStart() {
+func (t *DebugSession) longCommandStart() {
 	t.longCommandMu.Lock()
 	defer t.longCommandMu.Unlock()
 	t.longCommandCancelFlag = false
 }
 
-func (t *Term) longCommandCanceled() bool {
+func (t *DebugSession) longCommandCanceled() bool {
 	t.longCommandMu.Lock()
 	defer t.longCommandMu.Unlock()
 	return t.longCommandCancelFlag
 }
 
 // RedirectTo redirects the output of this terminal to the specified writer.
-func (t *Term) RedirectTo(w io.Writer) {
+func (t *DebugSession) RedirectTo(w io.Writer) {
 	t.stdout = w
 }
 

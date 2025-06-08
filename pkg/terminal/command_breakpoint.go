@@ -12,7 +12,7 @@ func init() {
 	registerDebugCmd(conditionCmd)
 }
 
-var breakpointCmd = func(c *DebugSession) *command {
+var breakpointCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"break", "b"},
 		group:   breakCmds,
@@ -50,7 +50,7 @@ See also: "help on", "help cond" and "help clear"`,
 	}
 }
 
-var traceCmd = func(c *DebugSession) *command {
+var traceCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases:         []string{"trace", "t"},
 		group:           breakCmds,
@@ -66,7 +66,7 @@ See also: "help on", "help cond" and "help clear"`,
 	}
 }
 
-var watchCmd = func(c *DebugSession) *command {
+var watchCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"watch"},
 		group:   breakCmds,
@@ -92,7 +92,7 @@ See also: "help print".`,
 	}
 }
 
-var clearCmd = func(c *DebugSession) *command {
+var clearCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"clear"},
 		group:   breakCmds,
@@ -103,7 +103,7 @@ var clearCmd = func(c *DebugSession) *command {
 	}
 }
 
-var clearallCmd = func(c *DebugSession) *command {
+var clearallCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"clearall"},
 		group:   breakCmds,
@@ -117,7 +117,7 @@ If called with the locspec argument it will delete all the breakpoints matching 
 }
 
 // FIXME 删掉它
-var toggleCmd = func(c *DebugSession) *command {
+var toggleCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"toggle"},
 		group:   breakCmds,
@@ -128,7 +128,7 @@ var toggleCmd = func(c *DebugSession) *command {
 	}
 }
 
-var breakpointsCmd = func(c *DebugSession) *command {
+var breakpointsCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"breakpoints", "bp"},
 		group:   breakCmds,
@@ -141,7 +141,7 @@ Specifying -a prints all physical breakpoint, including internal breakpoints.`,
 	}
 }
 
-var onCmd = func(c *DebugSession) *command {
+var onCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"on"},
 		group:   breakCmds,
@@ -163,7 +163,7 @@ The command 'on x -edit' can be used to edit the list of commands executed when 
 	}
 }
 
-var conditionCmd = func(c *DebugSession) *command {
+var conditionCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases:         []string{"condition", "cond"},
 		group:           breakCmds,

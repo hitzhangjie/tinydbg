@@ -2144,7 +2144,7 @@ func (d *Debugger) maybePrintUnattendedStopWarning(stopReason proc.StopReason, c
 		// todo(fata): do not include the final panic/fatal function if bp.Name is fatalthrow/panic
 		return true
 	}
-	api.PrintStack(formatPathFunc, os.Stderr, apiFrames, "", false, api.StackTraceColors{}, includeFunc)
+	api.PrintStack(formatPathFunc, os.Stderr, apiFrames, "", false, includeFunc)
 }
 
 // GuessSubstitutePath returns a substitute-path configuration that maps

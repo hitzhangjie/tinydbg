@@ -572,13 +572,7 @@ func digits(n int) int {
 	return int(math.Floor(math.Log10(float64(n)))) + 1
 }
 
-type StackTraceColors struct {
-	FunctionColor string
-	BasenameColor string
-	NormalColor   string
-}
-
-func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackframe, ind string, offsets bool, stc StackTraceColors, include func(Stackframe) bool) {
+func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackframe, ind string, offsets bool, include func(Stackframe) bool) {
 	if len(stack) == 0 {
 		return
 	}
@@ -593,20 +587,11 @@ func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackfram
 
 	fileLine := func(file string, line int) string {
 		file = formatPath(file)
-		if stc.BasenameColor == "" {
-			return fmt.Sprintf("%s:%d", file, line)
-		}
-		slash := strings.LastIndex(file, "/")
-		if slash < 0 {
-			slash = 0
-		} else {
-			slash++
-		}
-		return fmt.Sprintf("%s%s%s:%d%s", file[:slash], stc.BasenameColor, file[slash:], line, stc.NormalColor)
+		return fmt.Sprintf("%s:%d", file, line)
 	}
 
 	d := digits(len(stack) - 1)
-	fmtstr := "%s%" + strconv.Itoa(d) + "d  0x%016x in " + stc.FunctionColor + "%s" + stc.NormalColor + "\n"
+	fmtstr := "%s%" + strconv.Itoa(d) + "d  0x%016x in %s\n"
 	s := ind + strings.Repeat(" ", d+2+len(ind))
 
 	for i := range stack {
@@ -631,7 +616,7 @@ func PrintStack(formatPath func(string) string, out io.Writer, stack []Stackfram
 				fmt.Fprintf(out, "%s(unreadable defer: %s)\n", deferHeader, d.Unreadable)
 				continue
 			}
-			fmt.Fprintf(out, "%s%#016x in %s%s%s\n", deferHeader, d.DeferredLoc.PC, stc.FunctionColor, d.DeferredLoc.Function.Name(), stc.NormalColor)
+			fmt.Fprintf(out, "%s%#016x in %s\n", deferHeader, d.DeferredLoc.PC, d.DeferredLoc.Function.Name())
 			fmt.Fprintf(out, "%sat %s:%d\n", s2, formatPath(d.DeferredLoc.File), d.DeferredLoc.Line)
 			fmt.Fprintf(out, "%sdeferred by %s at %s\n", s2, d.DeferLoc.Function.Name(), fileLine(d.DeferLoc.File, d.DeferLoc.Line))
 		}

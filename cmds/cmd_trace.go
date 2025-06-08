@@ -200,7 +200,7 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 			fmt.Fprintln(os.Stderr, "no breakpoints set")
 			return 1
 		}
-		cmds := terminal.NewDebugSession(client)
+		cmds := terminal.NewDebugCommands(client)
 		cfg := &config.Config{
 			TraceShowTimestamp: traceShowTimestamp,
 		}

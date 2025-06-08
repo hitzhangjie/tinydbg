@@ -7,7 +7,7 @@ func init() {
 	registerDebugCmd(goroutineCmd)
 }
 
-var threadsCmd = func(c *DebugSession) *command {
+var threadsCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"threads"},
 		group:   goroutineCmds,
@@ -16,7 +16,7 @@ var threadsCmd = func(c *DebugSession) *command {
 	}
 }
 
-var threadCmd = func(c *DebugSession) *command {
+var threadCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"thread", "tr"},
 		group:   goroutineCmds,
@@ -27,7 +27,7 @@ var threadCmd = func(c *DebugSession) *command {
 	}
 }
 
-var goroutinesCmd = func(c *DebugSession) *command {
+var goroutinesCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"goroutines", "grs"},
 		group:   goroutineCmds,
@@ -121,7 +121,7 @@ Runs the command on every goroutine.
 	}
 }
 
-var goroutineCmd = func(c *DebugSession) *command {
+var goroutineCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases:         []string{"goroutine", "gr"},
 		group:           goroutineCmds,
