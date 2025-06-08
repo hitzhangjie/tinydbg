@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	configDir       string = "dlv"
-	configDirHidden string = ".dlv"
+	configDir       string = "tinydbg"
+	configDirHidden string = ".tinydbg"
 	configFile      string = "config.yml"
 
 	PositionSource      = "source"

@@ -24,7 +24,7 @@ import (
 // called.
 func Prepare(cmd *cobra.Command) {
 	switch cmd.Name() {
-	case "dlv", "help", "version":
+	case "dlv", "tinydbg", "help", "version":
 		hideAllFlags(cmd)
 	case "attach":
 		hideFlag(cmd, "build-flags")
