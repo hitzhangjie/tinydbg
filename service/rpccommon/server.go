@@ -193,7 +193,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 		}
 
 		if mtype.Synchronous {
-			if logflags.RPC() {
+			if logflags.LogRPC() {
 				argvbytes, _ := json.Marshal(argv.Interface())
 				s.log.Debugf("<- %s(%T%s)", req.ServiceMethod, argv.Interface(), argvbytes)
 			}
@@ -216,7 +216,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 				errmsg = errInter.(error).Error()
 			}
 			resp = rpc.Response{}
-			if logflags.RPC() {
+			if logflags.LogRPC() {
 				replyvbytes, _ := json.Marshal(replyv.Interface())
 				s.log.Debugf("-> %T%s error: %q", replyv.Interface(), replyvbytes, errmsg)
 			}
@@ -226,7 +226,7 @@ func (s *ServerImpl) serveJSONCodec(conn io.ReadWriteCloser) {
 				s.config.DisconnectChan = nil
 			}
 		} else {
-			if logflags.RPC() {
+			if logflags.LogRPC() {
 				argvbytes, _ := json.Marshal(argv.Interface())
 				s.log.Debugf("(async %d) <- %s(%T%s)", req.Seq, req.ServiceMethod, argv.Interface(), argvbytes)
 			}
@@ -278,7 +278,7 @@ func (cb *RPCCallback) Return(out interface{}, err error) {
 		errmsg = err.Error()
 	}
 	var resp rpc.Response
-	if logflags.RPC() {
+	if logflags.LogRPC() {
 		outbytes, _ := json.Marshal(out)
 		cb.s.log.Debugf("(async %d) -> %T%s error: %q", cb.req.Seq, out, outbytes, errmsg)
 	}

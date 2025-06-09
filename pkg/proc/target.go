@@ -531,7 +531,7 @@ func (t *Target) dwrapUnwrap(fn *Function) *Function {
 }
 
 func (t *Target) pluginOpenCallback(Thread, *Target) (bool, error) {
-	logger := logflags.DebuggerLogger()
+	logger := logflags.LogDebuggerLogger()
 	for _, lbp := range t.Breakpoints().Logical {
 		if isSuspended(t, lbp) {
 			err := enableBreakpointOnTarget(t, lbp)

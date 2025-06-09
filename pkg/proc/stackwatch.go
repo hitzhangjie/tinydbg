@@ -152,7 +152,7 @@ func adjustStackWatchpoint(t *Target, th Thread, watchpoint *Breakpoint) {
 	}
 	err := t.proc.EraseBreakpoint(watchpoint)
 	if err != nil {
-		log := logflags.DebuggerLogger()
+		log := logflags.LogDebuggerLogger()
 		log.Errorf("could not adjust watchpoint at %#x: %v", watchpoint.Addr, err)
 		return
 	}
@@ -160,7 +160,7 @@ func adjustStackWatchpoint(t *Target, th Thread, watchpoint *Breakpoint) {
 	watchpoint.Addr = uint64(int64(g.stack.hi) + watchpoint.watchStackOff)
 	err = t.proc.WriteBreakpoint(watchpoint)
 	if err != nil {
-		log := logflags.DebuggerLogger()
+		log := logflags.LogDebuggerLogger()
 		log.Errorf("could not adjust watchpoint at %#x: %v", watchpoint.Addr, err)
 		return
 	}

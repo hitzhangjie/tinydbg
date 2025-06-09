@@ -259,7 +259,7 @@ func (it *stackIterator) Next() bool {
 	if it.frame.Current.Fn != nil && it.frame.Current.Fn.Name == "runtime.sigtrampgo" && it.target != nil {
 		regs, err := it.readSigtrampgoContext()
 		if err != nil {
-			logflags.DebuggerLogger().Errorf("could not read runtime.sigtrampgo context: %v", err)
+			logflags.LogDebuggerLogger().Errorf("could not read runtime.sigtrampgo context: %v", err)
 		} else {
 			so := it.bi.PCToImage(regs.PC())
 			regs.StaticBase = so.StaticBase

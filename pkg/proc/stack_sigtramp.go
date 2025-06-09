@@ -13,7 +13,7 @@ import (
 
 // readSigtrampgoContext reads runtime.sigtrampgo context at the specified address
 func (it *stackIterator) readSigtrampgoContext() (*op.DwarfRegisters, error) {
-	logger := logflags.DebuggerLogger()
+	logger := logflags.LogDebuggerLogger()
 	scope := FrameToScope(it.target, it.mem, it.g, 0, it.frame)
 	bi := it.bi
 

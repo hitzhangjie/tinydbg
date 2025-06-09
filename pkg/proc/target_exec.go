@@ -90,7 +90,7 @@ func (grp *TargetGroup) Continue() error {
 		for _, dbp := range grp.targets {
 			dbp.ClearCaches()
 		}
-		logflags.DebuggerLogger().Debugf("ContinueOnce")
+		logflags.LogDebuggerLogger().Debugf("ContinueOnce")
 		trapthread, stopReason, contOnceErr := grp.procgrp.ContinueOnce(grp.cctx)
 		var traptgt *Target
 		if trapthread != nil {
@@ -121,14 +121,14 @@ func (grp *TargetGroup) Continue() error {
 			for _, watchpoint := range it.Breakpoints().WatchOutOfScope {
 				err := it.ClearBreakpoint(watchpoint.Addr)
 				if err != nil {
-					logflags.DebuggerLogger().Errorf("could not clear out-of-scope watchpoint: %v", err)
+					logflags.LogDebuggerLogger().Errorf("could not clear out-of-scope watchpoint: %v", err)
 				}
 				delete(it.Breakpoints().Logical, watchpoint.LogicalID())
 			}
 			// Clear inactivated breakpoints
 			err := it.clearInactivatedSteppingBreakpoint()
 			if err != nil {
-				logflags.DebuggerLogger().Errorf("could not clear inactivated stepping breakpoints: %v", err)
+				logflags.LogDebuggerLogger().Errorf("could not clear inactivated stepping breakpoints: %v", err)
 			}
 		}
 
@@ -157,8 +157,8 @@ func (grp *TargetGroup) Continue() error {
 		for it.Next() {
 			dbp := it.Target
 			threads := dbp.ThreadList()
-			if logflags.Debugger() {
-				log := logflags.DebuggerLogger()
+			if logflags.LogDebugger() {
+				log := logflags.LogDebuggerLogger()
 				log.Debugf("callInjection protocol on:")
 				for _, th := range threads {
 					regs, _ := th.Registers()
@@ -1136,12 +1136,12 @@ func setStepIntoNewProcBreakpoint(p *Target, sameGCond ast.Expr) {
 	)
 	rnf := p.BinInfo().LookupFunc()[runtimeNewprocFunc1]
 	if len(rnf) != 1 {
-		logflags.DebuggerLogger().Error("could not find " + runtimeNewprocFunc1)
+		logflags.LogDebuggerLogger().Error("could not find " + runtimeNewprocFunc1)
 		return
 	}
 	text, err := Disassemble(p.Memory(), nil, p.Breakpoints(), p.BinInfo(), rnf[0].Entry, rnf[0].End)
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("could not disassemble "+runtimeNewprocFunc1+": %v", err)
+		logflags.LogDebuggerLogger().Errorf("could not disassemble "+runtimeNewprocFunc1+": %v", err)
 		return
 	}
 
@@ -1154,7 +1154,7 @@ func setStepIntoNewProcBreakpoint(p *Target, sameGCond ast.Expr) {
 		}
 	}
 	if callfile == "" {
-		logflags.DebuggerLogger().Error("could not find " + runtimeRunqput + " call in " + runtimeNewprocFunc1)
+		logflags.LogDebuggerLogger().Error("could not find " + runtimeRunqput + " call in " + runtimeNewprocFunc1)
 		return
 	}
 	var pc uint64
@@ -1165,13 +1165,13 @@ func setStepIntoNewProcBreakpoint(p *Target, sameGCond ast.Expr) {
 		}
 	}
 	if pc == 0 {
-		logflags.DebuggerLogger().Errorf("could not set newproc breakpoint: location not found for " + runtimeRunqput + " call")
+		logflags.LogDebuggerLogger().Errorf("could not set newproc breakpoint: location not found for " + runtimeRunqput + " call")
 		return
 	}
 
 	bp, err := p.SetBreakpoint(0, pc, StepIntoNewProcBreakpoint, sameGCond)
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("could not set StepIntoNewProcBreakpoint: %v", err)
+		logflags.LogDebuggerLogger().Errorf("could not set StepIntoNewProcBreakpoint: %v", err)
 		return
 	}
 	blet := bp.Breaklets[len(bp.Breaklets)-1]
@@ -1650,7 +1650,7 @@ func (t *Target) handleHardcodedBreakpoints(grp *TargetGroup, trapthread Thread,
 func rangeFrameInactivateNextBreakpoints(p *Target, fn *Function) {
 	pc, err := FirstPCAfterPrologue(p, fn, false)
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("Error inactivating next breakpoints after exiting a range-over-func body: %v", err)
+		logflags.LogDebuggerLogger().Errorf("Error inactivating next breakpoints after exiting a range-over-func body: %v", err)
 		return
 	}
 
@@ -1697,7 +1697,7 @@ func stepIntoCoroutineMaybe(curthread Thread, p *Target, text []AsmInstruction) 
 
 	cvar, err := clos.structMember("c")
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("iter.Pull problems accessing captured 'c' variable in closure: %v", err)
+		logflags.LogDebuggerLogger().Errorf("iter.Pull problems accessing captured 'c' variable in closure: %v", err)
 		return false, nil
 	}
 	cvar = cvar.maybeDereference()
@@ -1706,7 +1706,7 @@ func stepIntoCoroutineMaybe(curthread Thread, p *Target, text []AsmInstruction) 
 	}
 	typRuntimeCoro, err := bi.findType("runtime.coro")
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("could not find runtime.coro type: %v", err)
+		logflags.LogDebuggerLogger().Errorf("could not find runtime.coro type: %v", err)
 		return false, nil
 	}
 	cvar = newVariable("", cvar.Addr, typRuntimeCoro, p.BinInfo(), p.Memory())
@@ -1717,24 +1717,24 @@ func stepIntoCoroutineMaybe(curthread Thread, p *Target, text []AsmInstruction) 
 
 	gp := cvar.loadFieldNamed("gp")
 	if gp == nil {
-		logflags.DebuggerLogger().Errorf("could not load runtime.coro.gp field (unreadable: %v)", cvar.Unreadable)
+		logflags.LogDebuggerLogger().Errorf("could not load runtime.coro.gp field (unreadable: %v)", cvar.Unreadable)
 		return false, nil
 	}
 	gaddr, _ := constant.Uint64Val(gp.Value)
 
 	gvar, err := newGVariable(curthread, gaddr, false)
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("could not load runtime.coro.gp: %v", err)
+		logflags.LogDebuggerLogger().Errorf("could not load runtime.coro.gp: %v", err)
 		return false, nil
 	}
 	g, err := gvar.parseG()
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("could not load runtime.coro.gp: %v", err)
+		logflags.LogDebuggerLogger().Errorf("could not load runtime.coro.gp: %v", err)
 		return false, nil
 	}
 
 	if g.CurrentLoc.Fn == nil {
-		logflags.DebuggerLogger().Errorf("could not determine target location of coroutine")
+		logflags.LogDebuggerLogger().Errorf("could not determine target location of coroutine")
 		return false, nil
 	}
 
@@ -1750,22 +1750,22 @@ func stepIntoCoroutineMaybe(curthread Thread, p *Target, text []AsmInstruction) 
 
 		f := cvar.loadFieldNamed("f")
 		if f == nil || f.Unreadable != nil {
-			logflags.DebuggerLogger().Errorf("could not determine target location of coroutine (corostart)")
+			logflags.LogDebuggerLogger().Errorf("could not determine target location of coroutine (corostart)")
 			return false, nil
 		}
 		seq := f.fieldVariable("seq")
 		if seq == nil || seq.Unreadable != nil {
-			logflags.DebuggerLogger().Errorf("could not determine target location of coroutine (corostart -- seq)")
+			logflags.LogDebuggerLogger().Errorf("could not determine target location of coroutine (corostart -- seq)")
 			return false, nil
 		}
 		fn := bi.PCToFunc(seq.Base)
 		if fn == nil {
-			logflags.DebuggerLogger().Errorf("could not determine target location of coroutine (corostart), no function for PC: %#x", seq.Base)
+			logflags.LogDebuggerLogger().Errorf("could not determine target location of coroutine (corostart), no function for PC: %#x", seq.Base)
 			return false, nil
 		}
 		pc, err := FirstPCAfterPrologue(p, fn, false)
 		if err != nil {
-			logflags.DebuggerLogger().Errorf("FirstPCAfterPrologue error: %v", err)
+			logflags.LogDebuggerLogger().Errorf("FirstPCAfterPrologue error: %v", err)
 			pc = fn.Entry
 		}
 		bploc = Location{PC: pc, Fn: fn}

@@ -184,7 +184,7 @@ func isProcDir(name string) bool {
 }
 
 func waitForSearchProcess(pfx string, seen map[int]struct{}) (int, error) {
-	log := logflags.DebuggerLogger()
+	log := logflags.LogDebuggerLogger()
 	des, err := os.ReadDir("/proc")
 	if err != nil {
 		log.Errorf("error reading proc: %v", err)

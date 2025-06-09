@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	// logFlag is whether to log debug statements.
-	logFlag bool
-	// logOutput is a comma separated list of components that should produce debug output.
-	logOutput string
+	// enableLogging is whether to log debug statements.
+	enableLogging bool
+	// enableLoggers is a comma separated list of components that should produce debug output.
+	enableLoggers string
 	// logDest is the file path or file descriptor where logs should go.
 	logDest string
 	// headless is whether to run without terminal.
@@ -104,8 +104,8 @@ func New() *cobra.Command {
 	rootCommand.PersistentFlags().StringVarP(&addr, "listen", "l", "127.0.0.1:0", "Debugging server listen address. Prefix with 'unix:' to use a unix domain socket.")
 	must(rootCommand.RegisterFlagCompletionFunc("listen", cobra.NoFileCompletions))
 
-	rootCommand.PersistentFlags().BoolVarP(&logFlag, "log", "", false, "Enable debugging server logging.")
-	rootCommand.PersistentFlags().StringVarP(&logOutput, "log-output", "", "", `Comma separated list of components that should produce debug output (see 'dlv help log')`)
+	rootCommand.PersistentFlags().BoolVarP(&enableLogging, "log", "", false, "Enable debugging server logging.")
+	rootCommand.PersistentFlags().StringVarP(&enableLoggers, "log-output", "", "", `Comma separated list of components that should produce debug output (see 'dlv help log')`)
 	must(rootCommand.RegisterFlagCompletionFunc("log-output", cobra.FixedCompletions([]string{"debugger", "debuglineerr", "rpc", "fncall", "stack"}, cobra.ShellCompDirectiveNoFileComp)))
 	rootCommand.PersistentFlags().StringVarP(&logDest, "log-dest", "", "", "Writes logs to the specified file or file descriptor (see 'dlv help log').")
 	must(rootCommand.MarkPersistentFlagFilename("log-dest", "log"))
@@ -211,13 +211,13 @@ func connect(addr string, clientConn net.Conn, conf *config.Config) int {
 }
 
 func execute(attachPid int, processArgs []string, conf *config.Config, coreFile string, kind debugger.ExecuteKind, dlvArgs []string, buildFlags string) int {
-	if err := logflags.Setup(logFlag, logOutput, logDest); err != nil {
+	if err := logflags.Setup(enableLogging, enableLoggers, logDest); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 	defer logflags.Close()
 	if loadConfErr != nil {
-		logflags.DebuggerLogger().Errorf("%v", loadConfErr)
+		logflags.LogDebuggerLogger().Errorf("%v", loadConfErr)
 	}
 
 	if headless && (initFile != "") {

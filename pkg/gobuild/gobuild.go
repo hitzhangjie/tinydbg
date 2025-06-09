@@ -91,7 +91,7 @@ func DefaultDebugBinaryPath(name string) string {
 	pattern := name
 	f, err := os.CreateTemp(".", pattern)
 	if err != nil {
-		logflags.DebuggerLogger().Errorf("could not create temporary file for build output: %v", err)
+		logflags.LogDebuggerLogger().Errorf("could not create temporary file for build output: %v", err)
 		return name
 	}
 	r := f.Name()

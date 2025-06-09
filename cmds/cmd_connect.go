@@ -25,13 +25,13 @@ var connectCommand = &cobra.Command{
 }
 
 func connectCmd(_ *cobra.Command, args []string) {
-	if err := logflags.Setup(logFlag, logOutput, logDest); err != nil {
+	if err := logflags.Setup(enableLogging, enableLoggers, logDest); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 		return
 	}
 	if loadConfErr != nil {
-		logflags.DebuggerLogger().Errorf("%v", loadConfErr)
+		logflags.LogDebuggerLogger().Errorf("%v", loadConfErr)
 	}
 	addr := args[0]
 	if addr == "" {

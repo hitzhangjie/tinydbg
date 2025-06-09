@@ -150,7 +150,7 @@ func New(config *Config, processArgs []string) (*Debugger, error) {
 		return nil, fmt.Errorf("unsupported platform - only linux/amd64 is supported")
 	}
 
-	logger := logflags.DebuggerLogger()
+	logger := logflags.LogDebuggerLogger()
 	d := &Debugger{
 		config:      config,
 		processArgs: processArgs,
@@ -590,7 +590,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 		setbp.Expr = func(t *proc.Target) []uint64 {
 			locs, _, err := loc.Find(t, d.processArgs, nil, locExpr, false, substitutePathRules)
 			if err != nil || len(locs) != 1 {
-				logflags.DebuggerLogger().Debugf("could not evaluate breakpoint expression %q: %v (number of results %d)", locExpr, err, len(locs))
+				logflags.LogDebuggerLogger().Debugf("could not evaluate breakpoint expression %q: %v (number of results %d)", locExpr, err, len(locs))
 				return nil
 			}
 			return locs[0].PCs
@@ -632,7 +632,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 	err = d.target.SetBreakpointEnabled(lbp, true)
 	if err != nil {
 		if suspended {
-			logflags.DebuggerLogger().Debugf("could not enable new breakpoint: %v (breakpoint will be suspended)", err)
+			logflags.LogDebuggerLogger().Debugf("could not enable new breakpoint: %v (breakpoint will be suspended)", err)
 		} else {
 			delete(d.target.LogicalBreakpoints, lbp.LogicalID)
 			return nil, err
@@ -1848,7 +1848,7 @@ func (d *Debugger) getVersion() error {
 	out.MinSupportedVersionOfGo = fmt.Sprintf("%d.%d.0", goversion.MinSupportedVersionOfGoMajor, goversion.MinSupportedVersionOfGoMinor)
 	out.MaxSupportedVersionOfGo = fmt.Sprintf("%d.%d.0", goversion.MaxSupportedVersionOfGoMajor, goversion.MaxSupportedVersionOfGoMinor)
 
-	logger := logflags.DebuggerLogger()
+	logger := logflags.LogDebuggerLogger()
 	logger.Debugf("debugger version: \n\n%+v\n", out)
 
 	return nil
@@ -2207,7 +2207,7 @@ func guessSubstitutePath(args *api.GuessSubstitutePathIn, bins [][]proc.Function
 
 	serverGoroot := ""
 
-	logger := logflags.DebuggerLogger()
+	logger := logflags.LogDebuggerLogger()
 
 	for binIdx, bin := range bins {
 		for i := range bin {

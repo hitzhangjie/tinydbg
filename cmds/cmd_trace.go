@@ -54,14 +54,14 @@ func init() {
 
 func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 	status := func() int {
-		err := logflags.Setup(logFlag, logOutput, logDest)
+		err := logflags.Setup(enableLogging, enableLoggers, logDest)
 		defer logflags.Close()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
 		if loadConfErr != nil {
-			logflags.DebuggerLogger().Errorf("%v", loadConfErr)
+			logflags.LogDebuggerLogger().Errorf("%v", loadConfErr)
 		}
 
 		if headless {

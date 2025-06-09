@@ -545,13 +545,13 @@ func readLocalPtrVar(dwarfTree *godwarf.Tree, vname string, tgt *Target, bi *Bin
 		if name == vname {
 			v, err := extractVarInfoFromEntry(tgt, bi, image, regs, mem, entry, 0)
 			if err != nil {
-				logflags.DebuggerLogger().Errorf("could not load %s variable: %v", name, err)
+				logflags.LogDebuggerLogger().Errorf("could not load %s variable: %v", name, err)
 			} else if v.Unreadable != nil {
-				logflags.DebuggerLogger().Errorf("could not load %s variable: %v", name, v.Unreadable)
+				logflags.LogDebuggerLogger().Errorf("could not load %s variable: %v", name, v.Unreadable)
 			} else {
 				r, err := readUintRaw(v.mem, v.Addr, int64(bi.Arch.PtrSize()))
 				if err != nil {
-					logflags.DebuggerLogger().Errorf("could not load %s variable: %v", name, err)
+					logflags.LogDebuggerLogger().Errorf("could not load %s variable: %v", name, err)
 				}
 				return r
 			}

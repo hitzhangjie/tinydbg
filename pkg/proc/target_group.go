@@ -100,7 +100,7 @@ func Restart(grp, oldgrp *TargetGroup, discard func(*LogicalBreakpoint, error)) 
 }
 
 func (grp *TargetGroup) addTarget(p ProcessInternal, pid int, currentThread Thread, path string, stopReason StopReason, cmdline string) (*Target, error) {
-	logger := logflags.DebuggerLogger()
+	logger := logflags.LogDebuggerLogger()
 	if len(grp.targets) > 0 {
 		if !grp.followExecEnabled {
 			logger.Debugf("Detaching from child target (follow-exec disabled) %d %q", pid, cmdline)

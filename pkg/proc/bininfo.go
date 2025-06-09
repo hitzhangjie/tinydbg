@@ -774,7 +774,7 @@ type ElfDynamicSection struct {
 
 // NewBinaryInfo returns an initialized but unloaded BinaryInfo struct.
 func NewBinaryInfo(goos, goarch string) *BinaryInfo {
-	r := &BinaryInfo{GOOS: goos, logger: logflags.DebuggerLogger()}
+	r := &BinaryInfo{GOOS: goos, logger: logflags.LogDebuggerLogger()}
 
 	// TODO: find better way to determine proc arch (perhaps use executable file info).
 	switch goarch {
@@ -1896,8 +1896,8 @@ func (bi *BinaryInfo) loadDebugInfoMaps(image *Image, debugInfoBytes, debugLineB
 			lineInfoOffset, hasLineInfo := entry.Val(dwarf.AttrStmtList).(int64)
 			if hasLineInfo && lineInfoOffset >= 0 && lineInfoOffset < int64(len(debugLineBytes)) {
 				var logfn func(string, ...interface{})
-				if logflags.DebugLineErrors() {
-					logfn = logflags.DebugLineLogger().Debugf
+				if logflags.LogDebugLineErrors() {
+					logfn = logflags.LogDebugLineLogger().Debugf
 				}
 				cu.lineInfo = line.Parse(compdir, bytes.NewBuffer(debugLineBytes[lineInfoOffset:]), image.debugLineStr, logfn, image.StaticBase, bi.GOOS == "windows", bi.Arch.PtrSize())
 			}
