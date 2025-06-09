@@ -10,23 +10,37 @@ participant "Tracee" as TP
 activate BE
 
 BE -> BE: ln, _ := listen(ipport)\nconn, err := ln.accept()\nserveConn(conn)
-activate BE
+activate BE #ff0000
 deactivate BE
 
 
-User -> FE: input `godbg attach <pid>`
+User -> FE : input `godbg attach <pid>`
+activate User #ff0000
 activate FE
 FE -> BE: API Call `client.Attach(pid)`
 BE -> BE: jsonrpc.ReadRequest(&req)\nreq.Method = "Attach"\nserver.Attach(pid)
 activate BE #ff0000
 
 BE -> TP: syscall `ptrace(PTRACE_ATTACH, pid, nil, nil)`
-activate TP
-TP --> BE: wait4(pid,status)\nStopped 
+activate TP #ff0000
+TP --> TP: kernel process PTRACE syscall:\n1. process RUNNABLE to TRACED\n2. generate SIGTRAP
+activate TP #ffff00
+deactivate TP
+TP --> BE: ptrace returns
+
+BE --> TP: wait4(pid,status)\nStopped 
+
+TP --> TP: \n3. SIGTRAP handler,\n   notify ptracer state changed
+activate TP #ffff00
+deactivate TP
+
+TP --> BE: wait4 returns
+
 deactivate TP
 BE --> FE: Return Response {msg: attach ok, pc: 0x1234, file: f, line: 123}
 deactivate BE
 
 FE --> User: Display Data `tracee stopped at 0x1234 in f:123`
+deactivate User
 
 @enduml
