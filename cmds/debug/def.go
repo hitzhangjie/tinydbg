@@ -1,6 +1,6 @@
 // Package terminal implements functions for responding to user
 // input and dispatching to appropriate backend commands.
-package terminal
+package debug
 
 //lint:file-ignore ST1005 errors here can be capitalized
 
@@ -65,7 +65,7 @@ const (
 	frameDown
 )
 
-type cmdfunc func(t *DebugSession, ctx callContext, args string) error
+type cmdfunc func(t *Session, ctx callContext, args string) error
 
 type command struct {
 	aliases         []string
@@ -192,7 +192,7 @@ func (s *DebugCommands) Find(cmdstr string, prefix cmdPrefix) *command {
 }
 
 // CallWithContext takes a command and a context that command should be executed in.
-func (s *DebugCommands) CallWithContext(cmdstr string, t *DebugSession, ctx callContext) error {
+func (s *DebugCommands) CallWithContext(cmdstr string, t *Session, ctx callContext) error {
 	vals := strings.SplitN(strings.TrimSpace(cmdstr), " ", 2)
 	cmdname := vals[0]
 	var args string
@@ -203,7 +203,7 @@ func (s *DebugCommands) CallWithContext(cmdstr string, t *DebugSession, ctx call
 }
 
 // Call takes a command to execute.
-func (s *DebugCommands) Call(cmdstr string, t *DebugSession) error {
+func (s *DebugCommands) Call(cmdstr string, t *Session) error {
 	ctx := callContext{Prefix: noPrefix, Scope: api.EvalScope{GoroutineID: -1, Frame: s.frame, DeferredCall: 0}}
 	return s.CallWithContext(cmdstr, t, ctx)
 }
@@ -228,15 +228,15 @@ func (s *DebugCommands) Merge(allAliases map[string][]string) {
 
 var errNoCmd = errors.New("command not available")
 
-func noCmdAvailable(t *DebugSession, ctx callContext, args string) error {
+func noCmdAvailable(t *Session, ctx callContext, args string) error {
 	return errNoCmd
 }
 
-func nullCommand(t *DebugSession, ctx callContext, args string) error {
+func nullCommand(t *Session, ctx callContext, args string) error {
 	return nil
 }
 
-func (s *DebugCommands) help(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) help(t *Session, ctx callContext, args string) error {
 	if args != "" {
 		for _, cmd := range s.cmds {
 			for _, alias := range cmd.aliases {
@@ -279,7 +279,7 @@ func (s *DebugCommands) help(t *DebugSession, ctx callContext, args string) erro
 	return nil
 }
 
-func threads(t *DebugSession, ctx callContext, args string) error {
+func threads(t *Session, ctx callContext, args string) error {
 	threads, err := t.client.ListThreads()
 	if err != nil {
 		return err
@@ -309,7 +309,7 @@ func threads(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func thread(t *DebugSession, ctx callContext, args string) error {
+func thread(t *Session, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("you must specify a thread")
 	}
@@ -338,7 +338,7 @@ func thread(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func (s *DebugCommands) printGoroutines(t *DebugSession, ctx callContext, indent string, gs []*api.Goroutine, fgl api.FormatGoroutineLoc, flags api.PrintGoroutinesFlags, depth int, cmd string, pdone *bool, state *api.DebuggerState) error {
+func (s *DebugCommands) printGoroutines(t *Session, ctx callContext, indent string, gs []*api.Goroutine, fgl api.FormatGoroutineLoc, flags api.PrintGoroutinesFlags, depth int, cmd string, pdone *bool, state *api.DebuggerState) error {
 	for _, g := range gs {
 		if t.longCommandCanceled() || (pdone != nil && *pdone) {
 			break
@@ -368,7 +368,7 @@ func (s *DebugCommands) printGoroutines(t *DebugSession, ctx callContext, indent
 	return nil
 }
 
-func (s *DebugCommands) goroutines(t *DebugSession, ctx callContext, argstr string) error {
+func (s *DebugCommands) goroutines(t *Session, ctx callContext, argstr string) error {
 	filters, group, fgl, flags, depth, batchSize, cmd, err := api.ParseGoroutineArgs(argstr)
 	if err != nil {
 		return err
@@ -433,7 +433,7 @@ func selectedGID(state *api.DebuggerState) int64 {
 	return state.SelectedGoroutine.ID
 }
 
-func (s *DebugCommands) goroutine(t *DebugSession, ctx callContext, argstr string) error {
+func (s *DebugCommands) goroutine(t *Session, ctx callContext, argstr string) error {
 	args := config.Split2PartsBySpace(argstr)
 
 	if ctx.Prefix == onPrefix {
@@ -475,7 +475,7 @@ func (s *DebugCommands) goroutine(t *DebugSession, ctx callContext, argstr strin
 }
 
 // Handle "frame", "up", "down" commands.
-func (s *DebugCommands) frameCommand(t *DebugSession, ctx callContext, argstr string, direction frameDirection) error {
+func (s *DebugCommands) frameCommand(t *Session, ctx callContext, argstr string, direction frameDirection) error {
 	frame := 1
 	arg := ""
 	if len(argstr) == 0 {
@@ -524,7 +524,7 @@ func (s *DebugCommands) frameCommand(t *DebugSession, ctx callContext, argstr st
 	return nil
 }
 
-func (s *DebugCommands) deferredCommand(t *DebugSession, ctx callContext, argstr string) error {
+func (s *DebugCommands) deferredCommand(t *Session, ctx callContext, argstr string) error {
 	ctx.Prefix = deferredPrefix
 
 	space := strings.IndexRune(argstr, ' ')
@@ -543,7 +543,7 @@ func (s *DebugCommands) deferredCommand(t *DebugSession, ctx callContext, argstr
 	return s.CallWithContext(argstr[space:], t, ctx)
 }
 
-func printscope(t *DebugSession) error {
+func printscope(t *Session) error {
 	state, err := t.client.GetState()
 	if err != nil {
 		return err
@@ -556,18 +556,18 @@ func printscope(t *DebugSession) error {
 	return nil
 }
 
-func (t *DebugSession) formatThread(th *api.Thread) string {
+func (t *Session) formatThread(th *api.Thread) string {
 	if th == nil {
 		return "<nil>"
 	}
 	return fmt.Sprintf("%d at %s:%d", th.ID, t.formatPath(th.File), th.Line)
 }
 
-func (t *DebugSession) formatLocation(loc api.Location) string {
+func (t *Session) formatLocation(loc api.Location) string {
 	return fmt.Sprintf("%s:%d %s (%#v)", t.formatPath(loc.File), loc.Line, loc.Function.Name(), loc.PC)
 }
 
-func (t *DebugSession) formatGoroutine(g *api.Goroutine, fgl api.FormatGoroutineLoc) string {
+func (t *Session) formatGoroutine(g *api.Goroutine, fgl api.FormatGoroutineLoc) string {
 	if g == nil {
 		return "<nil>"
 	}
@@ -651,7 +651,7 @@ var waitReasonStrings = [...]string{
 	"coroutine",
 }
 
-func writeGoroutineLong(t *DebugSession, w io.Writer, g *api.Goroutine, prefix string) {
+func writeGoroutineLong(t *Session, w io.Writer, g *api.Goroutine, prefix string) {
 	fmt.Fprintf(w, "%sGoroutine %d:\n%s\tRuntime: %s\n%s\tUser: %s\n%s\tGo: %s\n%s\tStart: %s\n",
 		prefix, g.ID,
 		prefix, t.formatLocation(g.CurrentLoc),
@@ -690,7 +690,7 @@ func writeGoroutineLabels(w io.Writer, g *api.Goroutine, prefix string) {
 	fmt.Fprintf(w, "\n")
 }
 
-func restart(t *DebugSession, ctx callContext, args string) error {
+func restart(t *Session, ctx callContext, args string) error {
 	t.oldPid = 0
 	resetArgs, newArgv, newRedirects, err := parseNewArgv(args)
 	if err != nil {
@@ -714,7 +714,7 @@ func parseOptionalCount(arg string) (int64, error) {
 	return strconv.ParseInt(arg, 0, 64)
 }
 
-func restartIntl(t *DebugSession, rerecord bool, restartPos string, resetArgs bool, newArgv []string, newRedirects [3]string) error {
+func restartIntl(t *Session, rerecord bool, restartPos string, resetArgs bool, newArgv []string, newRedirects [3]string) error {
 	discarded, err := t.client.RestartFrom(rerecord, restartPos, resetArgs, newArgv, newRedirects, false)
 	if err != nil {
 		return err
@@ -789,7 +789,7 @@ func parseOneRedirect(w []string, redirs *[3]string) ([]string, bool, error) {
 	return w, false, nil
 }
 
-func printcontextNoState(t *DebugSession) {
+func printcontextNoState(t *Session) {
 	state, _ := t.client.GetState()
 	if state == nil || state.CurrentThread == nil {
 		return
@@ -797,7 +797,7 @@ func printcontextNoState(t *DebugSession) {
 	printcontext(t, state)
 }
 
-func (s *DebugCommands) rebuild(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) rebuild(t *Session, ctx callContext, args string) error {
 	defer t.onStop()
 	discarded, err := t.client.Restart(true)
 	if len(discarded) > 0 {
@@ -806,7 +806,7 @@ func (s *DebugCommands) rebuild(t *DebugSession, ctx callContext, args string) e
 	return err
 }
 
-func (s *DebugCommands) cont(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) cont(t *Session, ctx callContext, args string) error {
 	if args != "" {
 		tmp, err := setBreakpoint(t, ctx, false, args)
 		if err != nil {
@@ -837,7 +837,7 @@ func (s *DebugCommands) cont(t *DebugSession, ctx callContext, args string) erro
 	return nil
 }
 
-func continueUntilCompleteNext(t *DebugSession, state *api.DebuggerState, op string, shouldPrintFile bool) error {
+func continueUntilCompleteNext(t *Session, state *api.DebuggerState, op string, shouldPrintFile bool) error {
 	defer t.onStop()
 	if !state.NextInProgress {
 		if shouldPrintFile {
@@ -883,7 +883,7 @@ func continueUntilCompleteNext(t *DebugSession, state *api.DebuggerState, op str
 	}
 }
 
-func promptAutoContinue(t *DebugSession, op string) (string, error) {
+func promptAutoContinue(t *Session, op string) (string, error) {
 	for {
 		answer, err := t.line.Prompt(fmt.Sprintf("[c] continue [s] stop here and cancel %s, [f] finish %s skipping all breakpoints? ", op, op))
 		if err != nil {
@@ -897,7 +897,7 @@ func promptAutoContinue(t *DebugSession, op string) (string, error) {
 	}
 }
 
-func scopePrefixSwitch(t *DebugSession, ctx callContext) error {
+func scopePrefixSwitch(t *Session, ctx callContext) error {
 	if ctx.Scope.GoroutineID > 0 {
 		_, err := t.client.SwitchGoroutine(ctx.Scope.GoroutineID)
 		if err != nil {
@@ -914,7 +914,7 @@ func exitedToError(state *api.DebuggerState, err error) (*api.DebuggerState, err
 	return state, err
 }
 
-func (s *DebugCommands) step(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) step(t *Session, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -932,16 +932,16 @@ func (s *DebugCommands) step(t *DebugSession, ctx callContext, args string) erro
 var errNotOnFrameZero = errors.New("not on topmost frame")
 
 // stepInstruction implements the step-instruction (stepi) command.
-func (s *DebugCommands) stepInstruction(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) stepInstruction(t *Session, ctx callContext, args string) error {
 	return stepInstruction(t, ctx, s.frame, false)
 }
 
 // nextInstruction implements the next-instruction (nexti) command.
-func (s *DebugCommands) nextInstruction(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) nextInstruction(t *Session, ctx callContext, args string) error {
 	return stepInstruction(t, ctx, s.frame, true)
 }
 
-func stepInstruction(t *DebugSession, ctx callContext, frame int, skipCalls bool) error {
+func stepInstruction(t *Session, ctx callContext, frame int, skipCalls bool) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -964,7 +964,7 @@ func stepInstruction(t *DebugSession, ctx callContext, frame int, skipCalls bool
 	return nil
 }
 
-func (s *DebugCommands) next(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) next(t *Session, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -999,7 +999,7 @@ func (s *DebugCommands) next(t *DebugSession, ctx callContext, args string) erro
 	return nil
 }
 
-func (s *DebugCommands) stepout(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) stepout(t *Session, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -1018,7 +1018,7 @@ func (s *DebugCommands) stepout(t *DebugSession, ctx callContext, args string) e
 	return continueUntilCompleteNext(t, state, "stepout", true)
 }
 
-func (s *DebugCommands) call(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) call(t *Session, ctx callContext, args string) error {
 	if err := scopePrefixSwitch(t, ctx); err != nil {
 		return err
 	}
@@ -1038,7 +1038,7 @@ func (s *DebugCommands) call(t *DebugSession, ctx callContext, args string) erro
 	return continueUntilCompleteNext(t, state, "call", true)
 }
 
-func clear(t *DebugSession, ctx callContext, args string) error {
+func clear(t *Session, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("not enough arguments")
 	}
@@ -1056,7 +1056,7 @@ func clear(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func clearAll(t *DebugSession, ctx callContext, args string) error {
+func clearAll(t *Session, ctx callContext, args string) error {
 	breakPoints, err := t.client.ListBreakpoints(false)
 	if err != nil {
 		return err
@@ -1097,7 +1097,7 @@ func clearAll(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func toggle(t *DebugSession, ctx callContext, args string) error {
+func toggle(t *Session, ctx callContext, args string) error {
 	if args == "" {
 		return errors.New("not enough arguments")
 	}
@@ -1115,7 +1115,7 @@ func toggle(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func breakpoints(t *DebugSession, ctx callContext, args string) error {
+func breakpoints(t *Session, ctx callContext, args string) error {
 	breakPoints, err := t.client.ListBreakpoints(args == "-a")
 	if err != nil {
 		return err
@@ -1188,7 +1188,7 @@ func formatBreakpointAttrs(prefix string, bp *api.Breakpoint, includeTrace bool)
 	return attrs
 }
 
-func setBreakpoint(t *DebugSession, ctx callContext, tracepoint bool, argstr string) ([]*api.Breakpoint, error) {
+func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) ([]*api.Breakpoint, error) {
 	var (
 		cond string
 		spec string
@@ -1333,12 +1333,12 @@ func setBreakpoint(t *DebugSession, ctx callContext, tracepoint bool, argstr str
 	return created, nil
 }
 
-func breakpoint(t *DebugSession, ctx callContext, args string) error {
+func breakpoint(t *Session, ctx callContext, args string) error {
 	_, err := setBreakpoint(t, ctx, false, args)
 	return err
 }
 
-func tracepoint(t *DebugSession, ctx callContext, args string) error {
+func tracepoint(t *Session, ctx callContext, args string) error {
 	if ctx.Prefix == onPrefix {
 		if args != "" {
 			return errors.New("too many arguments to trace")
@@ -1382,7 +1382,7 @@ func runEditor(args ...string) error {
 	return cmd.Run()
 }
 
-func edit(t *DebugSession, ctx callContext, args string) error {
+func edit(t *Session, ctx callContext, args string) error {
 	file, lineno, _, err := getLocation(t, ctx, args, false)
 	if err != nil {
 		return err
@@ -1405,7 +1405,7 @@ func edit(t *DebugSession, ctx callContext, args string) error {
 	}
 }
 
-func watchpoint(t *DebugSession, ctx callContext, args string) error {
+func watchpoint(t *Session, ctx callContext, args string) error {
 	v := strings.SplitN(args, " ", 2)
 	if len(v) != 2 {
 		return errors.New("wrong number of arguments: watch [-r|-w|-rw] <expr>")
@@ -1429,7 +1429,7 @@ func watchpoint(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func examineMemoryCmd(t *DebugSession, ctx callContext, argstr string) error {
+func examineMemoryCmd(t *Session, ctx callContext, argstr string) error {
 	var (
 		address uint64
 		err     error
@@ -1587,7 +1587,7 @@ func parseFormatArg(args string) (fmtstr, argsOut string) {
 
 const maxPrintVarChanGoroutines = 100
 
-func (s *DebugCommands) printVar(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) printVar(t *Session, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("not enough arguments")
 	}
@@ -1621,7 +1621,7 @@ func (s *DebugCommands) printVar(t *DebugSession, ctx callContext, args string) 
 	return nil
 }
 
-func whatisCommand(t *DebugSession, ctx callContext, args string) error {
+func whatisCommand(t *Session, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("not enough arguments")
 	}
@@ -1648,7 +1648,7 @@ func whatisCommand(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func setVar(t *DebugSession, ctx callContext, args string) error {
+func setVar(t *Session, ctx callContext, args string) error {
 	// HACK: in go '=' is not an operator, we detect the error and try to recover from it by splitting the input string
 	_, err := parser.ParseExpr(args)
 	if err == nil {
@@ -1665,7 +1665,7 @@ func setVar(t *DebugSession, ctx callContext, args string) error {
 	return t.client.SetVariable(ctx.Scope, lexpr, rexpr)
 }
 
-func (t *DebugSession) printFilteredVariables(varType string, vars []api.Variable, filter string, cfg api.LoadConfig) error {
+func (t *Session) printFilteredVariables(varType string, vars []api.Variable, filter string, cfg api.LoadConfig) error {
 	reg, err := regexp.Compile(filter)
 	if err != nil {
 		return err
@@ -1691,7 +1691,7 @@ func (t *DebugSession) printFilteredVariables(varType string, vars []api.Variabl
 	return nil
 }
 
-func (t *DebugSession) printSortedStrings(v []string, err error) error {
+func (t *Session) printSortedStrings(v []string, err error) error {
 	if err != nil {
 		return err
 	}
@@ -1706,11 +1706,11 @@ func (t *DebugSession) printSortedStrings(v []string, err error) error {
 	return nil
 }
 
-func sources(t *DebugSession, ctx callContext, args string) error {
+func sources(t *Session, ctx callContext, args string) error {
 	return t.printSortedStrings(t.client.ListSources(args))
 }
 
-func packages(t *DebugSession, ctx callContext, args string) error {
+func packages(t *Session, ctx callContext, args string) error {
 	info, err := t.client.ListPackagesBuildInfo(args, false)
 	if err != nil {
 		return err
@@ -1722,15 +1722,15 @@ func packages(t *DebugSession, ctx callContext, args string) error {
 	return t.printSortedStrings(pkgs, nil)
 }
 
-func funcs(t *DebugSession, ctx callContext, args string) error {
+func funcs(t *Session, ctx callContext, args string) error {
 	return t.printSortedStrings(t.client.ListFunctions(args, 0))
 }
 
-func types(t *DebugSession, ctx callContext, args string) error {
+func types(t *Session, ctx callContext, args string) error {
 	return t.printSortedStrings(t.client.ListTypes(args))
 }
 
-func parseVarArguments(args string, t *DebugSession) (filter string, cfg api.LoadConfig) {
+func parseVarArguments(args string, t *Session) (filter string, cfg api.LoadConfig) {
 	if v := config.Split2PartsBySpace(args); len(v) >= 1 && v[0] == "-v" {
 		if len(v) == 2 {
 			return v[1], t.loadConfig()
@@ -1741,7 +1741,7 @@ func parseVarArguments(args string, t *DebugSession) (filter string, cfg api.Loa
 	return args, ShortLoadConfig
 }
 
-func args(t *DebugSession, ctx callContext, args string) error {
+func args(t *Session, ctx callContext, args string) error {
 	filter, cfg := parseVarArguments(args, t)
 	if ctx.Prefix == onPrefix {
 		if filter != "" {
@@ -1757,7 +1757,7 @@ func args(t *DebugSession, ctx callContext, args string) error {
 	return t.printFilteredVariables("args", vars, filter, cfg)
 }
 
-func locals(t *DebugSession, ctx callContext, args string) error {
+func locals(t *Session, ctx callContext, args string) error {
 	filter, cfg := parseVarArguments(args, t)
 	if ctx.Prefix == onPrefix {
 		if filter != "" {
@@ -1773,7 +1773,7 @@ func locals(t *DebugSession, ctx callContext, args string) error {
 	return t.printFilteredVariables("locals", locals, filter, cfg)
 }
 
-func vars(t *DebugSession, ctx callContext, args string) error {
+func vars(t *Session, ctx callContext, args string) error {
 	filter, cfg := parseVarArguments(args, t)
 	vars, err := t.client.ListPackageVariables(filter, cfg)
 	if err != nil {
@@ -1782,7 +1782,7 @@ func vars(t *DebugSession, ctx callContext, args string) error {
 	return t.printFilteredVariables("vars", vars, filter, cfg)
 }
 
-func regs(t *DebugSession, ctx callContext, args string) error {
+func regs(t *Session, ctx callContext, args string) error {
 	includeFp := false
 	if args == "-a" {
 		includeFp = true
@@ -1801,7 +1801,7 @@ func regs(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func stackCommand(t *DebugSession, ctx callContext, args string) error {
+func stackCommand(t *Session, ctx callContext, args string) error {
 	sa, err := parseStackArgs(args)
 	if err != nil {
 		return err
@@ -1918,7 +1918,7 @@ func parseStackArgs(argstr string) (stackArgs, error) {
 
 // getLocation returns the current location or the locations specified by the argument.
 // getLocation is used to process the argument of list and edit commands.
-func getLocation(t *DebugSession, ctx callContext, args string, showContext bool) (file string, lineno int, showarrow bool, err error) {
+func getLocation(t *Session, ctx callContext, args string, showContext bool) (file string, lineno int, showarrow bool, err error) {
 	switch {
 	case len(args) == 0 && !ctx.scoped():
 		state, err := t.client.GetState()
@@ -1973,7 +1973,7 @@ func getLocation(t *DebugSession, ctx callContext, args string, showContext bool
 	}
 }
 
-func listCommand(t *DebugSession, ctx callContext, args string) error {
+func listCommand(t *Session, ctx callContext, args string) error {
 	file, lineno, showarrow, err := getLocation(t, ctx, args, true)
 	if err != nil {
 		return err
@@ -1983,7 +1983,7 @@ func listCommand(t *DebugSession, ctx callContext, args string) error {
 
 // we remove the support for starlark scripts `*.star` and starlark repl,
 // we only leave the ordinary dlv commands saved here.
-func (s *DebugCommands) sourceCommand(t *DebugSession, ctx callContext, args string) error {
+func (s *DebugCommands) sourceCommand(t *Session, ctx callContext, args string) error {
 	if len(args) == 0 {
 		return errors.New("wrong number of arguments: source <filename>")
 	}
@@ -2004,7 +2004,7 @@ func (s *DebugCommands) sourceCommand(t *DebugSession, ctx callContext, args str
 
 var errDisasmUsage = errors.New("wrong number of arguments: disassemble [-a <start> <end>] [-l <locspec>]")
 
-func disassCommand(t *DebugSession, ctx callContext, args string) error {
+func disassCommand(t *Session, ctx callContext, args string) error {
 	var cmd, rest string
 
 	if args != "" {
@@ -2064,7 +2064,7 @@ func disassCommand(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func libraries(t *DebugSession, ctx callContext, args string) error {
+func libraries(t *Session, ctx callContext, args string) error {
 	libs, err := t.client.ListDynamicLibraries()
 	if err != nil {
 		return err
@@ -2086,11 +2086,11 @@ func digits(n int) int {
 	return int(math.Floor(math.Log10(float64(n)))) + 1
 }
 
-func printStack(t *DebugSession, out io.Writer, stack []api.Stackframe, ind string, offsets bool) {
+func printStack(t *Session, out io.Writer, stack []api.Stackframe, ind string, offsets bool) {
 	api.PrintStack(t.formatPath, out, stack, ind, offsets, func(api.Stackframe) bool { return true })
 }
 
-func printcontext(t *DebugSession, state *api.DebuggerState) {
+func printcontext(t *Session, state *api.DebuggerState) {
 	if t.IsTraceNonInteractive() {
 		// If we're just running the `trace` subcommand there isn't any need
 		// to print out the rest of the state below.
@@ -2157,14 +2157,14 @@ func printcontext(t *DebugSession, state *api.DebuggerState) {
 
 const optimizedFunctionWarning = "Warning: debugging optimized function"
 
-func printcontextLocation(t *DebugSession, loc api.Location) {
+func printcontextLocation(t *Session, loc api.Location) {
 	fmt.Fprintf(t.stdout, "> %s() %s:%d (PC: %#v)\n", loc.Function.Name(), t.formatPath(loc.File), loc.Line, loc.PC)
 	if loc.Function != nil && loc.Function.Optimized {
 		fmt.Fprintln(t.stdout, optimizedFunctionWarning)
 	}
 }
 
-func printReturnValues(t *DebugSession, th *api.Thread) {
+func printReturnValues(t *Session, th *api.Thread) {
 	if th.ReturnValues == nil {
 		return
 	}
@@ -2175,7 +2175,7 @@ func printReturnValues(t *DebugSession, th *api.Thread) {
 	fmt.Fprintln(t.stdout)
 }
 
-func printcontextThread(t *DebugSession, th *api.Thread) {
+func printcontextThread(t *Session, th *api.Thread) {
 	fn := th.Function
 
 	if th.Breakpoint == nil {
@@ -2247,7 +2247,7 @@ func printcontextThread(t *DebugSession, th *api.Thread) {
 	printBreakpointInfo(t, th, false)
 }
 
-func printBreakpointInfo(t *DebugSession, th *api.Thread, tracepointOnNewline bool) {
+func printBreakpointInfo(t *Session, th *api.Thread, tracepointOnNewline bool) {
 	if th.BreakpointInfo == nil {
 		return
 	}
@@ -2302,7 +2302,7 @@ func printBreakpointInfo(t *DebugSession, th *api.Thread, tracepointOnNewline bo
 	}
 }
 
-func printTracepoint(t *DebugSession, th *api.Thread, bpname string, fn *api.Function, args string, hasReturnValue bool) {
+func printTracepoint(t *Session, th *api.Thread, bpname string, fn *api.Function, args string, hasReturnValue bool) {
 	if t.conf.TraceShowTimestamp {
 		fmt.Fprintf(t.stdout, "%s ", time.Now().Format(time.RFC3339Nano))
 	}
@@ -2371,7 +2371,7 @@ const (
 	printPosStepInstruction
 )
 
-func printPos(t *DebugSession, th *api.Thread, flags printPosFlags) error {
+func printPos(t *Session, th *api.Thread, flags printPosFlags) error {
 	if flags&printPosStepInstruction != 0 {
 		if t.conf.Position == config.PositionSource {
 			return printfile(t, th.File, th.Line, flags&printPosShowArrow != 0)
@@ -2384,7 +2384,7 @@ func printPos(t *DebugSession, th *api.Thread, flags printPosFlags) error {
 	return printfile(t, th.File, th.Line, flags&printPosShowArrow != 0)
 }
 
-func printfile(t *DebugSession, filename string, line int, showArrow bool) error {
+func printfile(t *Session, filename string, line int, showArrow bool) error {
 	if filename == "" {
 		return nil
 	}
@@ -2412,7 +2412,7 @@ func printfile(t *DebugSession, filename string, line int, showArrow bool) error
 	return Print(t.stdout, file, line-lineCount, line+lineCount+1, arrowLine)
 }
 
-func printdisass(t *DebugSession, pc uint64) error {
+func printdisass(t *Session, pc uint64) error {
 	disasm, err := t.client.DisassemblePC(api.EvalScope{GoroutineID: -1, Frame: 0, DeferredCall: 0}, pc, t.conf.GetDisassembleFlavour())
 	if err != nil {
 		return err
@@ -2449,7 +2449,7 @@ func (ere ExitRequestError) Error() string {
 	return ""
 }
 
-func exitCommand(t *DebugSession, ctx callContext, args string) error {
+func exitCommand(t *Session, ctx callContext, args string) error {
 	if args == "-c" {
 		if !t.client.IsMulticlient() {
 			return errors.New("not connected to an --accept-multiclient server")
@@ -2473,14 +2473,14 @@ func exitCommand(t *DebugSession, ctx callContext, args string) error {
 	return ExitRequestError{}
 }
 
-func getBreakpointByIDOrName(t *DebugSession, arg string) (*api.Breakpoint, error) {
+func getBreakpointByIDOrName(t *Session, arg string) (*api.Breakpoint, error) {
 	if id, err := strconv.Atoi(arg); err == nil {
 		return t.client.GetBreakpoint(id)
 	}
 	return t.client.GetBreakpointByName(arg)
 }
 
-func (c *DebugCommands) onCmd(t *DebugSession, ctx callContext, argstr string) error {
+func (c *DebugCommands) onCmd(t *Session, ctx callContext, argstr string) error {
 	args := config.Split2PartsBySpace(argstr)
 
 	if len(args) < 2 {
@@ -2538,7 +2538,7 @@ func (c *DebugCommands) onCmd(t *DebugSession, ctx callContext, argstr string) e
 	return t.client.AmendBreakpoint(ctx.Breakpoint)
 }
 
-func (s *DebugCommands) parseBreakpointAttrs(t *DebugSession, ctx callContext, r io.Reader) error {
+func (s *DebugCommands) parseBreakpointAttrs(t *Session, ctx callContext, r io.Reader) error {
 	ctx.Breakpoint.Tracepoint = false
 	ctx.Breakpoint.Goroutine = false
 	ctx.Breakpoint.Stacktrace = 0
@@ -2558,7 +2558,7 @@ func (s *DebugCommands) parseBreakpointAttrs(t *DebugSession, ctx callContext, r
 	return scan.Err()
 }
 
-func condition(t *DebugSession, ctx callContext, argstr string) error {
+func condition(t *Session, ctx callContext, argstr string) error {
 	args := config.Split2PartsBySpace(argstr)
 
 	if len(args) < 2 {
@@ -2614,7 +2614,7 @@ func condition(t *DebugSession, ctx callContext, argstr string) error {
 	return t.client.AmendBreakpoint(bp)
 }
 
-func (s *DebugCommands) executeFile(t *DebugSession, name string) error {
+func (s *DebugCommands) executeFile(t *Session, name string) error {
 	fh, err := os.Open(name)
 	if err != nil {
 		return err
@@ -2642,7 +2642,7 @@ func (s *DebugCommands) executeFile(t *DebugSession, name string) error {
 	return scanner.Err()
 }
 
-func display(t *DebugSession, ctx callContext, args string) error {
+func display(t *Session, ctx callContext, args string) error {
 	const (
 		addOption = "-a "
 		delOption = "-d "
@@ -2674,7 +2674,7 @@ func display(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func dump(t *DebugSession, ctx callContext, args string) error {
+func dump(t *Session, ctx callContext, args string) error {
 	if args == "" {
 		return errors.New("not enough arguments")
 	}
@@ -2704,7 +2704,7 @@ func dump(t *DebugSession, ctx callContext, args string) error {
 	return nil
 }
 
-func target(t *DebugSession, ctx callContext, args string) error {
+func target(t *Session, ctx callContext, args string) error {
 	argv := config.Split2PartsBySpace(args)
 	switch argv[0] {
 	case "list":
@@ -2797,7 +2797,7 @@ func formatBreakpointName(bp *api.Breakpoint, upcase bool) string {
 	return fmt.Sprintf("%s %s", thing, id)
 }
 
-func (t *DebugSession) formatBreakpointLocation(bp *api.Breakpoint) string {
+func (t *Session) formatBreakpointLocation(bp *api.Breakpoint) string {
 	var out bytes.Buffer
 	if len(bp.Addrs) > 0 {
 		for i, addr := range bp.Addrs {
@@ -2822,7 +2822,7 @@ func (t *DebugSession) formatBreakpointLocation(bp *api.Breakpoint) string {
 	return out.String()
 }
 
-func shouldAskToSuspendBreakpoint(t *DebugSession) bool {
+func shouldAskToSuspendBreakpoint(t *Session) bool {
 	fns, _ := t.client.ListFunctions(`^plugin\.Open$`, 0)
 	_, err := t.client.GetState()
 	return len(fns) > 0 || isErrProcessExited(err) || t.client.FollowExecEnabled()

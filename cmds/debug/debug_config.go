@@ -1,4 +1,4 @@
-package terminal
+package debug
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"github.com/hitzhangjie/tinydbg/pkg/config"
 )
 
-func configureCmd(t *DebugSession, ctx callContext, args string) error {
+func configureCmd(t *Session, ctx callContext, args string) error {
 	t.substitutePathRulesCache = nil
 	switch args {
 	case "-list":
@@ -32,14 +32,14 @@ func configureCmd(t *DebugSession, ctx callContext, args string) error {
 	}
 }
 
-func configureList(t *DebugSession) error {
+func configureList(t *Session) error {
 	w := new(tabwriter.Writer)
 	w.Init(t.stdout, 0, 8, 1, ' ', 0)
 	config.ConfigureList(w, t.conf, "yaml")
 	return w.Flush()
 }
 
-func configureSet(t *DebugSession, args string) error {
+func configureSet(t *Session, args string) error {
 	v := config.Split2PartsBySpace(args)
 
 	cfgname := v[0]
@@ -65,7 +65,7 @@ func configureSet(t *DebugSession, args string) error {
 	return config.ConfigureSetSimple(rest, cfgname, field)
 }
 
-func configureSetSubstitutePath(t *DebugSession, rest string) error {
+func configureSetSubstitutePath(t *Session, rest string) error {
 	if strings.TrimSpace(rest) == "-clear" {
 		t.conf.SubstitutePath = t.conf.SubstitutePath[:0]
 		return nil
@@ -116,7 +116,7 @@ func configureSetSubstitutePath(t *DebugSession, rest string) error {
 	return nil
 }
 
-func configureSetAlias(t *DebugSession, rest string) error {
+func configureSetAlias(t *Session, rest string) error {
 	argv := config.SplitQuotedFields(rest, '"')
 	switch len(argv) {
 	case 1: // delete alias rule

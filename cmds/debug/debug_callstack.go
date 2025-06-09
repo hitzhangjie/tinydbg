@@ -1,4 +1,4 @@
-package terminal
+package debug
 
 func init() {
 	registerDebugCmd(stackCmd)
@@ -35,7 +35,7 @@ var frameCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"frame"},
 		group:   stackCmds,
-		cmdFn: func(t *DebugSession, ctx callContext, arg string) error {
+		cmdFn: func(t *Session, ctx callContext, arg string) error {
 			return c.frameCommand(t, ctx, arg, frameSet)
 		},
 		helpMsg: `Set the current frame, or execute command on a different frame.
@@ -52,7 +52,7 @@ var upCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"up"},
 		group:   stackCmds,
-		cmdFn: func(t *DebugSession, ctx callContext, arg string) error {
+		cmdFn: func(t *Session, ctx callContext, arg string) error {
 			return c.frameCommand(t, ctx, arg, frameUp)
 		},
 		helpMsg: `Move the current frame up.
@@ -68,7 +68,7 @@ var downCmd = func(c *DebugCommands) *command {
 	return &command{
 		aliases: []string{"down"},
 		group:   stackCmds,
-		cmdFn: func(t *DebugSession, ctx callContext, arg string) error {
+		cmdFn: func(t *Session, ctx callContext, arg string) error {
 			return c.frameCommand(t, ctx, arg, frameDown)
 		},
 		helpMsg: `Move the current frame down.

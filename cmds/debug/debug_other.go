@@ -1,4 +1,4 @@
-package terminal
+package debug
 
 func init() {
 	registerDebugCmd(helpCmd)

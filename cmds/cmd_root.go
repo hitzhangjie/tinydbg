@@ -11,10 +11,10 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/hitzhangjie/tinydbg/cmds/debug"
 	"github.com/hitzhangjie/tinydbg/pkg/config"
 	"github.com/hitzhangjie/tinydbg/pkg/logflags"
 	"github.com/hitzhangjie/tinydbg/pkg/proc"
-	"github.com/hitzhangjie/tinydbg/pkg/terminal"
 	"github.com/hitzhangjie/tinydbg/service"
 	"github.com/hitzhangjie/tinydbg/service/api"
 	"github.com/hitzhangjie/tinydbg/service/debugger"
@@ -73,7 +73,7 @@ var (
 	attachWaitForDuration float64
 )
 
-const dlvCommandLongDesc = `tinydbg is a debugger for Go (trimmed from go-delve/delve), which only supports linux/amd64.
+const longDesc = `tinydbg is a debugger for Go (trimmed from go-delve/delve), which only supports linux/amd64.
 
 It enables you to interact with your program by controlling the execution of the process,
 evaluating variables, and providing information of thread / goroutine state, CPU register state and more.
@@ -85,7 +85,7 @@ Pass flags to the program you are debugging using ` + "`--`" + `, for example:
 ` + "`tinydbg exec ./hello -- server --config conf/config.toml`"
 
 // New returns an initialized command tree.
-func New(docCall bool) *cobra.Command {
+func New() *cobra.Command {
 	// Config setup and load.
 	//
 	// Delay reporting errors about configuration loading delayed until after the
@@ -98,7 +98,7 @@ func New(docCall bool) *cobra.Command {
 	rootCommand = &cobra.Command{
 		Use:   "tinydbg",
 		Short: "tinydbg is a lightweight debugger trimmed from Delve (Dlv) for the Go programming language.",
-		Long:  dlvCommandLongDesc,
+		Long:  longDesc,
 	}
 
 	rootCommand.PersistentFlags().StringVarP(&addr, "listen", "l", "127.0.0.1:0", "Debugging server listen address. Prefix with 'unix:' to use a unix domain socket.")
@@ -201,9 +201,9 @@ func connect(addr string, clientConn net.Conn, conf *config.Config) int {
 			}
 		}
 	}
-	term := terminal.New(client, conf)
-	term.InitFile = initFile
-	status, err := term.Run()
+	session := debug.New(client, conf)
+	session.InitFile = initFile
+	status, err := session.Run()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -282,8 +282,6 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 	}
 	defer listener.Close()
 
-	var server service.Server
-
 	disconnectChan := make(chan struct{})
 
 	if workingDir == "" {
@@ -291,7 +289,7 @@ func execute(attachPid int, processArgs []string, conf *config.Config, coreFile 
 	}
 
 	// Create and start a debugger server
-	server = rpccommon.NewServer(&service.Config{
+	server := rpccommon.NewServer(&service.Config{
 		Listener:       listener,
 		ProcessArgs:    processArgs,
 		AcceptMulti:    acceptMulti,

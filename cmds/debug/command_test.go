@@ -1,4 +1,4 @@
-package terminal
+package debug
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 }
 
 type FakeTerminal struct {
-	*DebugSession
+	*Session
 	t testing.TB
 }
 
@@ -52,8 +52,8 @@ const logCommandOutput = false
 
 func (ft *FakeTerminal) Exec(cmdstr string) (outstr string, err error) {
 	var buf bytes.Buffer
-	ft.DebugSession.stdout = &buf
-	err = ft.cmds.Call(cmdstr, ft.DebugSession)
+	ft.Session.stdout = &buf
+	err = ft.cmds.Call(cmdstr, ft.Session)
 	outstr = buf.String()
 	if logCommandOutput {
 		ft.t.Logf("command %q -> %q", cmdstr, outstr)
@@ -116,8 +116,8 @@ func withTestTerminalBuildFlags(name string, t testing.TB, buildFlags test.Build
 	}()
 
 	ft := &FakeTerminal{
-		t:            t,
-		DebugSession: New(client, &config.Config{}),
+		t:       t,
+		Session: New(client, &config.Config{}),
 	}
 	fn(ft)
 }
@@ -172,11 +172,11 @@ func TestExecuteFile(t *testing.T) {
 	c := &DebugCommands{
 		client: nil,
 		cmds: []*command{
-			{aliases: []string{"trace"}, cmdFn: func(t *DebugSession, ctx callContext, args string) error {
+			{aliases: []string{"trace"}, cmdFn: func(t *Session, ctx callContext, args string) error {
 				traceCount++
 				return nil
 			}},
-			{aliases: []string{"break"}, cmdFn: func(t *DebugSession, ctx callContext, args string) error {
+			{aliases: []string{"break"}, cmdFn: func(t *Session, ctx callContext, args string) error {
 				breakCount++
 				return nil
 			}},
@@ -195,8 +195,8 @@ func TestExecuteFile(t *testing.T) {
 }
 
 func TestIssue354(t *testing.T) {
-	printStack(&DebugSession{}, os.Stdout, []api.Stackframe{}, "", false)
-	printStack(&DebugSession{}, os.Stdout, []api.Stackframe{
+	printStack(&Session{}, os.Stdout, []api.Stackframe{}, "", false)
+	printStack(&Session{}, os.Stdout, []api.Stackframe{
 		{Location: api.Location{PC: 0, File: "irrelevant.go", Line: 10, Function: nil},
 			Bottom: true}}, "", false)
 }
@@ -655,7 +655,7 @@ func assertNoError(t *testing.T, err error, str string) {
 	}
 }
 
-func assertNoErrorConfigureCmd(t *testing.T, term *DebugSession, cmdstr string) {
+func assertNoErrorConfigureCmd(t *testing.T, term *Session, cmdstr string) {
 	t.Helper()
 	err := configureCmd(term, callContext{}, cmdstr)
 	assertNoError(t, err, fmt.Sprintf("error executing configureCmd(%s)", cmdstr))
@@ -674,7 +674,7 @@ func assertSubstitutePath(t *testing.T, sp config.SubstitutePathRules, v ...stri
 
 func TestConfig(t *testing.T) {
 	var buf bytes.Buffer
-	var term DebugSession
+	var term Session
 	term.conf = &config.Config{}
 	term.cmds = NewDebugCommands(nil)
 	term.stdout = &buf
@@ -1176,8 +1176,8 @@ func TestClearCondBreakpoint(t *testing.T) {
 
 func TestBreakpointEditing(t *testing.T) {
 	term := &FakeTerminal{
-		t:            t,
-		DebugSession: New(nil, &config.Config{}),
+		t:       t,
+		Session: New(nil, &config.Config{}),
 	}
 	_ = term
 

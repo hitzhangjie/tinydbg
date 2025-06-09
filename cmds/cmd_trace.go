@@ -7,10 +7,10 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/hitzhangjie/tinydbg/cmds/debug"
 	"github.com/hitzhangjie/tinydbg/pkg/config"
 	"github.com/hitzhangjie/tinydbg/pkg/gobuild"
 	"github.com/hitzhangjie/tinydbg/pkg/logflags"
-	"github.com/hitzhangjie/tinydbg/pkg/terminal"
 	"github.com/hitzhangjie/tinydbg/service"
 	"github.com/hitzhangjie/tinydbg/service/api"
 	"github.com/hitzhangjie/tinydbg/service/debugger"
@@ -163,7 +163,7 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 				Tracepoint:       true,
 				Line:             -1,
 				Stacktrace:       stackdepth,
-				LoadArgs:         &terminal.ShortLoadConfig,
+				LoadArgs:         &debug.ShortLoadConfig,
 				TraceFollowCalls: traceFollowCalls,
 				RootFuncName:     regexp,
 			})
@@ -185,7 +185,7 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 					TraceReturn:      true,
 					Stacktrace:       stackdepth,
 					Line:             -1,
-					LoadArgs:         &terminal.ShortLoadConfig,
+					LoadArgs:         &debug.ShortLoadConfig,
 					TraceFollowCalls: traceFollowCalls,
 					RootFuncName:     regexp,
 				})
@@ -200,11 +200,11 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 			fmt.Fprintln(os.Stderr, "no breakpoints set")
 			return 1
 		}
-		cmds := terminal.NewDebugCommands(client)
+		cmds := debug.NewDebugCommands(client)
 		cfg := &config.Config{
 			TraceShowTimestamp: traceShowTimestamp,
 		}
-		t := terminal.New(client, cfg)
+		t := debug.New(client, cfg)
 		t.SetTraceNonInteractive()
 		t.RedirectTo(os.Stderr)
 		defer t.Close()

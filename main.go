@@ -32,5 +32,5 @@ func main() {
 		logflags.WriteCgoFlagsWarning()
 	}
 
-	cmds.New(false).Execute()
+	cmds.New().Execute()
 }
