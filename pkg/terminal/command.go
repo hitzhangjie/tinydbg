@@ -36,6 +36,7 @@ import (
 	"github.com/hitzhangjie/tinydbg/service/rpc2"
 )
 
+// cmdPrefix represents the prefix of a command.
 type cmdPrefix int
 
 const (
@@ -44,6 +45,7 @@ const (
 	deferredPrefix
 )
 
+// callContext represents the context of a command.
 type callContext struct {
 	Prefix     cmdPrefix
 	Scope      api.EvalScope
@@ -54,6 +56,7 @@ func (ctx *callContext) scoped() bool {
 	return ctx.Scope.GoroutineID >= 0 || ctx.Scope.Frame > 0
 }
 
+// frameDirection represents the direction of the frame.
 type frameDirection int
 
 const (
@@ -2844,4 +2847,30 @@ func disasmPrint(dv api.AsmInstructions, out io.Writer, showHeader bool) {
 		}
 		fmt.Fprintf(tw, "%s\t%s:%d\t%#x%s\t%x\t%s\n", atpc, filepath.Base(inst.Loc.File), inst.Loc.Line, inst.Loc.PC, atbp, inst.Bytes, inst.Text)
 	}
+}
+
+// Print prints to out the text read from reader, between lines startLine and endLine.
+func Print(out io.Writer, reader io.Reader, startLine, endLine, arrowLine int) error {
+	scanner := bufio.NewScanner(reader)
+	lineno := 0
+
+	for scanner.Scan() {
+		lineno++
+		if lineno < startLine {
+			continue
+		}
+		if lineno >= endLine {
+			break
+		}
+
+		// Print line number and arrow
+		if lineno == arrowLine {
+			fmt.Fprintf(out, "=>")
+		} else {
+			fmt.Fprintf(out, "  ")
+		}
+		fmt.Fprintf(out, "%4d:\t%s\n", lineno, scanner.Text())
+	}
+
+	return scanner.Err()
 }

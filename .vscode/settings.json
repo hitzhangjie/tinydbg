@@ -8,5 +8,6 @@
         "**/*_test.go": true,
         "assets": true,
         "vendor": true
-    }
+    },
+    "editor.foldingImportsByDefault": true
 }
