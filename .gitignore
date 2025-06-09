@@ -1,13 +1,23 @@
+# Ignore all binaries without extensions
+*
+!*.*
+!*/
+
+# Ignore all object files, shared libraries
+*.o
+*.a
+*.so
+
+# Ignore all swap files, test files, local tests, tags, and debug history
+**/*.swp
 **/*.test
+localtests
 .tags*
 tags
 .dbg_history
-**/**/dlv
-!cmd/dlv/
+
+# Ignore all teamcity and vagrant files, idea files, and iml files
+.teamcity/target
 .vagrant
-**/*.swp
-localtests
 .idea
 *.iml
-.teamcity/target
-tinydbg
