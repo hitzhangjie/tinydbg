@@ -17,6 +17,8 @@ import (
 )
 
 // RPCClient is a RPC service.Client.
+//
+// Don't change this type name,  it's used by main_test.go:TestTypecheckRPC
 type RPCClient struct {
 	client *rpc.Client
 
@@ -559,6 +561,7 @@ func (c *RPCClient) GuessSubstitutePath() ([][2]string, error) {
 	return out.List, err
 }
 
+// don't change this method name, it's used by main_test.go:TestTypecheckRPC
 func (c *RPCClient) call(method string, args, reply interface{}) error {
 	return c.client.Call("RPCServer."+method, args, reply)
 }

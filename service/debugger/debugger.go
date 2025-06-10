@@ -1134,11 +1134,14 @@ func (d *Debugger) Functions(filter string, followCalls int) ([]string, error) {
 			}
 		}
 	}
+	// uniq = sort + compact
 	sort.Strings(funcs)
 	funcs = slices.Compact(funcs)
 	return funcs, nil
 }
 
+// Traverses the inner function calls of function `f` by analyzing assembly call instructions.
+// Returns a list of function names that are called within the given call depth.
 func traverse(t proc.ValidTargets, f *proc.Function, depth int, followCalls int) ([]string, error) {
 	type TraceFunc struct {
 		Func    *proc.Function
@@ -1165,12 +1168,11 @@ func traverse(t proc.ValidTargets, f *proc.Function, depth int, followCalls int)
 		if parent.Depth > followCalls {
 			continue
 		}
-		if !parent.visited {
-			funcs = append(funcs, parent.Func.Name)
-			parent.visited = true
-		} else if parent.visited {
+		if parent.visited {
 			continue
 		}
+		funcs = append(funcs, parent.Func.Name)
+		parent.visited = true
 
 		if parent.Depth+1 > followCalls {
 			// Avoid diassembling if we already cross the follow-calls depth
@@ -1184,7 +1186,8 @@ func traverse(t proc.ValidTargets, f *proc.Function, depth int, followCalls int)
 		for _, instr := range text {
 			if instr.IsCall() && instr.DestLoc != nil && instr.DestLoc.Fn != nil {
 				cf := instr.DestLoc.Fn
-				if (strings.HasPrefix(cf.Name, "runtime.") || strings.HasPrefix(cf.Name, "runtime/internal")) && cf.Name != "runtime.deferreturn" && cf.Name != "runtime.gorecover" && cf.Name != "runtime.gopanic" {
+				if (strings.HasPrefix(cf.Name, "runtime.") || strings.HasPrefix(cf.Name, "runtime/internal")) &&
+					cf.Name != "runtime.deferreturn" && cf.Name != "runtime.gorecover" && cf.Name != "runtime.gopanic" {
 					continue
 				}
 				childnode := TraceMap[cf.Name]

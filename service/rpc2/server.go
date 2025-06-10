@@ -14,6 +14,9 @@ import (
 	"github.com/hitzhangjie/tinydbg/service/debugger"
 )
 
+// RPCServer implements APIv2 methods
+//
+// Don't change this file's name, it's used by main_test.go:TestTypecheckRPC
 type RPCServer struct {
 	// config is all the information necessary to start the debugger and server.
 	config *service.Config

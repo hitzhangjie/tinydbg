@@ -74,30 +74,32 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 		var regexp string
 		var processArgs []string
 
-		dlvArgs, targetArgs := splitArgs(cmd, args)
-		var dlvArgsLen = len(dlvArgs)
-		switch dlvArgsLen {
+		dbgArgs, targetArgs := splitArgs(cmd, args)
+		var dbgArgsLen = len(dbgArgs)
+		switch dbgArgsLen {
 		case 0:
 			fmt.Fprintf(os.Stderr, "you must supply a regexp for functions to trace\n")
 			return 1
 		case 1:
+			// tinydbg trace -exec <executable> <regexp>
 			regexp = args[0]
-			dlvArgs = dlvArgs[0:0]
+			dbgArgs = dbgArgs[0:0]
 		default:
-			regexp = dlvArgs[dlvArgsLen-1]
-			dlvArgs = dlvArgs[:dlvArgsLen-1]
+			// tinydbg trace <package/sourcefile> <regexp>
+			regexp = dbgArgs[dbgArgsLen-1]
+			dbgArgs = dbgArgs[:dbgArgsLen-1]
 		}
 
 		var debugname string
 		if traceAttachPid == 0 {
-			if dlvArgsLen >= 2 && traceExecFile != "" {
+			if dbgArgsLen >= 2 && traceExecFile != "" {
 				fmt.Fprintln(os.Stderr, "Cannot specify package when using --exec.")
 				return 1
 			}
 
 			debugname = traceExecFile
 			if traceExecFile == "" {
-				debugexe, ok := buildBinary(cmd, dlvArgs, traceTestBinary)
+				debugexe, ok := buildBinary(cmd, dbgArgs, traceTestBinary)
 				if !ok {
 					return 1
 				}
@@ -107,7 +109,7 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 
 			processArgs = append([]string{debugname}, targetArgs...)
 		}
-		if dlvArgsLen >= 3 && traceFollowCalls <= 0 {
+		if dbgArgsLen >= 3 && traceFollowCalls <= 0 {
 			fmt.Fprintln(os.Stderr, "Need to specify a trace depth of atleast 1")
 			return 1
 		}

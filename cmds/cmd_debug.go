@@ -68,6 +68,7 @@ func buildBinary(cmd *cobra.Command, args []string, isTest bool) (string, bool) 
 		}
 	}
 
+	fmt.Println(args)
 	err = gobuild.GoBuild(debugname, args, buildFlags)
 	if err != nil {
 		if outputFlag == "" {

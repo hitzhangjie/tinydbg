@@ -1,3 +1,5 @@
+// Don't change this file's name, it's used by main_test.go:TestTypecheckRPC
+
 package service
 
 import (

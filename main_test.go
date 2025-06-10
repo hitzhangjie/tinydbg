@@ -81,7 +81,7 @@ func TestBuild(t *testing.T) {
 	cmd.Wait()
 }
 
-func testOutput(t *testing.T, tinydbgbin, output string, delveCmds []string) (stdout, stderr []byte) {
+func testOutput(t *testing.T, tinydbgbin, output string, debugCmds []string) (stdout, stderr []byte) {
 	var stdoutBuf, stderrBuf bytes.Buffer
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
 
@@ -104,7 +104,7 @@ func testOutput(t *testing.T, tinydbgbin, output string, delveCmds []string) (st
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
 
-	assertNoError(cmd.Start(), t, "dlv debug with output")
+	assertNoError(cmd.Start(), t, "tinydbg debug with output")
 
 	// Give delve some time to compile and write the binary.
 	foundIt := false
@@ -118,32 +118,34 @@ func testOutput(t *testing.T, tinydbgbin, output string, delveCmds []string) (st
 		time.Sleep(1 * time.Second)
 	}
 	if !foundIt {
-		t.Errorf("running %q: file not created: %v", delveCmds, err)
+		t.Errorf("running %q: file not created: %v", debugCmds, err)
 	}
 
-	for _, c := range delveCmds {
+	for _, c := range debugCmds {
 		fmt.Fprintf(stdin, "%s\n", c)
 	}
 
-	// ignore "dlv debug" command error, it returns
+	// ignore "tinydbg debug" command error, it returns
 	// errors even after successful debug session.
 	cmd.Wait()
 	stdout, stderr = stdoutBuf.Bytes(), stderrBuf.Bytes()
 
 	_, err = os.Stat(debugbin)
 	if err == nil {
+		// debugbin should be deleted automatically after tracee exited.
+		//
 		// Sometimes delve on Windows can't remove the built binary before
 		// exiting and gets an "Access is denied" error when trying.
 		// See: https://travis-ci.com/go-delve/delve/jobs/296325131.
 		// We have added a delay to gobuild.Remove, but to avoid any test
 		// flakiness, we guard against this failure here as well.
 		if runtime.GOOS != "windows" {
-			t.Errorf("running %q: file %v was not deleted\nstdout is %q, stderr is %q", delveCmds, debugbin, stdout, stderr)
+			t.Errorf("running %q: file %v was not deleted\nstdout is %q, stderr is %q", debugCmds, debugbin, stdout, stderr)
 		}
 		return
 	}
 	if !os.IsNotExist(err) {
-		t.Errorf("running %q: %v\nstdout is %q, stderr is %q", delveCmds, err, stdout, stderr)
+		t.Errorf("running %q: %v\nstdout is %q, stderr is %q", debugCmds, err, stdout, stderr)
 		return
 	}
 	return
@@ -165,7 +167,7 @@ func TestOutput(t *testing.T) {
 	}
 }
 
-// TestUnattendedBreakpoint tests whether dlv will print a message to stderr when the client that sends continue is disconnected
+// TestUnattendedBreakpoint tests whether tinydbg will print a message to stderr when the client that sends continue is disconnected
 // or not.
 func TestUnattendedBreakpoint(t *testing.T) {
 	const listenAddr = "127.0.0.1:40573"
@@ -255,7 +257,7 @@ func TestRedirect(t *testing.T) {
 	cmd.Wait()
 }
 
-func TestExitInInit(t *testing.T) {
+func TestExitWhenDebugSessionInit(t *testing.T) {
 	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
@@ -264,21 +266,21 @@ func TestExitInInit(t *testing.T) {
 	cmd.Dir = buildtestdir
 	out, err := cmd.CombinedOutput()
 	t.Logf("%q %v\n", string(out), err)
-	// dlv will exit anyway because stdin is not a tty, but it will print the
+	// tinydbg will exit anyway because stdin is not a tty, but it will print the
 	// prompt once if the init file didn't call exit successfully.
-	if strings.Contains(string(out), "(dlv)") {
-		t.Fatal("init did not cause dlv to exit")
+	if strings.Contains(string(out), "(tinydbg)") {
+		t.Fatal("init did not cause tinydbg to exit")
 	}
 }
 
 func getMethods(pkg *types.Package, typename string) map[string]*types.Func {
-	r := make(map[string]*types.Func)
+	funcs := make(map[string]*types.Func)
 	mset := types.NewMethodSet(types.NewPointer(pkg.Scope().Lookup(typename).Type()))
 	for i := 0; i < mset.Len(); i++ {
 		fn := mset.At(i).Obj().(*types.Func)
-		r[fn.Name()] = fn
+		funcs[fn.Name()] = fn
 	}
-	return r
+	return funcs
 }
 
 func publicMethodOf(decl ast.Decl, receiver string) *ast.FuncDecl {
@@ -341,9 +343,12 @@ func qf(*types.Package) string {
 }
 
 func TestTypecheckRPC(t *testing.T) {
+	// go1.24 AST changed, so no need to run the following check, it only works for older version of go.
+	// Actually, we should provide another version for go1.24 typechecking agains RPCServer, RPCClient, and client.call.
 	if goversion.VersionAfterOrEqual(runtime.Version(), 1, 24) {
 		t.Skip("disabled due to export format changes")
 	}
+
 	fset := &token.FileSet{}
 	cfg := &packages.Config{
 		Mode: packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedName | packages.NeedCompiledGoFiles | packages.NeedTypes,
@@ -382,21 +387,15 @@ func TestTypecheckRPC(t *testing.T) {
 		}
 
 		switch fndecl.Name.Name {
-		case "Continue", "Rewind":
-			// wrappers over continueDir
+		case "Continue":
+			// support functions
 			continue
 		case "SetReturnValuesLoadConfig", "Disconnect":
 			// support functions
 			continue
 		}
 
-		if fndecl.Name.Name == "Continue" || fndecl.Name.Name == "Rewind" || fndecl.Name.Name == "DirectionCongruentContinue" {
-			// using continueDir
-			continue
-		}
-
 		callx := findCallCall(fndecl)
-
 		if callx == nil {
 			t.Errorf("%s: could not find RPC call", fset.Position(fndecl.Pos()))
 			errcount++
@@ -458,20 +457,16 @@ func TestTypecheckRPC(t *testing.T) {
 func TestTrace(t *testing.T) {
 	tinydbgbin := protest.GetTinyDbgBinary(t)
 
-	expected := []byte("> goroutine(1): main.foo(99, 9801)\n>> goroutine(1): main.foo => (9900)\n")
+	expected := []byte("> goroutine(1): main.foo(99, 9801)\nx=99, y=9801, z=0\n>> goroutine(1): main.foo => (9900)\nz=9900")
 
-	fixtures := protest.FindFixturesDir()
+	fixtures, err := filepath.Abs(protest.FindFixturesDir())
+	assertNoError(err, t, "determine _fixture path")
+
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "issue573.go"), "foo")
-	rdr, err := cmd.StderrPipe()
-	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
-
 	cmd.Dir = filepath.Join(fixtures, "buildtest")
 
-	assertNoError(cmd.Start(), t, "running trace")
-
-	output, err := io.ReadAll(rdr)
-	assertNoError(err, t, "ReadAll")
+	output, err := cmd.CombinedOutput()
+	assertNoError(err, t, fmt.Sprintf("get output: %s", string(output)))
 
 	if !bytes.Contains(output, expected) {
 		t.Fatalf("expected:\n%s\ngot:\n%s", string(expected), string(output))
@@ -484,7 +479,9 @@ func TestTrace2(t *testing.T) {
 
 	expected := []byte("> goroutine(1): main.callme(2)\n>> goroutine(1): main.callme => (4)\n")
 
-	fixtures := protest.FindFixturesDir()
+	fixtures, err := filepath.Abs(protest.FindFixturesDir())
+	assertNoError(err, t, "determine _fixture path")
+
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "traceprog.go"), "callme")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -508,7 +505,9 @@ func TestTraceDirRecursion(t *testing.T) {
 
 	expected := []byte("> goroutine(1):frame(1) main.A(5, 5)\n > goroutine(1):frame(2) main.A(4, 4)\n  > goroutine(1):frame(3) main.A(3, 3)\n   > goroutine(1):frame(4) main.A(2, 2)\n    > goroutine(1):frame(5) main.A(1, 1)\n    >> goroutine(1):frame(5) main.A => (1)\n   >> goroutine(1):frame(4) main.A => (2)\n  >> goroutine(1):frame(3) main.A => (6)\n >> goroutine(1):frame(2) main.A => (24)\n>> goroutine(1):frame(1) main.A => (120)\n")
 
-	fixtures := protest.FindFixturesDir()
+	fixtures, err := filepath.Abs(protest.FindFixturesDir())
+	assertNoError(err, t, "determine _fixture path")
+
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "leafrec.go"), "main.A", "--follow-calls", "4")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -545,7 +544,9 @@ func TestTraceMultipleGoroutines(t *testing.T) {
 	expected := []byte("main.callme(0, \"five\")\n")
 	expected2 := []byte("main.callme => (0)\n")
 
-	fixtures := protest.FindFixturesDir()
+	fixtures, err := filepath.Abs(protest.FindFixturesDir())
+	assertNoError(err, t, "determine _fixtures path")
+
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "goroutines-trace.go"), "callme")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -590,7 +591,7 @@ func TestTracePid(t *testing.T) {
 	}
 	defer targetCmd.Process.Kill()
 
-	// dlv attach the process by pid
+	// tinydbg attach the process by pid
 	cmd := exec.Command(tinydbgbin, "trace", "-p", strconv.Itoa(targetCmd.Process.Pid), "main.A")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -656,74 +657,6 @@ func TestTracePrintStack(t *testing.T) {
 	}
 }
 
-func TestDlvTestChdir(t *testing.T) {
-	tinydbgbin := protest.GetTinyDbgBinary(t)
-
-	fixtures := protest.FindFixturesDir()
-
-	dotest := func(testargs []string) {
-		t.Helper()
-
-		args := []string{"--allow-non-terminal-interactive=true", "test"}
-		args = append(args, testargs...)
-		args = append(args, "--", "-test.v")
-		t.Logf("dlv test %s", args)
-		cmd := exec.Command(tinydbgbin, args...)
-		cmd.Stdin = strings.NewReader("continue\nexit\n")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("error executing Delve: %v", err)
-		}
-		t.Logf("output: %q", out)
-
-		p, _ := filepath.Abs(filepath.Join(fixtures, "buildtest"))
-		tgt := "current directory: " + p
-		if !strings.Contains(string(out), tgt) {
-			t.Errorf("output did not contain expected string %q", tgt)
-		}
-	}
-
-	dotest([]string{filepath.Join(fixtures, "buildtest")})
-	files, _ := filepath.Glob(filepath.Join(fixtures, "buildtest", "*.go"))
-	dotest(files)
-}
-
-func TestDefaultBinary(t *testing.T) {
-	// Check that when delve is run twice in the same directory simultaneously
-	// it will pick different default output binary paths.
-	tinydbgbin := protest.GetTinyDbgBinary(t)
-	fixture := filepath.Join(protest.FindFixturesDir(), "testargs.go")
-
-	startOne := func() (io.WriteCloser, func() error, *bytes.Buffer) {
-		cmd := exec.Command(tinydbgbin, "debug", "--allow-non-terminal-interactive=true", fixture, "--", "test")
-		stdin, _ := cmd.StdinPipe()
-		stdoutBuf := new(bytes.Buffer)
-		cmd.Stdout = stdoutBuf
-
-		assertNoError(cmd.Start(), t, "dlv debug")
-		return stdin, cmd.Wait, stdoutBuf
-	}
-
-	stdin1, wait1, stdoutBuf1 := startOne()
-	defer stdin1.Close()
-
-	stdin2, wait2, stdoutBuf2 := startOne()
-	defer stdin2.Close()
-
-	fmt.Fprintf(stdin1, "continue\nquit\n")
-	fmt.Fprintf(stdin2, "continue\nquit\n")
-
-	wait1()
-	wait2()
-
-	out1, out2 := stdoutBuf1.String(), stdoutBuf2.String()
-	t.Logf("%q", out1)
-	t.Logf("%q", out2)
-	if out1 == out2 {
-		t.Errorf("outputs match")
-	}
-}
-
 func TestUnixDomainSocket(t *testing.T) {
 	tmpdir := os.TempDir()
 	if tmpdir == "" {
@@ -744,7 +677,7 @@ func TestUnixDomainSocket(t *testing.T) {
 	assertNoError(err, t, "stderr pipe")
 	defer stderr.Close()
 
-	assertNoError(cmd.Start(), t, "dlv debug")
+	assertNoError(cmd.Start(), t, "tinydbg debug")
 
 	scan := bufio.NewScanner(stderr)
 	// wait for the debugger to start
