@@ -40,13 +40,13 @@ func assertNoError(err error, t testing.TB, s string) {
 func TestBuild(t *testing.T) {
 	const listenAddr = "127.0.0.1:40573"
 
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	fixtures := protest.FindFixturesDir()
 
 	buildtestdir := filepath.Join(fixtures, "buildtest")
 
-	cmd := exec.Command(dlvbin, "debug", "--headless=true", "--listen="+listenAddr, "--log", "--log-output=debugger,rpc")
+	cmd := exec.Command(tinydbgbin, "debug", "--headless=true", "--listen="+listenAddr, "--log", "--log-output=debugger,rpc")
 	cmd.Dir = buildtestdir
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
@@ -81,11 +81,11 @@ func TestBuild(t *testing.T) {
 	cmd.Wait()
 }
 
-func testOutput(t *testing.T, dlvbin, output string, delveCmds []string) (stdout, stderr []byte) {
+func testOutput(t *testing.T, tinydbgbin, output string, delveCmds []string) (stdout, stderr []byte) {
 	var stdoutBuf, stderrBuf bytes.Buffer
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
 
-	c := []string{dlvbin, "debug", "--allow-non-terminal-interactive=true"}
+	c := []string{tinydbgbin, "debug", "--allow-non-terminal-interactive=true"}
 	debugbin := filepath.Join(buildtestdir, "__debug_bin")
 	if output != "" {
 		c = append(c, "--output", output)
@@ -152,13 +152,13 @@ func testOutput(t *testing.T, dlvbin, output string, delveCmds []string) (stdout
 // TestOutput verifies that the debug executable is created in the correct path
 // and removed after exit.
 func TestOutput(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	for _, output := range []string{"__debug_bin", "myownname", filepath.Join(t.TempDir(), "absolute.path")} {
-		testOutput(t, dlvbin, output, []string{"exit"})
+		testOutput(t, tinydbgbin, output, []string{"exit"})
 
 		const hello = "hello world!"
-		stdout, _ := testOutput(t, dlvbin, output, []string{"continue", "exit"})
+		stdout, _ := testOutput(t, tinydbgbin, output, []string{"continue", "exit"})
 		if !strings.Contains(string(stdout), hello) {
 			t.Errorf("stdout %q should contain %q", stdout, hello)
 		}
@@ -171,7 +171,7 @@ func TestUnattendedBreakpoint(t *testing.T) {
 	const listenAddr = "127.0.0.1:40573"
 
 	fixturePath := filepath.Join(protest.FindFixturesDir(), "panic.go")
-	cmd := exec.Command(protest.GetDlvBinary(t), "debug", "--continue", "--headless", "--accept-multiclient", "--listen", listenAddr, fixturePath)
+	cmd := exec.Command(protest.GetTinyDbgBinary(t), "debug", "--continue", "--headless", "--accept-multiclient", "--listen", listenAddr, fixturePath)
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stdout pipe")
 	defer stderr.Close()
@@ -198,10 +198,10 @@ func TestUnattendedBreakpoint(t *testing.T) {
 func TestContinue(t *testing.T) {
 	const listenAddr = "127.0.0.1:40573"
 
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
-	cmd := exec.Command(dlvbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", listenAddr)
+	cmd := exec.Command(tinydbgbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", listenAddr)
 	cmd.Dir = buildtestdir
 	stdout, err := cmd.StdoutPipe()
 	assertNoError(err, t, "stdout pipe")
@@ -230,10 +230,10 @@ func TestContinue(t *testing.T) {
 func TestRedirect(t *testing.T) {
 	const listenAddr = "127.0.0.1:40573"
 
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	catfixture := filepath.Join(protest.FindFixturesDir(), "cat.go")
-	cmd := exec.Command(dlvbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", listenAddr, "-r", catfixture, catfixture)
+	cmd := exec.Command(tinydbgbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", listenAddr, "-r", catfixture, catfixture)
 	stdout, err := cmd.StdoutPipe()
 	assertNoError(err, t, "stdout pipe")
 	defer stdout.Close()
@@ -256,11 +256,11 @@ func TestRedirect(t *testing.T) {
 }
 
 func TestExitInInit(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	buildtestdir := filepath.Join(protest.FindFixturesDir(), "buildtest")
 	exitInit := filepath.Join(protest.FindFixturesDir(), "exit.init")
-	cmd := exec.Command(dlvbin, "--init", exitInit, "debug")
+	cmd := exec.Command(tinydbgbin, "--init", exitInit, "debug")
 	cmd.Dir = buildtestdir
 	out, err := cmd.CombinedOutput()
 	t.Logf("%q %v\n", string(out), err)
@@ -456,12 +456,12 @@ func TestTypecheckRPC(t *testing.T) {
 }
 
 func TestTrace(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	expected := []byte("> goroutine(1): main.foo(99, 9801)\n>> goroutine(1): main.foo => (9900)\n")
 
 	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "issue573.go"), "foo")
+	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "issue573.go"), "foo")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer rdr.Close()
@@ -480,12 +480,12 @@ func TestTrace(t *testing.T) {
 }
 
 func TestTrace2(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	expected := []byte("> goroutine(1): main.callme(2)\n>> goroutine(1): main.callme => (4)\n")
 
 	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "traceprog.go"), "callme")
+	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "traceprog.go"), "callme")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer rdr.Close()
@@ -504,12 +504,12 @@ func TestTrace2(t *testing.T) {
 }
 
 func TestTraceDirRecursion(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	expected := []byte("> goroutine(1):frame(1) main.A(5, 5)\n > goroutine(1):frame(2) main.A(4, 4)\n  > goroutine(1):frame(3) main.A(3, 3)\n   > goroutine(1):frame(4) main.A(2, 2)\n    > goroutine(1):frame(5) main.A(1, 1)\n    >> goroutine(1):frame(5) main.A => (1)\n   >> goroutine(1):frame(4) main.A => (2)\n  >> goroutine(1):frame(3) main.A => (6)\n >> goroutine(1):frame(2) main.A => (24)\n>> goroutine(1):frame(1) main.A => (120)\n")
 
 	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "leafrec.go"), "main.A", "--follow-calls", "4")
+	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "leafrec.go"), "main.A", "--follow-calls", "4")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer rdr.Close()
@@ -537,7 +537,7 @@ func TestTraceDirRecursion(t *testing.T) {
 }
 
 func TestTraceMultipleGoroutines(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	// TODO(derekparker) this test has to be a bit vague to avoid flakiness.
 	// I think a future improvement could be to use regexp captures to match the
@@ -546,7 +546,7 @@ func TestTraceMultipleGoroutines(t *testing.T) {
 	expected2 := []byte("main.callme => (0)\n")
 
 	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "goroutines-trace.go"), "callme")
+	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "goroutines-trace.go"), "callme")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer rdr.Close()
@@ -576,7 +576,7 @@ func TestTracePid(t *testing.T) {
 		}
 	}
 
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	expected := []byte("goroutine(1): main.A()\n>> goroutine(1): main.A => ()\n")
 
@@ -591,7 +591,7 @@ func TestTracePid(t *testing.T) {
 	defer targetCmd.Process.Kill()
 
 	// dlv attach the process by pid
-	cmd := exec.Command(dlvbin, "trace", "-p", strconv.Itoa(targetCmd.Process.Pid), "main.A")
+	cmd := exec.Command(tinydbgbin, "trace", "-p", strconv.Itoa(targetCmd.Process.Pid), "main.A")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer rdr.Close()
@@ -609,13 +609,13 @@ func TestTracePid(t *testing.T) {
 }
 
 func TestTraceBreakpointExists(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	fixtures := protest.FindFixturesDir()
 	// We always set breakpoints on some runtime functions at startup, so this would return with
 	// a breakpoints exists error.
 	// TODO: Perhaps we shouldn't be setting these default breakpoints in trace mode, however.
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "issue573.go"), "runtime.*panic")
+	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "issue573.go"), "runtime.*panic")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer rdr.Close()
@@ -635,10 +635,10 @@ func TestTraceBreakpointExists(t *testing.T) {
 }
 
 func TestTracePrintStack(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	fixtures := protest.FindFixturesDir()
-	cmd := exec.Command(dlvbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), "--stack", "2", filepath.Join(fixtures, "issue573.go"), "foo")
+	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), "--stack", "2", filepath.Join(fixtures, "issue573.go"), "foo")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
 	defer rdr.Close()
@@ -657,7 +657,7 @@ func TestTracePrintStack(t *testing.T) {
 }
 
 func TestDlvTestChdir(t *testing.T) {
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	fixtures := protest.FindFixturesDir()
 
@@ -668,7 +668,7 @@ func TestDlvTestChdir(t *testing.T) {
 		args = append(args, testargs...)
 		args = append(args, "--", "-test.v")
 		t.Logf("dlv test %s", args)
-		cmd := exec.Command(dlvbin, args...)
+		cmd := exec.Command(tinydbgbin, args...)
 		cmd.Stdin = strings.NewReader("continue\nexit\n")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -691,11 +691,11 @@ func TestDlvTestChdir(t *testing.T) {
 func TestDefaultBinary(t *testing.T) {
 	// Check that when delve is run twice in the same directory simultaneously
 	// it will pick different default output binary paths.
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 	fixture := filepath.Join(protest.FindFixturesDir(), "testargs.go")
 
 	startOne := func() (io.WriteCloser, func() error, *bytes.Buffer) {
-		cmd := exec.Command(dlvbin, "debug", "--allow-non-terminal-interactive=true", fixture, "--", "test")
+		cmd := exec.Command(tinydbgbin, "debug", "--allow-non-terminal-interactive=true", fixture, "--", "test")
 		stdin, _ := cmd.StdinPipe()
 		stdoutBuf := new(bytes.Buffer)
 		cmd.Stdout = stdoutBuf
@@ -732,13 +732,13 @@ func TestUnixDomainSocket(t *testing.T) {
 
 	listenPath := filepath.Join(tmpdir, "delve_test")
 
-	dlvbin := protest.GetDlvBinary(t)
+	tinydbgbin := protest.GetTinyDbgBinary(t)
 
 	fixtures := protest.FindFixturesDir()
 
 	buildtestdir := filepath.Join(fixtures, "buildtest")
 
-	cmd := exec.Command(dlvbin, "debug", "--headless=true", "--listen=unix:"+listenPath, "--log", "--log-output=debugger,rpc")
+	cmd := exec.Command(tinydbgbin, "debug", "--headless=true", "--listen=unix:"+listenPath, "--log", "--log-output=debugger,rpc")
 	cmd.Dir = buildtestdir
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")

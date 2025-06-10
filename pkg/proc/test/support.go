@@ -316,40 +316,28 @@ func ProjectRoot() string {
 	return strings.TrimSuffix(string(val), "\n")
 }
 
-func GetDlvBinary(t *testing.T) string {
+func GetTinyDbgBinary(t *testing.T) string {
 	// In case this was set in the environment
 	// from getDlvBinEBPF lets clear it here, so
 	// we can ensure we don't get build errors
 	// depending on the test ordering.
 	t.Setenv("CGO_LDFLAGS", ldFlags)
 	var tags []string
-	if runtime.GOOS == "windows" && runtime.GOARCH == "arm64" {
-		tags = []string{"-tags=exp.winarm64"}
-	}
-	if runtime.GOOS == "linux" && runtime.GOARCH == "ppc64le" {
-		tags = []string{"-tags=exp.linuxppc64le"}
-	}
-	if runtime.GOOS == "linux" && runtime.GOARCH == "riscv64" {
-		tags = []string{"-tags=exp.linuxriscv64"}
-	}
-	if runtime.GOOS == "linux" && runtime.GOARCH == "loong64" {
-		tags = []string{"-tags=exp.linuxloong64"}
-	}
-	return getDlvBinInternal(t, tags...)
+	return getTinyDbgBinInternal(t, tags...)
 }
 
-func getDlvBinInternal(t *testing.T, goflags ...string) string {
-	dlvbin := filepath.Join(t.TempDir(), "dlv.exe")
-	args := append([]string{"build", "-o", dlvbin}, goflags...)
-	args = append(args, "github.com/hitzhangjie/tinydbg/cmd/dlv")
+func getTinyDbgBinInternal(t *testing.T, goflags ...string) string {
+	bin := filepath.Join(t.TempDir(), "tinydbg")
+	args := append([]string{"build", "-o", bin}, goflags...)
+	args = append(args, "github.com/hitzhangjie/tinydbg")
 
 	wd, _ := os.Getwd()
 	fmt.Printf("at %s %s\n", wd, goflags)
 
 	out, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
-		t.Fatalf("go build -o %v github.com/hitzhangjie/tinydbg/cmd/dlv: %v\n%s", dlvbin, err, string(out))
+		t.Fatalf("go build -o %v github.com/hitzhangjie/tinydbg: %v\n%s", bin, err, string(out))
 	}
 
-	return dlvbin
+	return bin
 }

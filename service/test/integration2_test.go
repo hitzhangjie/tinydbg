@@ -2883,13 +2883,13 @@ func TestGuessSubstitutePath(t *testing.T) {
 		os.Setenv("GOFLAGS", goflags)
 		defer os.Setenv("GOFLAGS", oldgoflags)
 
-		dlvbin := protest.GetDlvBinary(t)
+		tinydbgbin := protest.GetTinyDbgBinary(t)
 
 		listener, clientConn := service.ListenerPipe()
 		defer listener.Close()
 		server := rpccommon.NewServer(&service.Config{
 			Listener:    listener,
-			ProcessArgs: []string{dlvbin, "help"},
+			ProcessArgs: []string{tinydbgbin, "help"},
 			Debugger: debugger.Config{
 				BuildFlags:  "", // build flags can be an empty string here because the only test that uses it, does not set special flags.
 				ExecuteKind: debugger.ExecutingExistingFile,
