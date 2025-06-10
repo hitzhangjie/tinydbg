@@ -3,24 +3,17 @@
 hide footbox
 
 actor User
-participant "Debugger Frontend" as FE
 participant "Debugger Backend" as BE
 participant "Tracee" as TP
 
-activate BE
+User -> BE : input `godbg attach <pid>`
 
-BE -> BE: ln, _ := listen(ipport)\nconn, err := ln.accept()\nserveConn(conn)
-activate BE #ff0000
-deactivate BE
-
-
-User -> FE : input `godbg attach <pid>`
 activate User #ff0000
-activate FE
-FE -> BE: client := rpc2.NewClientFromConn(...)\nclient.Attach(pid) over JSON-RPC
-activate FE #ff0000
-BE -> BE: jsonrpc.ReadRequest(&req)\nif req.Method = "Attach" then {\n    server.Attach(pid)\n}
 activate BE #ff0000
+
+BE -> BE: d := debugger.New(pid,...)\nd.Attach(pid,...)
+activate BE #ffff00
+deactivate BE
 
 BE -> TP: syscall `ptrace(PTRACE_ATTACH, pid, nil, nil)`
 activate BE #ffff00
@@ -38,6 +31,8 @@ activate TP #ffff00
 
 TP --> TP: SIGTRAP handler: \n1. stop the process\n2. send SIGCHLD to ptracer, \n    notify child process state changed
 TP --> BE: send SIGCHLD to ptracer
+deactivate TP
+
 activate BE #00ffff
 BE --> BE: SIGCHLD handler: \n1. wake up ptracer\n2. ptracer `interruptible sleep` to `runnable`\n3. scheduler shedules ptracer\n4. wait4(...) returns
 deactivate BE
@@ -48,11 +43,10 @@ TP --> BE: wait4 returns
 deactivate BE
 
 deactivate TP
-BE --> FE: Return Response {msg: attach ok, pc: 0x1234, file: f, line: 123}
-deactivate BE
-deactivate FE
 
-FE --> User: Display Data `tracee stopped at 0x1234 in f:123`
+BE --> User: attach ok
+deactivate BE
+
 deactivate User
 
 @enduml
