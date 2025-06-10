@@ -17,28 +17,40 @@ deactivate BE
 User -> FE : input `godbg attach <pid>`
 activate User #ff0000
 activate FE
-FE -> BE: API Call `client.Attach(pid)`
-BE -> BE: jsonrpc.ReadRequest(&req)\nreq.Method = "Attach"\nserver.Attach(pid)
+FE -> BE: client := rpc2.NewClientFromConn(...)\nclient.Attach(pid) over JSON-RPC
+activate FE #ff0000
+BE -> BE: jsonrpc.ReadRequest(&req)\nif req.Method = "Attach" then {\n    server.Attach(pid)\n}
 activate BE #ff0000
 
 BE -> TP: syscall `ptrace(PTRACE_ATTACH, pid, nil, nil)`
+activate BE #ffff00
 activate TP #ff0000
-TP --> TP: kernel process PTRACE syscall:\n1. process RUNNABLE to TRACED\n2. generate SIGTRAP
+TP --> TP: kernel process PTRACE syscall:\n1. task_struct.ptrace = TRACED\n2. send SIGTRAP to process
 activate TP #ffff00
 deactivate TP
 TP --> BE: ptrace returns
+deactivate BE
 
-BE --> TP: wait4(pid,status)\nStopped 
+BE --> TP: wait4(pid,status):\n1. ptracer `interruptible sleep`\n2. added to waiting list of tracee's state changed\n3. will be woken up by SIGCHILD
+activate BE #ffff00
 
-TP --> TP: \n3. SIGTRAP handler,\n   notify ptracer state changed
 activate TP #ffff00
+
+TP --> TP: SIGTRAP handler: \n1. stop the process\n2. send SIGCHLD to ptracer, \n    notify child process state changed
+TP --> BE: send SIGCHLD to ptracer
+activate BE #00ffff
+BE --> BE: SIGCHLD handler: \n1. wake up ptracer\n2. ptracer `interruptible sleep` to `runnable`\n3. scheduler shedules ptracer\n4. wait4(...) returns
+deactivate BE
+
 deactivate TP
 
 TP --> BE: wait4 returns
+deactivate BE
 
 deactivate TP
 BE --> FE: Return Response {msg: attach ok, pc: 0x1234, file: f, line: 123}
 deactivate BE
+deactivate FE
 
 FE --> User: Display Data `tracee stopped at 0x1234 in f:123`
 deactivate User
