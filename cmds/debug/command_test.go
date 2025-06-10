@@ -28,7 +28,6 @@ import (
 )
 
 var buildMode string
-var testBackend = "native"
 
 func TestMain(m *testing.M) {
 	flag.StringVar(&buildMode, "test-buildmode", "", "selects build mode")

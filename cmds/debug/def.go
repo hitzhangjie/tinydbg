@@ -867,7 +867,7 @@ func continueUntilCompleteNext(t *Session, state *api.DebuggerState, op string, 
 		} else {
 			fmt.Fprintf(t.stdout, ", continuing...\n")
 		}
-		stateChan := t.client.DirectionCongruentContinue()
+		stateChan := t.client.Continue()
 		var state *api.DebuggerState
 		for state = range stateChan {
 			if state.Err != nil {
@@ -951,8 +951,7 @@ func stepInstruction(t *Session, ctx callContext, frame int, skipCalls bool) err
 
 	defer t.onStop()
 
-	var fn func(bool) (*api.DebuggerState, error)
-	fn = t.client.StepInstruction
+	fn := t.client.StepInstruction
 
 	state, err := exitedToError(fn(skipCalls))
 	if err != nil {

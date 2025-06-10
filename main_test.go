@@ -52,7 +52,7 @@ func TestBuild(t *testing.T) {
 	assertNoError(err, t, "stderr pipe")
 	defer stderr.Close()
 
-	assertNoError(cmd.Start(), t, "dlv debug")
+	assertNoError(cmd.Start(), t, "tinydbg debug")
 
 	scan := bufio.NewScanner(stderr)
 	// wait for the debugger to start

@@ -226,36 +226,16 @@ func RunTestsWithFixtures(m *testing.M) {
 	}
 
 	for _, p := range PathsToRemove {
-		fi, err := os.Stat(p)
+		inf, err := os.Stat(p)
 		if err != nil {
 			panic(err)
 		}
-		if fi.IsDir() {
-			SafeRemoveAll(p)
+		if inf.IsDir() {
+			_ = os.RemoveAll(p)
 		} else {
-			os.Remove(p)
+			_ = os.Remove(p)
 		}
 	}
-}
-
-// SafeRemoveAll removes dir and its contents but only as long as dir does
-// not contain directories.
-func SafeRemoveAll(dir string) {
-	fis, err := os.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	for _, fi := range fis {
-		if fi.IsDir() {
-			return
-		}
-	}
-	for _, fi := range fis {
-		if err := os.Remove(filepath.Join(dir, fi.Name())); err != nil {
-			return
-		}
-	}
-	os.Remove(dir)
 }
 
 // MustSupportFunctionCalls skips this test if function calls are

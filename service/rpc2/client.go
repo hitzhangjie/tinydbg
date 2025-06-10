@@ -88,23 +88,11 @@ func (c *RPCClient) GetStateNonBlocking() (*api.DebuggerState, error) {
 }
 
 func (c *RPCClient) Continue() <-chan *api.DebuggerState {
-	return c.continueDir(api.Continue)
-}
-
-func (c *RPCClient) Rewind() <-chan *api.DebuggerState {
-	return c.continueDir(api.Rewind)
-}
-
-func (c *RPCClient) DirectionCongruentContinue() <-chan *api.DebuggerState {
-	return c.continueDir(api.DirectionCongruentContinue)
-}
-
-func (c *RPCClient) continueDir(cmd string) <-chan *api.DebuggerState {
 	ch := make(chan *api.DebuggerState)
 	go func() {
 		for {
 			out := new(CommandOut)
-			err := c.call("Command", &api.DebuggerCommand{Name: cmd, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
+			err := c.call("Command", &api.DebuggerCommand{Name: api.Continue, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
 			state := out.State
 			if err != nil {
 				state.Err = err
@@ -144,33 +132,15 @@ func (c *RPCClient) Next() (*api.DebuggerState, error) {
 	return &out.State, err
 }
 
-func (c *RPCClient) ReverseNext() (*api.DebuggerState, error) {
-	var out CommandOut
-	err := c.call("Command", api.DebuggerCommand{Name: api.ReverseNext, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
-	return &out.State, err
-}
-
 func (c *RPCClient) Step() (*api.DebuggerState, error) {
 	var out CommandOut
 	err := c.call("Command", api.DebuggerCommand{Name: api.Step, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
 	return &out.State, err
 }
 
-func (c *RPCClient) ReverseStep() (*api.DebuggerState, error) {
-	var out CommandOut
-	err := c.call("Command", api.DebuggerCommand{Name: api.ReverseStep, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
-	return &out.State, err
-}
-
 func (c *RPCClient) StepOut() (*api.DebuggerState, error) {
 	var out CommandOut
 	err := c.call("Command", api.DebuggerCommand{Name: api.StepOut, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
-	return &out.State, err
-}
-
-func (c *RPCClient) ReverseStepOut() (*api.DebuggerState, error) {
-	var out CommandOut
-	err := c.call("Command", api.DebuggerCommand{Name: api.ReverseStepOut, ReturnInfoLoadConfig: c.retValLoadCfg}, &out)
 	return &out.State, err
 }
 
@@ -185,16 +155,6 @@ func (c *RPCClient) StepInstruction(skipCalls bool) (*api.DebuggerState, error) 
 	name := api.StepInstruction
 	if skipCalls {
 		name = api.NextInstruction
-	}
-	err := c.call("Command", api.DebuggerCommand{Name: name}, &out)
-	return &out.State, err
-}
-
-func (c *RPCClient) ReverseStepInstruction(skipCalls bool) (*api.DebuggerState, error) {
-	var out CommandOut
-	name := api.ReverseStepInstruction
-	if skipCalls {
-		name = api.ReverseNextInstruction
 	}
 	err := c.call("Command", api.DebuggerCommand{Name: name}, &out)
 	return &out.State, err

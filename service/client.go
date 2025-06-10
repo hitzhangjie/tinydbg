@@ -28,8 +28,6 @@ type Client interface {
 
 	// Continue resumes process execution.
 	Continue() <-chan *api.DebuggerState
-	// DirectionCongruentContinue resumes process execution, if a reverse next, step or stepout operation is in progress it will resume execution backward.
-	DirectionCongruentContinue() <-chan *api.DebuggerState
 	// Next continues to the next source line, not entering function calls.
 	Next() (*api.DebuggerState, error)
 	// Step continues to the next source line, entering function calls.

@@ -89,7 +89,6 @@ type xstate_bv uint64
 
 func (s xstate_bv) hasAVX() bool       { return s&(1<<2) != 0 }
 func (s xstate_bv) hasZMM_Hi256() bool { return s&(1<<6) != 0 }
-func (s xstate_bv) hasHi16_ZMM() bool  { return s&(1<<7) != 0 } //lint:ignore U1000 future use
 func (s xstate_bv) hasPKRU() bool      { return s&(1<<9) != 0 }
 
 // AMD64XstateRead reads a byte array containing an XSAVE area into regset.

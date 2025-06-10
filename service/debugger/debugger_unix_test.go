@@ -14,39 +14,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/hitzhangjie/tinydbg/pkg/gobuild"
 	protest "github.com/hitzhangjie/tinydbg/pkg/proc/test"
-	"github.com/hitzhangjie/tinydbg/service/api"
 )
-
-func TestDebugger_LaunchNoExecutablePerm(t *testing.T) {
-	fixturesDir := protest.FindFixturesDir()
-	buildtestdir := filepath.Join(fixturesDir, "buildtest")
-	debugname := "debug"
-	switchOS := map[string]string{
-		"linux": "windows",
-	}
-	if runtime.GOARCH == "arm64" && runtime.GOOS == "linux" {
-		t.Setenv("GOARCH", "amd64")
-	}
-	t.Setenv("GOOS", switchOS[runtime.GOOS])
-	exepath := filepath.Join(buildtestdir, debugname)
-	defer os.Remove(exepath)
-	if err := gobuild.GoBuild(debugname, []string{buildtestdir}, fmt.Sprintf("-o %s", exepath)); err != nil {
-		t.Fatalf("go build error %v", err)
-	}
-	if err := os.Chmod(exepath, 0644); err != nil {
-		t.Fatal(err)
-	}
-	d := new(Debugger)
-	_, err := d.Launch([]string{exepath}, ".")
-	if err == nil {
-		t.Fatalf("expected error but none was generated")
-	}
-	if err != api.ErrNotExecutable {
-		t.Fatalf("expected error %q got \"%v\"", api.ErrNotExecutable, err)
-	}
-}
-
-var backend = "native"
 
 func TestDebugger_LaunchWithTTY(t *testing.T) {
 	// Ensure no env meddling is leftover from previous tests.

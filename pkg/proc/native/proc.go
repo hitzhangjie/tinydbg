@@ -380,12 +380,9 @@ func (dbp *nativeProcess) initialize(path string) (*proc.TargetGroup, error) {
 		CanDump:    true,
 	})
 	procgrp.addTarget = addTarget
-	tgt, err := procgrp.add(dbp, dbp.pid, dbp.memthread, path, stopReason, cmdline)
+	_, err = procgrp.add(dbp, dbp.pid, dbp.memthread, path, stopReason, cmdline)
 	if err != nil {
 		return nil, err
-	}
-	if dbp.bi.Arch.Name == "arm64" || dbp.bi.Arch.Name == "ppc64le" || dbp.bi.Arch.Name == "riscv64" || dbp.bi.Arch.Name == "loong64" {
-		dbp.iscgo = tgt.IsCgo()
 	}
 	return grp, nil
 }

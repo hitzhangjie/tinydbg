@@ -923,9 +923,6 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 	case api.Continue:
 		d.log.Debug("continuing")
 		err = d.target.Continue()
-	case api.DirectionCongruentContinue:
-		d.log.Debug("continuing (direction congruent)")
-		err = d.target.Continue()
 	case api.Call:
 		d.log.Debugf("function call %s", command.Expr)
 		if command.ReturnInfoLoadConfig == nil {
@@ -1820,38 +1817,6 @@ func (d *Debugger) ExamineMemory(address uint64, length int) ([]byte, error) {
 		return nil, errors.New("the specific range has exceeded readable area")
 	}
 	return data, nil
-}
-
-type dlvVersion struct {
-	DelveVersion    string
-	APIVersion      int
-	Backend         string // backend currently in use
-	TargetGoVersion string
-
-	MinSupportedVersionOfGo string
-	MaxSupportedVersionOfGo string
-}
-
-func (d *Debugger) getVersion() error {
-	var out dlvVersion
-
-	if d.config.CoreFile != "" {
-		out.Backend = "core"
-	} else {
-		out.Backend = "native"
-	}
-
-	if !d.IsRunning() {
-		out.TargetGoVersion = d.target.Selected.BinInfo().Producer()
-	}
-
-	out.MinSupportedVersionOfGo = fmt.Sprintf("%d.%d.0", goversion.MinSupportedVersionOfGoMajor, goversion.MinSupportedVersionOfGoMinor)
-	out.MaxSupportedVersionOfGo = fmt.Sprintf("%d.%d.0", goversion.MaxSupportedVersionOfGoMajor, goversion.MaxSupportedVersionOfGoMinor)
-
-	logger := logflags.LogDebuggerLogger()
-	logger.Debugf("debugger version: \n\n%+v\n", out)
-
-	return nil
 }
 
 // ListPackagesBuildInfo returns the list of packages used by the program along with

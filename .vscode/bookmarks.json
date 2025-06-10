@@ -14,7 +14,7 @@
 			"path": "service/debugger/debugger.go",
 			"bookmarks": [
 				{
-					"line": 942,
+					"line": 939,
 					"column": 10,
 					"label": "cmds/debugger: all debug session cmds handled in (*Debugger).Command(...)"
 				}

@@ -80,12 +80,6 @@ func skipOn(t testing.TB, reason string, conditions ...string) {
 	}
 }
 
-func skipUnlessOn(t testing.TB, reason string, conditions ...string) {
-	if !matchSkipConditions(conditions...) {
-		t.Skipf("skipped on %s: %s", strings.Join(conditions, "/"), reason)
-	}
-}
-
 func withTestProcess(name string, t testing.TB, fn func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture)) {
 	withTestProcessArgs(name, t, ".", []string{}, 0, fn)
 }

@@ -938,30 +938,6 @@ func stepIntoCallback(curthread Thread, p *Target) (bool, error) {
 	return false, nil
 }
 
-func setStepIntoBreakpointsReverse(dbp *Target, text []AsmInstruction, topframe Stackframe, sameGCond ast.Expr) error {
-	bpmap := dbp.Breakpoints()
-	// Set a breakpoint after every CALL instruction
-	for i, instr := range text {
-		if instr.Loc.File != topframe.Current.File || !instr.IsCall() || instr.DestLoc == nil || instr.DestLoc.Fn == nil {
-			continue
-		}
-
-		if instr.DestLoc.Fn.privateRuntime() {
-			continue
-		}
-
-		if nextIdx := i + 1; nextIdx < len(text) {
-			_, ok := bpmap.M[text[nextIdx].Loc.PC]
-			if !ok {
-				if _, err := allowDuplicateBreakpoint(dbp.SetBreakpoint(0, text[nextIdx].Loc.PC, StepBreakpoint, sameGCond)); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func FindDeferReturnCalls(text []AsmInstruction) []uint64 {
 	const deferreturn = "runtime.deferreturn"
 	deferreturns := []uint64{}
@@ -1395,90 +1371,6 @@ func setDeferBreakpoint(p *Target, text []AsmInstruction, topframe Stackframe, s
 	}
 
 	return deferpc, nil
-}
-
-// findCallInstrForRet returns the PC address of the CALL instruction
-// immediately preceding the instruction at ret.
-func findCallInstrForRet(p Process, mem MemoryReadWriter, ret uint64, fn *Function) (uint64, error) {
-	text, err := disassemble(mem, nil, p.Breakpoints(), p.BinInfo(), fn.Entry, fn.End, false)
-	if err != nil {
-		return 0, err
-	}
-	var prevInstr AsmInstruction
-	for _, instr := range text {
-		if instr.Loc.PC == ret {
-			return prevInstr.Loc.PC, nil
-		}
-		prevInstr = instr
-	}
-	return 0, fmt.Errorf("could not find CALL instruction for address %#x in %s", ret, fn.Name)
-}
-
-// stepOutReverse sets a breakpoint on the CALL instruction that created the current frame, this is either:
-//   - the CALL instruction immediately preceding the return address of the
-//     current frame
-//   - the return address of the current frame if the current frame was
-//     created by a runtime.deferreturn run
-//   - the return address of the runtime.gopanic frame if the current frame
-//     was created by a panic
-//
-// This function is used to implement reversed StepOut
-func stepOutReverse(p *Target, topframe, retframe Stackframe, sameGCond ast.Expr) error {
-	curthread := p.CurrentThread()
-	selg := p.SelectedGoroutine()
-
-	if selg != nil && selg.Thread != nil {
-		curthread = selg.Thread
-	}
-
-	callerText, err := disassemble(p.Memory(), nil, p.Breakpoints(), p.BinInfo(), retframe.Current.Fn.Entry, retframe.Current.Fn.End, false)
-	if err != nil {
-		return err
-	}
-	deferReturns := FindDeferReturnCalls(callerText)
-
-	var frames []Stackframe
-	if selg == nil {
-		frames, err = ThreadStacktrace(p, curthread, 3)
-	} else {
-		frames, err = GoroutineStacktrace(p, selg, 3, 0)
-	}
-	if err != nil {
-		return err
-	}
-
-	var callpc uint64
-
-	if ok, panicFrame := isPanicCall(frames); ok {
-		if len(frames) < panicFrame+2 || frames[panicFrame+1].Current.Fn == nil {
-			if panicFrame < len(frames) {
-				return &ErrNoSourceForPC{frames[panicFrame].Current.PC}
-			} else {
-				return &ErrNoSourceForPC{frames[0].Current.PC}
-			}
-		}
-		callpc, err = findCallInstrForRet(p, p.Memory(), frames[panicFrame].Ret, frames[panicFrame+1].Current.Fn)
-		if err != nil {
-			return err
-		}
-	} else {
-		callpc, err = findCallInstrForRet(p, p.Memory(), topframe.Ret, retframe.Current.Fn)
-		if err != nil {
-			return err
-		}
-
-		// check if the call instruction to this frame is a call to runtime.deferreturn
-		if len(frames) > 0 {
-			frames[0].Ret = callpc
-		}
-		if ok, pc := isDeferReturnCall(frames, deferReturns); ok && pc != 0 {
-			callpc = pc
-		}
-	}
-
-	_, err = allowDuplicateBreakpoint(p.SetBreakpoint(0, callpc, NextBreakpoint, sameGCond))
-
-	return err
 }
 
 // onNextGoroutine returns true if this thread is on the goroutine requested by the current 'next' command
