@@ -33,6 +33,37 @@ func (s *Server) Trace(req *TraceRequest, resp *TraceResponse) error {
     // 实时收集和上报事件
     return nil
 }
+
+// 获取匹配的函数列表
+funcs, err := client.ListFunctions(regexp, traceFollowCalls)
+
+// 为每个函数设置跟踪点
+for i := range funcs {
+    // 设置函数入口跟踪点
+    _, err = client.CreateBreakpoint(&api.Breakpoint{
+        FunctionName:     funcs[i],
+        Tracepoint:       true,
+        Line:            -1,
+        Stacktrace:      stackdepth,
+        LoadArgs:        &debug.ShortLoadConfig,
+        TraceFollowCalls: traceFollowCalls,
+        RootFuncName:    regexp,
+    })
+
+    // 设置函数返回跟踪点
+    addrs, err := client.FunctionReturnLocations(funcs[i])
+    for i := range addrs {
+        _, err = client.CreateBreakpoint(&api.Breakpoint{
+            Addr:            addrs[i],
+            TraceReturn:     true,
+            Stacktrace:      stackdepth,
+            Line:           -1,
+            LoadArgs:       &debug.ShortLoadConfig,
+            TraceFollowCalls: traceFollowCalls,
+            RootFuncName:   regexp,
+        })
+    }
+}
 ```
 
 ## 4.6.4 流程图
