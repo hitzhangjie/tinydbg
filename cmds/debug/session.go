@@ -268,7 +268,12 @@ func (t *Session) Run() (int, error) {
 			}
 			return 1, errors.New("Prompt for input failed.\n")
 		}
-		fmt.Fprintf(t.stdout, t.prompt+cmdstr+"\n")
+		// note: If `tinydbg> transcript` supported, we should print
+		// the t.prompt+cmdstr+"\n" into the transcript file.
+		// We remove the transcript feature, and change t.stdout from
+		// PagingWriter to os.Stdout...we don't need this prompt now.
+		//
+		// fmt.Fprintf(t.stdout, t.prompt+cmdstr+"\n")
 
 		if strings.TrimSpace(cmdstr) == "" {
 			cmdstr = lastCmd
