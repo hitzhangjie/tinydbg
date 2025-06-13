@@ -82,6 +82,12 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags, tty string, stdinPa
 			_ = detachWithoutGroup(dbp, true)
 		}
 	}()
+
+	// I don't think this function should executed by dbp.execPtraceFunc,
+	// because it's going to setup the ptrace link, and it won't send
+	// other ptrace requests via the ptrace link.
+	//
+	// so it should be executed directly rather than called by dbp.execPtraceFunc.
 	dbp.execPtraceFunc(func() {
 		if flags&proc.LaunchDisableASLR != 0 {
 			oldPersonality, _, err := syscall.Syscall(sys.SYS_PERSONALITY, personalityGetPersonality, 0, 0)
