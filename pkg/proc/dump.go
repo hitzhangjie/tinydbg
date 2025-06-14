@@ -116,36 +116,9 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 	fhdr.Class = elf.ELFCLASS64
 	fhdr.Data = elf.ELFDATA2LSB
 	fhdr.Version = elf.EV_CURRENT
-
-	switch bi.GOOS {
-	case "linux":
-		fhdr.OSABI = elf.ELFOSABI_LINUX
-	case "freebsd":
-		fhdr.OSABI = elf.ELFOSABI_FREEBSD
-	default:
-		// There is no OSABI value for windows or macOS because nobody generates ELF core dumps on those systems.
-		fhdr.OSABI = 0xff
-	}
-
+	fhdr.OSABI = elf.ELFOSABI_LINUX
 	fhdr.Type = elf.ET_CORE
-
-	switch bi.Arch.Name {
-	case "amd64":
-		fhdr.Machine = elf.EM_X86_64
-	case "386":
-		fhdr.Machine = elf.EM_386
-	case "arm64":
-		fhdr.Machine = elf.EM_AARCH64
-	case "ppc64le":
-		fhdr.Machine = elf.EM_PPC64
-	case "riscv64":
-		fhdr.Machine = elf.EM_RISCV
-	case "loong64":
-		fhdr.Machine = elf.EM_LOONGARCH
-	default:
-		panic("not implemented")
-	}
-
+	fhdr.Machine = elf.EM_X86_64
 	fhdr.Entry = 0
 
 	w := elfwriter.New(out, &fhdr)
