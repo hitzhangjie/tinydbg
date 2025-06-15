@@ -121,19 +121,16 @@ func readLinuxOrPlatformIndependentCore(corePath, exePath string) (*process, pro
 		}
 	}
 
+	// build the memory
 	memory := buildMemory(coreFile, exeELF, exe, notes)
 
-	// Only support amd64 architecture
-	if machineType != elf.EM_X86_64 {
-		return nil, nil, fmt.Errorf("unsupported architecture - only linux/amd64 is supported")
-	}
+	// build the process
 	bi := proc.NewBinaryInfo("linux", "amd64")
-	entryPoint := findEntryPoint(notes, bi.Arch.PtrSize())
-
 	p := &process{
-		mem:         memory,
-		Threads:     map[int]*thread{},
-		entryPoint:  entryPoint,
+		mem:     memory,
+		Threads: map[int]*thread{},
+		// (dlv) dump [output], entrypoint saved in dlv header note
+		entryPoint:  findEntryPoint(notes, bi.Arch.PtrSize()),
 		bi:          bi,
 		breakpoints: proc.NewBreakpointMap(),
 	}

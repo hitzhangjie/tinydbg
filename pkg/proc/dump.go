@@ -112,6 +112,7 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 
 	bi := t.BinInfo()
 
+	// ELF corefile header
 	var fhdr elf.FileHeader
 	fhdr.Class = elf.ELFCLASS64
 	fhdr.Data = elf.ELFDATA2LSB
@@ -123,14 +124,14 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 
 	w := elfwriter.New(out, &fhdr)
 
-	notes := []elfwriter.Note{}
-
 	entryPoint, err := t.EntryPoint()
 	if err != nil {
 		state.setErr(err)
 		return
 	}
 
+	// corefile notes (dlvheader + process + threads + others)
+	notes := []elfwriter.Note{}
 	notes = append(notes, elfwriter.Note{
 		Type: elfwriter.DelveHeaderNoteType,
 		Name: "Delve Header",
@@ -142,6 +143,7 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 
 	var threadsDone bool
 
+	// note of process
 	if flags&DumpPlatformIndependent == 0 {
 		threadsDone, notes, err = t.proc.DumpProcessNotes(notes, state.threadDone)
 		if err != nil {
@@ -150,6 +152,7 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 		}
 	}
 
+	// notes of threads
 	if !threadsDone {
 		for _, th := range threads {
 			if w.Err != nil {
@@ -164,6 +167,7 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 		}
 	}
 
+	// corefile mapped memory (code, data, heap, stack)
 	memmap, err := t.proc.MemoryMap()
 	if err != nil {
 		state.setErr(err)
@@ -194,6 +198,8 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 		t.dumpMemory(state, w, mme)
 	}
 
+	// write these notes into corefile as a new entry of ProgHeader table,
+	// with type `PT_NOTE`.
 	notesProg := w.WriteNotes(notes)
 	w.Progs = append(w.Progs, notesProg)
 	w.WriteProgramHeaders()
