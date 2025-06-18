@@ -19,6 +19,16 @@
 					"label": "cmds/debugger: all debug session cmds handled in (*Debugger).Command(...)"
 				}
 			]
+		},
+		{
+			"path": "cmds/cmd_trace.go",
+			"bookmarks": [
+				{
+					"line": 44,
+					"column": 46,
+					"label": ""
+				}
+			]
 		}
 	]
 }

@@ -50,6 +50,7 @@ func Prepare(cmd *cobra.Command) {
 		hideFlag(cmd, "headless")
 		hideFlag(cmd, "init")
 		hideFlag(cmd, "listen")
+		hideFlag(cmd, "build-flags")
 	}
 }
 

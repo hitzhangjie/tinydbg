@@ -55,7 +55,6 @@ var (
 
 	traceAttachPid     int
 	traceExecFile      string
-	traceTestBinary    bool
 	traceStackDepth    int
 	traceShowTimestamp bool
 	traceFollowCalls   int

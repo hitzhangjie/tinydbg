@@ -9,7 +9,6 @@ import (
 
 	"github.com/hitzhangjie/tinydbg/cmds/debug"
 	"github.com/hitzhangjie/tinydbg/pkg/config"
-	"github.com/hitzhangjie/tinydbg/pkg/gobuild"
 	"github.com/hitzhangjie/tinydbg/pkg/logflags"
 	"github.com/hitzhangjie/tinydbg/service"
 	"github.com/hitzhangjie/tinydbg/service/api"
@@ -21,8 +20,8 @@ import (
 
 // 'trace' subcommand.
 var traceCommand = &cobra.Command{
-	Use:   "trace [package] regexp",
-	Short: "Compile and begin tracing program.",
+	Use:   "trace <regexp>",
+	Short: "Begin tracing program.",
 	Long: `Trace program execution.
 
 The trace sub command will set a tracepoint on every function matching the
@@ -43,13 +42,10 @@ func init() {
 	must(traceCommand.RegisterFlagCompletionFunc("pid", cobra.NoFileCompletions))
 	traceCommand.Flags().StringVarP(&traceExecFile, "exec", "e", "", "Binary file to exec and trace.")
 	must(traceCommand.MarkFlagFilename("exec"))
-	traceCommand.Flags().BoolVarP(&traceTestBinary, "test", "t", false, "Trace a test binary.")
-	traceCommand.Flags().BoolVarP(&traceShowTimestamp, "timestamp", "", false, "Show timestamp in the output")
-	traceCommand.Flags().IntVarP(&traceStackDepth, "stack", "s", 0, "Show stack trace with given depth. (Ignored with --ebpf)")
+	traceCommand.Flags().BoolVarP(&traceShowTimestamp, "timestamp", "", false, "Show timestamp in the output.")
+	traceCommand.Flags().IntVarP(&traceStackDepth, "stack", "s", 0, "Show stack trace with given depth.")
 	must(traceCommand.RegisterFlagCompletionFunc("stack", cobra.NoFileCompletions))
-	traceCommand.Flags().String("output", "", "Output path for the binary.")
-	must(traceCommand.MarkFlagFilename("output"))
-	traceCommand.Flags().IntVarP(&traceFollowCalls, "follow-calls", "", 0, "Trace all children of the function to the required depth")
+	traceCommand.Flags().IntVarP(&traceFollowCalls, "follow-calls", "", 0, "Trace all children of the function to the required depth.")
 }
 
 func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
@@ -71,47 +67,20 @@ func traceCmd(cmd *cobra.Command, args []string, conf *config.Config) int {
 			fmt.Fprintf(os.Stderr, "Warning: accept multiclient mode not supported with trace")
 		}
 
-		var regexp string
-		var processArgs []string
-
-		dbgArgs, targetArgs := splitArgs(cmd, args)
-		var dbgArgsLen = len(dbgArgs)
-		switch dbgArgsLen {
-		case 0:
+		if len(args) != 1 {
 			fmt.Fprintf(os.Stderr, "you must supply a regexp for functions to trace\n")
 			return 1
-		case 1:
-			// tinydbg trace -exec <executable> <regexp>
-			regexp = args[0]
-			dbgArgs = dbgArgs[0:0]
-		default:
-			// tinydbg trace <package/sourcefile> <regexp>
-			regexp = dbgArgs[dbgArgsLen-1]
-			dbgArgs = dbgArgs[:dbgArgsLen-1]
 		}
+		regexp := args[0]
 
-		var debugname string
-		if traceAttachPid == 0 {
-			if dbgArgsLen >= 2 && traceExecFile != "" {
-				fmt.Fprintln(os.Stderr, "Cannot specify package when using --exec.")
-				return 1
-			}
-
-			debugname = traceExecFile
-			if traceExecFile == "" {
-				debugexe, ok := buildBinary(cmd, dbgArgs, traceTestBinary)
-				if !ok {
-					return 1
-				}
-				debugname = debugexe
-				defer gobuild.Remove(debugname)
-			}
-
-			processArgs = append([]string{debugname}, targetArgs...)
-		}
-		if dbgArgsLen >= 3 && traceFollowCalls <= 0 {
-			fmt.Fprintln(os.Stderr, "Need to specify a trace depth of atleast 1")
+		var processArgs []string
+		if traceAttachPid == 0 && traceExecFile == "" {
+			fmt.Fprintln(os.Stderr, "Either --pid or --exec must be specified")
 			return 1
+		}
+
+		if traceAttachPid == 0 {
+			processArgs = append([]string{traceExecFile}, args[1:]...)
 		}
 
 		// Make a local in-memory connection that client and server use to communicate
