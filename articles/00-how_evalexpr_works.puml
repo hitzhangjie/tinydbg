@@ -1,0 +1,219 @@
+@startuml Go AST Expr Interface Hierarchy
+
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam classBackgroundColor #F8F9FA
+skinparam classBorderColor #6C757D
+skinparam interfaceBackgroundColor #E3F2FD
+skinparam interfaceBorderColor #1976D2
+
+title Go AST Expression Interface Hierarchy
+
+interface Node {
+  + Pos() token.Pos
+  + End() token.Pos
+}
+
+interface Expr {
+  + exprNode()
+}
+
+Node <|-- Expr
+
+' Implementation relationships
+Expr <|.. ValueExpr.BadExpr
+Expr <|.. ValueExpr.Ident
+Expr <|.. ValueExpr.Ellipsis
+Expr <|.. ValueExpr.BasicLit
+Expr <|.. ValueExpr.FuncLit
+Expr <|.. ValueExpr.CompositeLit
+Expr <|.. ValueExpr.ParenExpr
+Expr <|.. ValueExpr.SelectorExpr
+Expr <|.. ValueExpr.IndexExpr
+Expr <|.. ValueExpr.IndexListExpr
+Expr <|.. ValueExpr.SliceExpr
+Expr <|.. ValueExpr.TypeAssertExpr
+Expr <|.. ValueExpr.CallExpr
+Expr <|.. ValueExpr.StarExpr
+Expr <|.. ValueExpr.UnaryExpr
+Expr <|.. ValueExpr.BinaryExpr
+Expr <|.. ValueExpr.KeyValueExpr
+
+' Type expressions also implement Expr
+Expr <|.. TypeExpr.ArrayType
+Expr <|.. TypeExpr.StructType
+Expr <|.. TypeExpr.FuncType
+Expr <|.. TypeExpr.InterfaceType
+Expr <|.. TypeExpr.MapType
+Expr <|.. TypeExpr.ChanType
+
+' Value Expressions
+rectangle "Value Expressions" as ValueExpr {
+	class BadExpr {
+	  + From, To token.Pos
+	}
+	
+	class Ident {
+	  + NamePos token.Pos
+	  + Name string
+	  + Obj *Object
+	}
+	
+	class Ellipsis {
+	  + Ellipsis token.Pos
+	  + Elt Expr
+	}
+	
+	class BasicLit {
+	  + ValuePos token.Pos
+	  + Kind token.Token
+	  + Value string
+	}
+	
+	class FuncLit {
+	  + Type *FuncType
+	  + Body *BlockStmt
+	}
+	
+	class CompositeLit {
+	  + Type Expr
+	  + Lbrace token.Pos
+	  + Elts []Expr
+	  + Rbrace token.Pos
+	  + Incomplete bool
+	}
+	
+	class ParenExpr {
+	  + Lparen token.Pos
+	  + X Expr
+	  + Rparen token.Pos
+	}
+	
+	class SelectorExpr {
+	  + X Expr
+	  + Sel *Ident
+	}
+	
+	class IndexExpr {
+	  + X Expr
+	  + Lbrack token.Pos
+	  + Index Expr
+	  + Rbrack token.Pos
+	}
+	
+	class IndexListExpr {
+	  + X Expr
+	  + Lbrack token.Pos
+	  + Indices []Expr
+	  + Rbrack token.Pos
+	}
+	
+	class SliceExpr {
+	  + X Expr
+	  + Lbrack token.Pos
+	  + Low Expr
+	  + High Expr
+	  + Max Expr
+	  + Slice3 bool
+	  + Rbrack token.Pos
+	}
+	
+	class TypeAssertExpr {
+	  + X Expr
+	  + Lparen token.Pos
+	  + Type Expr
+	  + Rparen token.Pos
+	}
+	
+	class CallExpr {
+	  + Fun Expr
+	  + Lparen token.Pos
+	  + Args []Expr
+	  + Ellipsis token.Pos
+	  + Rparen token.Pos
+	}
+	
+	class StarExpr {
+	  + Star token.Pos
+	  + X Expr
+	}
+	
+	class UnaryExpr {
+	  + OpPos token.Pos
+	  + Op token.Token
+	  + X Expr
+	}
+	
+	class BinaryExpr {
+	  + X Expr
+	  + OpPos token.Pos
+	  + Op token.Token
+	  + Y Expr
+	}
+	
+	class KeyValueExpr {
+	  + Key Expr
+	  + Colon token.Pos
+	  + Value Expr
+	}
+}
+
+' Type Expressions
+rectangle "Type Expressions" as TypeExpr {
+	class ArrayType {
+	  + Lbrack token.Pos
+	  + Len Expr
+	  + Elt Expr
+	}
+	
+	class StructType {
+	  + Struct token.Pos
+	  + Fields *FieldList
+	  + Incomplete bool
+	}
+	
+	class FuncType {
+	  + Func token.Pos
+	  + TypeParams *FieldList
+	  + Params *FieldList
+	  + Results *FieldList
+	}
+	
+	class InterfaceType {
+	  + Interface token.Pos
+	  + Methods *FieldList
+	  + Incomplete bool
+	}
+	
+	class MapType {
+	  + Map token.Pos
+	  + Key Expr
+	  + Value Expr
+	}
+	
+	class ChanType {
+	  + Begin token.Pos
+	  + Arrow token.Pos
+	  + Dir ChanDir
+	  + Value Expr
+	}
+}
+
+note right of Expr
+  All expression nodes implement
+  the Expr interface by providing:
+  - Pos() and End() methods (from Node)
+  - exprNode() method (marker method)
+end note
+
+note bottom of BadExpr
+  Value Expressions: represent actual values
+  that can be evaluated at runtime
+end note
+
+note bottom of ArrayType
+  Type Expressions: represent type declarations
+  and are used in type contexts
+end note
+
+@enduml 
