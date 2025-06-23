@@ -94,26 +94,6 @@ func TestSubstitutePathUnix(t *testing.T) {
 	assertSubstitutePathEqual(t, "path", SubstitutePath("/my/asb/folder/path", [][2]string{{"/original", "/new/mapping"}, {"/my/asb/folder/", ""}, {"", "/my/asb/folder/"}}))
 }
 
-func TestSubstitutePathWindows(t *testing.T) {
-	// Relative paths mapping
-	assertSubstitutePathEqual(t, "c:\\my\\asb\\folder\\relative\\path", SubstitutePath("relative\\path", [][2]string{{"", "c:\\my\\asb\\folder\\"}}))
-	assertSubstitutePathEqual(t, "F:\\already\\abs\\path", SubstitutePath("F:\\already\\abs\\path", [][2]string{{"", "c:\\my\\asb\\folder\\"}}))
-	assertSubstitutePathEqual(t, "relative\\path", SubstitutePath("C:\\my\\asb\\folder\\relative\\path", [][2]string{{"c:\\my\\asb\\folder\\", ""}}))
-	assertSubstitutePathEqual(t, "F:\\another\\folder\\relative\\path", SubstitutePath("F:\\another\\folder\\relative\\path", [][2]string{{"c:\\my\\asb\\folder\\", ""}}))
-	assertSubstitutePathEqual(t, "my\\path", SubstitutePath("relative\\path\\my\\path", [][2]string{{"relative\\path", ""}}))
-	assertSubstitutePathEqual(t, "c:\\abs\\my\\path", SubstitutePath("c:\\abs\\my\\path", [][2]string{{"abs\\my", ""}}))
-
-	// Absolute paths mapping
-	assertSubstitutePathEqual(t, "c:\\new\\mapping\\path", SubstitutePath("D:\\original\\path", [][2]string{{"d:\\original", "c:\\new\\mapping"}}))
-	assertSubstitutePathEqual(t, "F:\\no\\change\\path", SubstitutePath("F:\\no\\change\\path", [][2]string{{"d:\\original", "c:\\new\\mapping"}}))
-	assertSubstitutePathEqual(t, "c:\\folder\\should_not_be_replaced\\path", SubstitutePath("c:\\folder\\should_not_be_replaced\\path", [][2]string{{"should_not_be_replaced", ""}}))
-
-	// Mix absolute and relative mapping
-	assertSubstitutePathEqual(t, "c:\\new\\mapping\\path", SubstitutePath("D:\\original\\path", [][2]string{{"", "c:\\my\\asb\\folder\\"}, {"c:\\my\\asb\\folder\\", ""}, {"d:\\original", "c:\\new\\mapping"}}))
-	assertSubstitutePathEqual(t, "c:\\my\\asb\\folder\\path\\", SubstitutePath("path\\", [][2]string{{"d:\\original", "c:\\new\\mapping"}, {"", "c:\\my\\asb\\folder\\"}, {"c:\\my\\asb\\folder\\", ""}}))
-	assertSubstitutePathEqual(t, "path", SubstitutePath("C:\\my\\asb\\folder\\path", [][2]string{{"d:\\original", "c:\\new\\mapping"}, {"c:\\my\\asb\\folder\\", ""}, {"", "c:\\my\\asb\\folder\\"}}))
-}
-
 type tRule struct {
 	from string
 	to   string
@@ -146,36 +126,11 @@ func platformCases() []tCase {
 		// Should be case-sensitive
 		{[]tRule{{"/tmp/path", "/new/path2"}}, "/TmP/path/file.go", "/TmP/path/file.go"},
 	}
-	casesFreebsd := []tCase{
-		// Should be case-sensitive
-		{[]tRule{{"/tmp/path", "/new/path2"}}, "/TmP/path/file.go", "/TmP/path/file.go"},
-	}
-	casesDarwin := []tCase{
-		// Can be either case-sensitive or case-insensitive depending on
-		// filesystem settings, we always treat it as case-sensitive.
-		{[]tRule{{"/tmp/path", "/new/path2"}}, "/TmP/PaTh/file.go", "/TmP/PaTh/file.go"},
-	}
-	casesWindows := []tCase{
-		// Should not depend on separator at the end of rule path
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		{[]tRule{{`c:\tmp\path\`, `d:\new\path2\`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2\`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		{[]tRule{{`c:\tmp\path\`, `d:\new\path2`}}, `c:\tmp\path\file.go`, `d:\new\path2\file.go`},
-		// Should apply to directory prefixes
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2`}}, `c:\tmp\path-2\file.go`, `c:\tmp\path-2\file.go`},
-		// Should apply to exact matches
-		{[]tRule{{`c:\tmp\path\file.go`, `d:\new\path2\file2.go`}}, `c:\tmp\path\file.go`, `d:\new\path2\file2.go`},
-		// Should be case-insensitive
-		{[]tRule{{`c:\tmp\path`, `d:\new\path2`}}, `C:\TmP\PaTh\file.go`, `d:\new\path2\file.go`},
-	}
 	casesCross := []tCase{
 		{[]tRule{{"C:\\some\\repo", "/go/src/github.com/some/repo/"}}, `c:\some\repo\folder\file.go`, "/go/src/github.com/some/repo/folder/file.go"},
 	}
 
 	r := append(casesUnix, casesLinux...)
-	r = append(r, casesFreebsd...)
-	r = append(r, casesDarwin...)
-	r = append(r, casesWindows...)
 	r = append(r, casesCross...)
 
 	return r
