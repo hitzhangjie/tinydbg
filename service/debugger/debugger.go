@@ -505,7 +505,7 @@ func (d *Debugger) state(retLoadCfg *proc.LoadConfig, withBreakpointInfo bool) (
 // - Otherwise the value specified by arg.Breakpoint.Addr will be used.
 //
 // Note that this method will use the first successful method in order to
-// create a breakpoint, so mixing different fields will not result is multiple
+// create a breakpoint, so mixing different fields will not result in multiple
 // breakpoints being set.
 //
 // If LocExpr is specified it will be used, along with substitutePathRules,
