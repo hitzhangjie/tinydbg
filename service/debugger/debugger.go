@@ -542,20 +542,6 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 		setbp.PidAddrs = []proc.PidAddr{{Pid: d.target.Selected.Pid(), Addr: requestedBp.Addr}}
 	case len(requestedBp.File) > 0:
 		fileName := requestedBp.File
-		if runtime.GOOS == "windows" {
-			// Accept fileName which is case-insensitive and slash-insensitive match
-			fileNameNormalized := strings.ToLower(filepath.ToSlash(fileName))
-			t := proc.ValidTargets{Group: d.target}
-		caseInsensitiveSearch:
-			for t.Next() {
-				for _, symFile := range t.BinInfo().Sources {
-					if fileNameNormalized == strings.ToLower(filepath.ToSlash(symFile)) {
-						fileName = symFile
-						break caseInsensitiveSearch
-					}
-				}
-			}
-		}
 		setbp.File = fileName
 		setbp.Line = requestedBp.Line
 	case len(requestedBp.FunctionName) > 0:
