@@ -19,6 +19,7 @@ var breakpointCmd = func(c *DebugCommands) *command {
 		cmdFn:   breakpoint,
 		helpMsg: `Sets a breakpoint.
 
+	break [-name=name] [locspec] [if <condition>]
 	break [name] [locspec] [if <condition>]
 
 Locspec is a location specifier in the form of:

@@ -4,7 +4,7 @@
 			"path": "cmds/debug/def.go",
 			"bookmarks": [
 				{
-					"line": 141,
+					"line": 142,
 					"column": 0,
 					"label": "cmds: in debugger session"
 				}

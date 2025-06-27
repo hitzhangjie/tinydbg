@@ -34,6 +34,7 @@ import (
 	"github.com/hitzhangjie/tinydbg/service"
 	"github.com/hitzhangjie/tinydbg/service/api"
 	"github.com/hitzhangjie/tinydbg/service/rpc2"
+	"github.com/spf13/pflag"
 )
 
 // cmdPrefix represents the prefix of a command.
@@ -1187,67 +1188,39 @@ func formatBreakpointAttrs(prefix string, bp *api.Breakpoint, includeTrace bool)
 	return attrs
 }
 
+// `argstr` is the raw input string of `break [argstr]`. dlv setBreakpoint parsing
+// argstr logic is really complex, here we change `dlv> break [name] [locspec] [if condition]`
+// to `tinydbg> break [--name=name] [locspec] [if condition]`.
+// After this, we remove some confusing logic in parsing. We only need to consider either of
+// `[locspec] [if condition]` exists or not. So it's easier to understand.
+//
+// OK, there're following cases to support:
+//
+// with --name:
+// - break --name=? locspec if <condition>
+// - break --name=? locspec
+// - break --name=? if <condition>
+// - break --name=?
+//
+// without --name:
+// - break locspec if <condition>
+// - break locspec
+// - break if <condition>
+// - break
 func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) ([]*api.Breakpoint, error) {
-	var (
-		cond string
-		spec string
-
-		requestedBp = &api.Breakpoint{}
-	)
-
-	parseSpec := func(args []string) error {
-		switch len(args) {
-		case 1:
-			if len(args[0]) != 0 {
-				spec = argstr
-			} else {
-				// no arg specified
-				spec = "+0"
-			}
-		case 2:
-			if api.ValidBreakpointName(args[0]) == nil {
-				requestedBp.Name = args[0]
-				spec = args[1]
-			} else {
-				spec = argstr
-			}
-		default:
-			return errors.New("address required")
-		}
-		return nil
-	}
-
-	args := config.Split2PartsBySpace(argstr)
-	if err := parseSpec(args); err != nil {
+	// parsed --name, args and error
+	name, spec, cond, err := parseBreakpointArgs(argstr)
+	if err != nil {
 		return nil, err
 	}
 
-	requestedBp.Tracepoint = tracepoint
+	requestedBp := &api.Breakpoint{
+		Name:       name,
+		Tracepoint: tracepoint,
+		Cond:       cond,
+	}
 	locs, substSpec, findLocErr := t.client.FindLocation(ctx.Scope, spec, true, t.substitutePathRules())
-	if findLocErr != nil {
-		r := regexp.MustCompile(`^if | if `)
-		if match := r.FindStringIndex(argstr); match != nil {
-			requestedBp.Name = ""
-			cond = argstr[match[1]:]
-			argstr = argstr[:match[0]]
-			args = config.Split2PartsBySpace(argstr)
-			if err := parseSpec(args); err != nil {
-				return nil, err
-			}
-			locs, substSpec, findLocErr = t.client.FindLocation(ctx.Scope, spec, true, t.substitutePathRules())
-		}
-	}
-	if findLocErr != nil && requestedBp.Name != "" {
-		requestedBp.Name = ""
-		spec = argstr
-		var err2 error
-		var substSpec2 string
-		locs, substSpec2, err2 = t.client.FindLocation(ctx.Scope, spec, true, t.substitutePathRules())
-		if err2 == nil {
-			findLocErr = nil
-			substSpec = substSpec2
-		}
-	}
+
 	if findLocErr != nil && shouldAskToSuspendBreakpoint(t) {
 		fmt.Fprintf(os.Stderr, "Command failed: %s\n", findLocErr.Error())
 		question := "Set a suspended breakpoint (Delve will try to set this breakpoint when a plugin is loaded) [Y/n]?"
@@ -1269,7 +1242,6 @@ func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) 
 		fmt.Fprintf(t.stdout, "%s set at %s\n", formatBreakpointName(bp, true), t.formatBreakpointLocation(bp))
 		return nil, nil
 	}
-
 	if findLocErr != nil {
 		return nil, findLocErr
 	}
@@ -2872,4 +2844,37 @@ func Print(out io.Writer, reader io.Reader, startLine, endLine, arrowLine int) e
 	}
 
 	return scanner.Err()
+}
+
+// matching groups:
+// - group0 is the whole match
+// - group1 is wanted `spec“
+// - group2 is if
+// - group3 is wanted `cond“
+var breakpointRE = regexp.MustCompile(`(?m)^(\S*)?\s*(if\s(.*)\s*)?$`)
+
+func parseBreakpointArgs(argstr string) (name, spec, cond string, err error) {
+	fs := pflag.NewFlagSet("name", pflag.ContinueOnError)
+	fs.StringP("name", "n", "", "breakpoint name")
+
+	if err := fs.Parse(strings.Fields(argstr)); err != nil {
+		return "", "", "", err
+	}
+
+	// flag `--name|-n=?`
+	name, err = fs.GetString("name")
+	if err != nil {
+		return "", "", "", fmt.Errorf("parse `name` error: %v", err)
+	}
+
+	// parse spec, cond
+	left := strings.Join(fs.Args(), " ")
+	submatches := breakpointRE.FindStringSubmatch(left)
+	if len(submatches) != 4 {
+		return "", "", "", errors.New("invalid [locspec] or [if condition]")
+	}
+	spec = submatches[1]
+	cond = submatches[3]
+
+	return name, spec, cond, nil
 }
