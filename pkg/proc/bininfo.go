@@ -595,9 +595,13 @@ func (fn *Function) PrologueEndPC() uint64 {
 }
 
 func (fn *Function) AllPCs(excludeFile string, excludeLine int) ([]uint64, error) {
+	// use DWARF if not stripped from ELF file
 	if !fn.cu.image.Stripped() {
 		return fn.cu.lineInfo.AllPCsBetween(fn.Entry, fn.End-1, excludeFile, excludeLine)
 	}
+	// Add back in basic support for .gopclntab which survives if the binary
+	// is stripped, allowing for rudimentary debugging such as basic
+	// program navigation, tracing, etc
 	var pcs []uint64
 	fnFile, lastLine, _ := fn.cu.image.symTable.PCToLine(fn.Entry - fn.cu.image.StaticBase)
 	for pc := fn.Entry - fn.cu.image.StaticBase; pc < fn.End-fn.cu.image.StaticBase; pc++ {

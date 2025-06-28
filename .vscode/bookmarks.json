@@ -34,6 +34,16 @@
 					"label": ""
 				}
 			]
+		},
+		{
+			"path": "service/rpc2/server.go",
+			"bookmarks": [
+				{
+					"line": 237,
+					"column": 4,
+					"label": "breakpoint: how serverside createbreakpoint works"
+				}
+			]
 		}
 	]
 }
