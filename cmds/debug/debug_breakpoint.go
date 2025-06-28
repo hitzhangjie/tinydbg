@@ -19,8 +19,7 @@ var breakpointCmd = func(c *DebugCommands) *command {
 		cmdFn:   breakpoint,
 		helpMsg: `Sets a breakpoint.
 
-	break [-name=name] [locspec] [if <condition>]
-	break [name] [locspec] [if <condition>]
+	break [--name|-n=name] [locspec] [if <condition>]
 
 Locspec is a location specifier in the form of:
 
@@ -39,7 +38,7 @@ If locspec is omitted a breakpoint will be set on the current line.
 
 If you would like to assign a name to the breakpoint you can do so with the form:
 
-	break mybpname main.go:4
+	break -n mybpname main.go:4
 
 Finally, you can assign a condition to the newly created breakpoint by using the 'if' postfix form, like so:
 
