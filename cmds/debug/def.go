@@ -1208,7 +1208,7 @@ func formatBreakpointAttrs(prefix string, bp *api.Breakpoint, includeTrace bool)
 // - break if <condition>
 // - break
 func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) ([]*api.Breakpoint, error) {
-	// parsed --name, args and error
+	// parse bp name, spec, cond
 	name, spec, cond, err := parseBreakpointArgs(argstr)
 	if err != nil {
 		return nil, err
@@ -1216,39 +1216,49 @@ func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) 
 
 	requestedBp := &api.Breakpoint{
 		Name:       name,
-		Tracepoint: tracepoint,
 		Cond:       cond,
+		Tracepoint: tracepoint,
 	}
+
+	// find locations to set breakpoint
 	locs, substSpec, findLocErr := t.client.FindLocation(ctx.Scope, spec, true, t.substitutePathRules())
 
-	if findLocErr != nil && shouldAskToSuspendBreakpoint(t) {
-		fmt.Fprintf(os.Stderr, "Command failed: %s\n", findLocErr.Error())
-		question := "Set a suspended breakpoint (Delve will try to set this breakpoint when a plugin is loaded) [Y/n]?"
-		if isErrProcessExited(findLocErr) {
-			question = "Set a suspended breakpoint (Delve will try to set this breakpoint when the process is restarted) [Y/n]?"
-		}
-		answer, err := yesno(t.line, question, "yes")
-		if err != nil {
-			return nil, err
-		}
-		if !answer {
+	if findLocErr != nil {
+		// if code not loaded, process exited or subprocess not started
+		// maybe we should ask user to set a suspended breakpoint with expr,
+		// and restore the breakpoint when code is loaded, process restarted.
+		if shouldAskToSuspendBreakpoint(t) {
+			fmt.Fprintf(os.Stderr, "Command failed: %s\n", findLocErr.Error())
+			question := "Set a suspended breakpoint (Delve will try to set this breakpoint when a plugin is loaded) [Y/n]?"
+			if isErrProcessExited(findLocErr) {
+				question = "Set a suspended breakpoint (Delve will try to set this breakpoint when the process is restarted) [Y/n]?"
+			}
+			answer, err := yesno(t.line, question, "yes")
+			if err != nil {
+				return nil, err
+			}
+			if !answer {
+				return nil, nil
+			}
+			findLocErr = nil
+			bp, err := t.client.CreateBreakpointWithExpr(requestedBp, spec, t.substitutePathRules(), true)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(t.stdout, "%s set at %s\n", formatBreakpointName(bp, true), t.formatBreakpointLocation(bp))
 			return nil, nil
 		}
-		findLocErr = nil
-		bp, err := t.client.CreateBreakpointWithExpr(requestedBp, spec, t.substitutePathRules(), true)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Fprintf(t.stdout, "%s set at %s\n", formatBreakpointName(bp, true), t.formatBreakpointLocation(bp))
-		return nil, nil
-	}
-	if findLocErr != nil {
+		// well, we can't find locations to set breakpoint,
 		return nil, findLocErr
 	}
+
+	// if substSpec not empty, it means we have a substitute path spec
 	if substSpec != "" {
 		spec = substSpec
 	}
 
+	// create breakpoints at each location, the single locspec may contain multiple locations,
+	// for example, inline functions.
 	created := []*api.Breakpoint{}
 	for _, loc := range locs {
 		requestedBp.Addr = loc.PC
@@ -1258,7 +1268,6 @@ func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) 
 			requestedBp.LoadArgs = &ShortLoadConfig
 		}
 
-		requestedBp.Cond = cond
 		bp, err := t.client.CreateBreakpointWithExpr(requestedBp, spec, t.substitutePathRules(), false)
 		if err != nil {
 			return nil, err
@@ -1268,14 +1277,16 @@ func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) 
 		fmt.Fprintf(t.stdout, "%s set at %s\n", formatBreakpointName(bp, true), t.formatBreakpointLocation(bp))
 	}
 
+	// If spec is like `b main.main` or `b main.*` without line offsets,
+	// then we set return breakpoints for these functions.
 	var shouldSetReturnBreakpoints bool
 	loc, err := locspec.Parse(spec)
 	if err != nil {
 		return nil, err
 	}
-	switch t := loc.(type) {
+	switch locType := loc.(type) {
 	case *locspec.NormalLocationSpec:
-		shouldSetReturnBreakpoints = t.LineOffset == -1 && t.FuncBase != nil
+		shouldSetReturnBreakpoints = locType.LineOffset == -1 && locType.FuncBase != nil
 	case *locspec.RegexLocationSpec:
 		shouldSetReturnBreakpoints = true
 	}
@@ -1284,10 +1295,12 @@ func setBreakpoint(t *Session, ctx callContext, tracepoint bool, argstr string) 
 			if locs[i].Function == nil {
 				continue
 			}
+			// find return addresses of this function
 			addrs, err := t.client.(*rpc2.RPCClient).FunctionReturnLocations(locs[0].Function.Name())
 			if err != nil {
 				return nil, err
 			}
+			// create breakpoints at each return address
 			for j := range addrs {
 				_, err = t.client.CreateBreakpoint(&api.Breakpoint{
 					Addr:        addrs[j],

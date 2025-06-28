@@ -523,12 +523,14 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 		err   error
 	)
 
+	// check if breakpoint name already used before
 	if requestedBp.Name != "" {
 		if d.findBreakpointByName(requestedBp.Name) != nil {
 			return nil, errors.New("breakpoint name already exists")
 		}
 	}
 
+	// check if breakpoint id already used before
 	if lbp := d.target.LogicalBreakpoints[requestedBp.ID]; lbp != nil {
 		abp := d.convertBreakpoint(lbp)
 		return abp, proc.BreakpointExistsError{File: lbp.File, Line: lbp.Line}

@@ -7,6 +7,11 @@
 					"line": 142,
 					"column": 0,
 					"label": "cmds: in debugger session"
+				},
+				{
+					"line": 1209,
+					"column": 11,
+					"label": "breakpoint: how clientside setbreakpoint works"
 				}
 			]
 		},
@@ -14,7 +19,7 @@
 			"path": "service/debugger/debugger.go",
 			"bookmarks": [
 				{
-					"line": 925,
+					"line": 927,
 					"column": 10,
 					"label": "cmds/debugger: all debug session cmds handled in (*Debugger).Command(...)"
 				}
