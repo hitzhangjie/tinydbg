@@ -4,12 +4,12 @@
 			"path": "cmds/debug/def.go",
 			"bookmarks": [
 				{
-					"line": 142,
+					"line": 152,
 					"column": 0,
 					"label": "cmds: in debugger session"
 				},
 				{
-					"line": 1209,
+					"line": 1223,
 					"column": 11,
 					"label": "breakpoint: how clientside setbreakpoint works"
 				}

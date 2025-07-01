@@ -1,15 +1,15 @@
 package debug
 
 func init() {
-	registerDebugCmd(helpCmd)
-	registerDebugCmd(exitCmd)
-	registerDebugCmd(sourceCmd)
-	registerDebugCmd(sourcesCmd)
-	registerDebugCmd(configCmd)
-	registerDebugCmd(editCmd)
-	registerDebugCmd(librariesCmd)
-	registerDebugCmd(dumpCmd)
-	registerDebugCmd(targetCmd)
+	register(helpCmd)
+	register(exitCmd)
+	register(sourceCmd)
+	register(sourcesCmd)
+	register(configCmd)
+	register(editCmd)
+	register(librariesCmd)
+	register(dumpCmd)
+	register(targetCmd)
 }
 
 var helpCmd = func(c *DebugCommands) *command {

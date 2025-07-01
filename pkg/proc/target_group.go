@@ -272,8 +272,8 @@ func (grp *TargetGroup) enableBreakpoint(lbp *LogicalBreakpoint) error {
 	var err0, errNotFound, errExists error
 	didSet := false
 targetLoop:
-	for _, p := range grp.targets {
-		err := enableBreakpointOnTarget(p, lbp)
+	for _, target := range grp.targets {
+		err := enableBreakpointOnTarget(target, lbp)
 
 		switch err.(type) {
 		case nil:
@@ -314,7 +314,7 @@ targetLoop:
 	return nil
 }
 
-func enableBreakpointOnTarget(p *Target, lbp *LogicalBreakpoint) error {
+func enableBreakpointOnTarget(t *Target, lbp *LogicalBreakpoint) error {
 	if !lbp.enabled || !lbp.condSatisfiable {
 		return nil
 	}
@@ -322,17 +322,17 @@ func enableBreakpointOnTarget(p *Target, lbp *LogicalBreakpoint) error {
 	var addrs []uint64
 	switch {
 	case lbp.Set.File != "":
-		addrs, err = FindFileLocation(p, lbp.Set.File, lbp.Set.Line)
-	case lbp.Set.FunctionName != "":
-		addrs, err = FindFunctionLocation(p, lbp.Set.FunctionName, lbp.Set.Line)
+		addrs, err = FindFileLocation(t, lbp.Set.File, lbp.Set.Line)
+	case lbp.Set.Function != "":
+		addrs, err = FindFunctionLocation(t, lbp.Set.Function, lbp.Set.Line)
 	case len(lbp.Set.PidAddrs) > 0:
 		for _, pidAddr := range lbp.Set.PidAddrs {
-			if pidAddr.Pid == p.Pid() {
+			if pidAddr.Pid == t.Pid() {
 				addrs = append(addrs, pidAddr.Addr)
 			}
 		}
 	case lbp.Set.Expr != nil:
-		addrs = lbp.Set.Expr(p)
+		addrs = lbp.Set.Expr(t)
 	default:
 		return fmt.Errorf("breakpoint %d can not be enabled", lbp.LogicalID)
 	}
@@ -342,7 +342,7 @@ func enableBreakpointOnTarget(p *Target, lbp *LogicalBreakpoint) error {
 	}
 
 	for _, addr := range addrs {
-		_, err = p.SetBreakpoint(lbp.LogicalID, addr, UserBreakpoint, nil)
+		_, err = t.SetBreakpoint(lbp.LogicalID, addr, UserBreakpoint, nil)
 		if err != nil {
 			if _, isexists := err.(BreakpointExistsError); isexists {
 				continue

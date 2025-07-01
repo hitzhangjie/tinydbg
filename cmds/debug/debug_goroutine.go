@@ -1,10 +1,10 @@
 package debug
 
 func init() {
-	registerDebugCmd(threadsCmd)
-	registerDebugCmd(threadCmd)
-	registerDebugCmd(goroutinesCmd)
-	registerDebugCmd(goroutineCmd)
+	register(threadsCmd)
+	register(threadCmd)
+	register(goroutinesCmd)
+	register(goroutineCmd)
 }
 
 var threadsCmd = func(c *DebugCommands) *command {

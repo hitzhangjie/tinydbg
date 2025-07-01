@@ -1,15 +1,15 @@
 package debug
 
 func init() {
-	registerDebugCmd(breakpointCmd)
-	registerDebugCmd(traceCmd)
-	registerDebugCmd(watchCmd)
-	registerDebugCmd(clearCmd)
-	registerDebugCmd(clearallCmd)
-	registerDebugCmd(toggleCmd)
-	registerDebugCmd(breakpointsCmd)
-	registerDebugCmd(onCmd)
-	registerDebugCmd(conditionCmd)
+	register(breakpointCmd)
+	register(traceCmd)
+	register(watchCmd)
+	register(clearCmd)
+	register(clearallCmd)
+	register(toggleCmd)
+	register(breakpointsCmd)
+	register(onCmd)
+	register(conditionCmd)
 }
 
 var breakpointCmd = func(c *DebugCommands) *command {

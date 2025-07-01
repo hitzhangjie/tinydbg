@@ -1,11 +1,11 @@
 package debug
 
 func init() {
-	registerDebugCmd(funcsCmd)
-	registerDebugCmd(typesCmd)
-	registerDebugCmd(packagesCmd)
-	registerDebugCmd(listCmd)
-	registerDebugCmd(disassembleCmd)
+	register(funcsCmd)
+	register(typesCmd)
+	register(packagesCmd)
+	register(listCmd)
+	register(disassembleCmd)
 }
 
 var funcsCmd = func(c *DebugCommands) *command {

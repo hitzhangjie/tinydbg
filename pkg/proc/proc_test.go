@@ -237,7 +237,7 @@ func setFunctionBreakpoint(p *proc.Target, t testing.TB, fname string) *proc.Bre
 	if err != nil {
 		t.Fatalf("FindFunctionLocation(%s): %v", fname, err)
 	}
-	bp.Logical.Set.FunctionName = fname
+	bp.Logical.Set.Function = fname
 	return bp
 }
 
@@ -4786,9 +4786,9 @@ func TestFollowExec(t *testing.T) {
 	skipOn(t, "follow exec not implemented on freebsd", "freebsd")
 	skipOn(t, "follow exec not implemented on macOS", "darwin")
 	withTestProcessArgs("spawn", t, ".", []string{"spawn", "3"}, 0, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		grp.LogicalBreakpoints[1] = &proc.LogicalBreakpoint{LogicalID: 1, Set: proc.SetBreakpoint{FunctionName: "main.traceme1"}, HitCount: make(map[int64]uint64)}
-		grp.LogicalBreakpoints[2] = &proc.LogicalBreakpoint{LogicalID: 2, Set: proc.SetBreakpoint{FunctionName: "main.traceme2"}, HitCount: make(map[int64]uint64)}
-		grp.LogicalBreakpoints[3] = &proc.LogicalBreakpoint{LogicalID: 3, Set: proc.SetBreakpoint{FunctionName: "main.traceme3"}, HitCount: make(map[int64]uint64)}
+		grp.LogicalBreakpoints[1] = &proc.LogicalBreakpoint{LogicalID: 1, Set: proc.BreakpointConfig{Function: "main.traceme1"}, HitCount: make(map[int64]uint64)}
+		grp.LogicalBreakpoints[2] = &proc.LogicalBreakpoint{LogicalID: 2, Set: proc.BreakpointConfig{Function: "main.traceme2"}, HitCount: make(map[int64]uint64)}
+		grp.LogicalBreakpoints[3] = &proc.LogicalBreakpoint{LogicalID: 3, Set: proc.BreakpointConfig{Function: "main.traceme3"}, HitCount: make(map[int64]uint64)}
 
 		assertNoError(grp.SetBreakpointEnabled(grp.LogicalBreakpoints[1], true), t, "EnableBreakpoint(main.traceme1)")
 		assertNoError(grp.SetBreakpointEnabled(grp.LogicalBreakpoints[2], true), t, "EnableBreakpoint(main.traceme2)")
@@ -4961,9 +4961,9 @@ func TestFollowExecRegexFilter(t *testing.T) {
 	skipOn(t, "follow exec not implemented on freebsd", "freebsd")
 	skipOn(t, "follow exec not implemented on macOS", "darwin")
 	withTestProcessArgs("spawn", t, ".", []string{"spawn", "3"}, 0, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		grp.LogicalBreakpoints[1] = &proc.LogicalBreakpoint{LogicalID: 1, Set: proc.SetBreakpoint{FunctionName: "main.traceme1"}, HitCount: make(map[int64]uint64)}
-		grp.LogicalBreakpoints[2] = &proc.LogicalBreakpoint{LogicalID: 2, Set: proc.SetBreakpoint{FunctionName: "main.traceme2"}, HitCount: make(map[int64]uint64)}
-		grp.LogicalBreakpoints[3] = &proc.LogicalBreakpoint{LogicalID: 3, Set: proc.SetBreakpoint{FunctionName: "main.traceme3"}, HitCount: make(map[int64]uint64)}
+		grp.LogicalBreakpoints[1] = &proc.LogicalBreakpoint{LogicalID: 1, Set: proc.BreakpointConfig{Function: "main.traceme1"}, HitCount: make(map[int64]uint64)}
+		grp.LogicalBreakpoints[2] = &proc.LogicalBreakpoint{LogicalID: 2, Set: proc.BreakpointConfig{Function: "main.traceme2"}, HitCount: make(map[int64]uint64)}
+		grp.LogicalBreakpoints[3] = &proc.LogicalBreakpoint{LogicalID: 3, Set: proc.BreakpointConfig{Function: "main.traceme3"}, HitCount: make(map[int64]uint64)}
 
 		assertNoError(grp.SetBreakpointEnabled(grp.LogicalBreakpoints[1], true), t, "EnableBreakpoint(main.traceme1)")
 		assertNoError(grp.SetBreakpointEnabled(grp.LogicalBreakpoints[2], true), t, "EnableBreakpoint(main.traceme2)")

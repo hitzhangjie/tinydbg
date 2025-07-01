@@ -1,15 +1,15 @@
 package debug
 
 func init() {
-	registerDebugCmd(restartCmd)
-	registerDebugCmd(rebuildCmd)
-	registerDebugCmd(continueCmd)
-	registerDebugCmd(stepCmd)
-	registerDebugCmd(stepInstructionCmd)
-	registerDebugCmd(nextInstructionCmd)
-	registerDebugCmd(nextCmd)
-	registerDebugCmd(stepoutCmd)
-	registerDebugCmd(callCmd)
+	register(restartCmd)
+	register(rebuildCmd)
+	register(continueCmd)
+	register(stepCmd)
+	register(stepInstructionCmd)
+	register(nextInstructionCmd)
+	register(nextCmd)
+	register(stepoutCmd)
+	register(callCmd)
 }
 
 var restartCmd = func(c *DebugCommands) *command {

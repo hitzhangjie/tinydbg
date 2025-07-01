@@ -967,7 +967,7 @@ type LogicalBreakpoint struct {
 	Line         int
 	enabled      bool
 
-	Set SetBreakpoint
+	Set BreakpointConfig
 
 	Tracepoint  bool // Tracepoint flag
 	TraceReturn bool
@@ -1003,14 +1003,14 @@ type LogicalBreakpoint struct {
 	TraceFollowCalls int
 }
 
-// SetBreakpoint describes how a breakpoint should be set.
-type SetBreakpoint struct {
-	FunctionName string
-	File         string
-	Line         int
-	Expr         func(*Target) []uint64
-	ExprString   string
-	PidAddrs     []PidAddr
+// BreakpointConfig describes how a breakpoint should be set.
+type BreakpointConfig struct {
+	Function   string
+	File       string
+	Line       int
+	Expr       func(*Target) []uint64
+	ExprString string
+	PidAddrs   []PidAddr
 }
 
 type PidAddr struct {

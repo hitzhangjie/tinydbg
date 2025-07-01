@@ -8,5 +8,6 @@
         "assets": true,
         "vendor": true
     },
-    "editor.foldingImportsByDefault": true
+    "editor.foldingImportsByDefault": true,
+    "go.lintTool": "golint"
 }

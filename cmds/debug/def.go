@@ -127,18 +127,28 @@ var (
 	// * Follows pointers
 	// * Loads more array values
 	// * Does not limit struct fields
-	longLoadConfig = api.LoadConfig{FollowPointers: true, MaxVariableRecurse: 1, MaxStringLen: 64, MaxArrayValues: 64, MaxStructFields: -1}
+	longLoadConfig = api.LoadConfig{
+		FollowPointers:     true,
+		MaxVariableRecurse: 1,
+		MaxStringLen:       64,
+		MaxArrayValues:     64,
+		MaxStructFields:    -1,
+	}
+
 	// ShortLoadConfig loads less information, not following pointers
 	// and limiting struct fields loaded to 3.
-	ShortLoadConfig = api.LoadConfig{MaxStringLen: 64, MaxStructFields: 3}
+	ShortLoadConfig = api.LoadConfig{
+		MaxStringLen:    64,
+		MaxStructFields: 3,
+	}
 )
 
-type newDebugCmdFunc func(*DebugCommands) *command
+type commandCtor func(*DebugCommands) *command
 
-var supportedDebugCmds []newDebugCmdFunc
+var commandCtors []commandCtor
 
-func registerDebugCmd(c newDebugCmdFunc) {
-	supportedDebugCmds = append(supportedDebugCmds, c)
+func register(c commandCtor) {
+	commandCtors = append(commandCtors, c)
 }
 
 // NewDebugCommands returns a Commands struct with default commands defined.
@@ -146,7 +156,7 @@ func NewDebugCommands(client service.Client) *DebugCommands {
 	c := &DebugCommands{client: client}
 
 	// Gather all commands from different groups
-	for _, f := range supportedDebugCmds {
+	for _, f := range commandCtors {
 		c.cmds = append(c.cmds, f(c))
 	}
 
@@ -168,7 +178,11 @@ func (s *DebugCommands) Register(cmdstr string, cf cmdfunc, helpMsg string) {
 		}
 	}
 
-	s.cmds = append(s.cmds, &command{aliases: []string{cmdstr}, cmdFn: cf, helpMsg: helpMsg})
+	s.cmds = append(s.cmds, &command{
+		aliases: []string{cmdstr},
+		cmdFn:   cf,
+		helpMsg: helpMsg,
+	})
 }
 
 // Find will look up the command function for the given command input.

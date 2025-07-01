@@ -519,7 +519,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 	defer d.targetMutex.Unlock()
 
 	var (
-		setbp proc.SetBreakpoint
+		bpcfg proc.BreakpointConfig
 		err   error
 	)
 
@@ -541,32 +541,32 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 		if len(d.target.Targets()) != 1 {
 			return nil, ErrNotImplementedWithMultitarget
 		}
-		setbp.PidAddrs = []proc.PidAddr{{Pid: d.target.Selected.Pid(), Addr: requestedBp.Addr}}
+		bpcfg.PidAddrs = []proc.PidAddr{{Pid: d.target.Selected.Pid(), Addr: requestedBp.Addr}}
 	case len(requestedBp.File) > 0:
 		fileName := requestedBp.File
-		setbp.File = fileName
-		setbp.Line = requestedBp.Line
+		bpcfg.File = fileName
+		bpcfg.Line = requestedBp.Line
 	case len(requestedBp.FunctionName) > 0:
-		setbp.FunctionName = requestedBp.FunctionName
-		setbp.Line = requestedBp.Line
+		bpcfg.Function = requestedBp.FunctionName
+		bpcfg.Line = requestedBp.Line
 	case len(requestedBp.Addrs) > 0:
-		setbp.PidAddrs = make([]proc.PidAddr, len(requestedBp.Addrs))
+		bpcfg.PidAddrs = make([]proc.PidAddr, len(requestedBp.Addrs))
 		if len(d.target.Targets()) == 1 {
 			pid := d.target.Selected.Pid()
 			for i, addr := range requestedBp.Addrs {
-				setbp.PidAddrs[i] = proc.PidAddr{Pid: pid, Addr: addr}
+				bpcfg.PidAddrs[i] = proc.PidAddr{Pid: pid, Addr: addr}
 			}
 		} else {
 			if len(requestedBp.Addrs) != len(requestedBp.AddrPid) {
 				return nil, errors.New("mismatched length in addrs and addrpid")
 			}
 			for i, addr := range requestedBp.Addrs {
-				setbp.PidAddrs[i] = proc.PidAddr{Pid: requestedBp.AddrPid[i], Addr: addr}
+				bpcfg.PidAddrs[i] = proc.PidAddr{Pid: requestedBp.AddrPid[i], Addr: addr}
 			}
 		}
 	default:
 		if requestedBp.Addr != 0 {
-			setbp.PidAddrs = []proc.PidAddr{{Pid: d.target.Selected.Pid(), Addr: requestedBp.Addr}}
+			bpcfg.PidAddrs = []proc.PidAddr{{Pid: d.target.Selected.Pid(), Addr: requestedBp.Addr}}
 		}
 	}
 
@@ -575,7 +575,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 		if err != nil {
 			return nil, err
 		}
-		setbp.Expr = func(t *proc.Target) []uint64 {
+		bpcfg.Expr = func(t *proc.Target) []uint64 {
 			locs, _, err := loc.Find(t, d.processArgs, nil, locExpr, false, substitutePathRules)
 			if err != nil || len(locs) != 1 {
 				logflags.LogDebuggerLogger().Debugf("could not evaluate breakpoint expression %q: %v (number of results %d)", locExpr, err, len(locs))
@@ -583,7 +583,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 			}
 			return locs[0].PCs
 		}
-		setbp.ExprString = locExpr
+		bpcfg.ExprString = locExpr
 	}
 
 	id := requestedBp.ID
@@ -603,7 +603,7 @@ func (d *Debugger) CreateBreakpoint(requestedBp *api.Breakpoint, locExpr string,
 		return nil, err
 	}
 
-	lbp.Set = setbp
+	lbp.Set = bpcfg
 
 	if lbp.Set.Expr != nil {
 		addrs := lbp.Set.Expr(d.Target())
