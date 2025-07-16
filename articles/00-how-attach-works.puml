@@ -30,11 +30,13 @@ activate BE #ffff00
 activate TP #ffff00
 
 TP --> TP: SIGTRAP handler: \n1. stop the process\n2. send SIGCHLD to ptracer, \n    notify child process state changed
-TP --> BE: send SIGCHLD to ptracer
+TP --> BE: send SIGCHLD to ptracer \nps: but SIGCHLD may be not generated ❌,\n     so __wake_up_parent(tsk, ptracer) called
+
+TP --> TP: 3. __wake_up_parent(tsk, ptracer) called
 deactivate TP
 
 activate BE #00ffff
-BE --> BE: SIGCHLD handler: \n1. wake up ptracer\n2. ptracer `interruptible sleep` to `runnable`\n3. scheduler shedules ptracer\n4. wait4(...) returns
+BE --> BE: 1. wake up ptracer\n2. ptracer `interruptible sleep` to `runnable`\n3. scheduler shedules ptracer\n4. wait4(...) returns\n\nps: even if SIGCHLD not generated,\n__wake_up_parent(...) will wake up the ptracer,\n both of them could wake up ptracer.
 deactivate BE
 
 deactivate TP
