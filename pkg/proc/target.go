@@ -158,7 +158,6 @@ func DisableAsyncPreemptEnv() []string {
 }
 
 // newTarget returns an initialized Target object.
-// The p argument can optionally implement the RecordingManipulation interface.
 func (grp *TargetGroup) newTarget(p ProcessInternal, pid int, currentThread Thread, path, cmdline string) (*Target, error) {
 	entryPoint, err := p.EntryPoint()
 	if err != nil {
