@@ -605,45 +605,12 @@ func (t *Target) setBreakpointInternal(logicalID int, addr uint64, kind Breakpoi
 		newBreaklet.LogicalID = logicalID
 	}
 
-	setLogicalBreakpoint := func(bp *Breakpoint) {
-		if kind != UserBreakpoint || bp.Logical != nil {
-			return
-		}
-		if bpmap.Logical == nil {
-			bpmap.Logical = make(map[int]*LogicalBreakpoint)
-		}
-		lbp := bpmap.Logical[logicalID]
-		if lbp == nil {
-			lbp = &LogicalBreakpoint{LogicalID: logicalID}
-			lbp.HitCount = make(map[int64]uint64)
-			lbp.enabled = true
-			lbp.condSatisfiable = true
-			bpmap.Logical[logicalID] = lbp
-		}
-		bp.Logical = lbp
-		breaklet := bp.UserBreaklet()
-		if breaklet != nil && breaklet.Cond == nil {
-			breaklet.Cond = lbp.cond
-		}
-		if lbp.File == "" && lbp.Line == 0 {
-			lbp.File = bp.File
-			lbp.Line = bp.Line
-		} else if bp.File != lbp.File || bp.Line != lbp.Line {
-			lbp.File = "<multiple locations>"
-			lbp.Line = 0
-		}
-		fn := t.BinInfo().PCToFunc(bp.Addr)
-		if fn != nil {
-			lbp.FunctionName = fn.NameWithoutTypeParams()
-		}
-	}
-
 	if bp, ok := bpmap.M[addr]; ok {
 		if !bp.canOverlap(kind) {
 			return bp, BreakpointExistsError{bp.File, bp.Line, bp.Addr}
 		}
 		bp.Breaklets = append(bp.Breaklets, newBreaklet)
-		setLogicalBreakpoint(bp)
+		t.setLogicalBreakpoint(bp, kind, bpmap, logicalID)
 		return bp, nil
 	}
 
@@ -684,7 +651,7 @@ func (t *Target) setBreakpointInternal(logicalID int, addr uint64, kind Breakpoi
 	}
 
 	newBreakpoint.Breaklets = append(newBreakpoint.Breaklets, newBreaklet)
-	setLogicalBreakpoint(newBreakpoint)
+	t.setLogicalBreakpoint(newBreakpoint, kind, bpmap, logicalID)
 
 	bpmap.M[addr] = newBreakpoint
 
@@ -1168,4 +1135,37 @@ func breakpointConditionUsesHitCounts(lbp *LogicalBreakpoint) bool {
 		return true
 	})
 	return r
+}
+
+func (t *Target) setLogicalBreakpoint(bp *Breakpoint, kind BreakpointKind, bpmap *BreakpointMap, logicalID int) {
+	if kind != UserBreakpoint || bp.Logical != nil {
+		return
+	}
+	if bpmap.Logical == nil {
+		bpmap.Logical = make(map[int]*LogicalBreakpoint)
+	}
+	lbp := bpmap.Logical[logicalID]
+	if lbp == nil {
+		lbp = &LogicalBreakpoint{LogicalID: logicalID}
+		lbp.HitCount = make(map[int64]uint64)
+		lbp.enabled = true
+		lbp.condSatisfiable = true
+		bpmap.Logical[logicalID] = lbp
+	}
+	bp.Logical = lbp
+	breaklet := bp.UserBreaklet()
+	if breaklet != nil && breaklet.Cond == nil {
+		breaklet.Cond = lbp.cond
+	}
+	if lbp.File == "" && lbp.Line == 0 {
+		lbp.File = bp.File
+		lbp.Line = bp.Line
+	} else if bp.File != lbp.File || bp.Line != lbp.Line {
+		lbp.File = "<multiple locations>"
+		lbp.Line = 0
+	}
+	fn := t.BinInfo().PCToFunc(bp.Addr)
+	if fn != nil {
+		lbp.FunctionName = fn.NameWithoutTypeParams()
+	}
 }
