@@ -266,7 +266,7 @@ func (procgrp *processGroup) add(p *nativeProcess, pid int, currentThread proc.T
 }
 
 func (procgrp *processGroup) ContinueOnce(cctx *proc.ContinueOnceContext) (proc.Thread, proc.StopReason, error) {
-	if len(procgrp.procs) != 1 && runtime.GOOS != "linux" && runtime.GOOS != "windows" {
+	if len(procgrp.procs) != 1 && runtime.GOOS != "linux" {
 		panic("not implemented")
 	}
 	if procgrp.numValid() == 0 {
