@@ -33,14 +33,14 @@ type Process interface {
 
 	// Memory returns a memory read/writer for this process's memory.
 	Memory() MemoryReadWriter
-}
 
-// ProcessInternal holds a set of methods that need to be implemented by a
-// Delve backend. Methods in the Process interface are safe to be called by
-// clients of the 'proc' library, while all other methods are only called
-// directly within 'proc'.
-type ProcessInternal interface {
-	Process
+	// Following methods migrated from interface ProcessInternal.
+	//
+	// ProcessInternal holds a set of methods that need to be implemented by a
+	// Delve backend. Methods in the Process interface are safe to be called by
+	// clients of the 'proc' library, while all other methods are only called
+	// directly within 'proc'.
+
 	// Valid returns true if this Process can be used. When it returns false it
 	// also returns an error describing why the Process is invalid (either
 	// ErrProcessExited or ErrProcessDetached).

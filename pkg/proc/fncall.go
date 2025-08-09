@@ -184,7 +184,7 @@ func EvalExpressionWithCalls(grp *TargetGroup, g *G, expr string, retLoadCfg Loa
 	}
 	scope.loadCfg = &retLoadCfg
 
-	endCallInjection, err := t.proc.StartCallInjection()
+	endCallInjection, err := t.Process.StartCallInjection()
 	if err != nil {
 		return err
 	}

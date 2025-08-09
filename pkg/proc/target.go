@@ -37,8 +37,6 @@ const (
 type Target struct {
 	Process
 
-	proc ProcessInternal
-
 	pid     int
 	CmdLine string
 
@@ -158,7 +156,7 @@ func DisableAsyncPreemptEnv() []string {
 }
 
 // newTarget returns an initialized Target object.
-func (grp *TargetGroup) newTarget(p ProcessInternal, pid int, currentThread Thread, path, cmdline string) (*Target, error) {
+func (grp *TargetGroup) newTarget(p Process, pid int, currentThread Thread, path, cmdline string) (*Target, error) {
 	entryPoint, err := p.EntryPoint()
 	if err != nil {
 		return nil, err
@@ -176,7 +174,6 @@ func (grp *TargetGroup) newTarget(p ProcessInternal, pid int, currentThread Thre
 
 	t := &Target{
 		Process:       p,
-		proc:          p,
 		fncallForG:    make(map[int64]*callInjection),
 		currentThread: currentThread,
 		pid:           pid,
@@ -228,7 +225,7 @@ func (t *Target) IsCgo() bool {
 // also returns an error describing why the Process is invalid (either
 // ErrProcessExited or ErrProcessDetached).
 func (t *Target) Valid() (bool, error) {
-	ok, err := t.proc.Valid()
+	ok, err := t.Process.Valid()
 	if !ok && err != nil {
 		if pe, ok := err.(ErrProcessExited); ok {
 			pe.Status = t.exitStatus
@@ -432,7 +429,7 @@ func (grp *TargetGroup) RequestManualStop() error {
 	grp.cctx.StopMu.Lock()
 	defer grp.cctx.StopMu.Unlock()
 	grp.cctx.manualStopRequested = true
-	return grp.Selected.proc.RequestManualStop(grp.cctx)
+	return grp.Selected.Process.RequestManualStop(grp.cctx)
 }
 
 const (
@@ -567,6 +564,6 @@ func (waitFor *WaitFor) Valid() bool {
 
 // IsCoreDump returns true if the target is a core dump file.
 func (t *Target) IsCoreDump() bool {
-	_, err := t.proc.MemoryMap()
+	_, err := t.Process.MemoryMap()
 	return err == ErrMemoryMapNotSupported
 }

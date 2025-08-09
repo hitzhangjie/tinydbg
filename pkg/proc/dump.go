@@ -145,7 +145,7 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 
 	// note of process
 	if flags&DumpPlatformIndependent == 0 {
-		threadsDone, notes, err = t.proc.DumpProcessNotes(notes, state.threadDone)
+		threadsDone, notes, err = t.Process.DumpProcessNotes(notes, state.threadDone)
 		if err != nil {
 			state.setErr(err)
 			return
@@ -168,7 +168,7 @@ func (t *Target) Dump(out elfwriter.WriteCloserSeeker, flags DumpFlags, state *D
 	}
 
 	// corefile mapped memory (code, data, heap, stack)
-	memmap, err := t.proc.MemoryMap()
+	memmap, err := t.Process.MemoryMap()
 	if err != nil {
 		state.setErr(err)
 		return

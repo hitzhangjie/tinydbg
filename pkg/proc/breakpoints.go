@@ -645,7 +645,7 @@ func (t *Target) setBreakpointInternal(logicalID int, addr uint64, kind Breakpoi
 		Addr:         addr,
 	}
 
-	err := t.proc.WriteBreakpoint(newBreakpoint)
+	err := t.Process.WriteBreakpoint(newBreakpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -767,7 +767,7 @@ func (t *Target) finishClearBreakpoint(bp *Breakpoint) (bool, error) {
 	if len(bp.Breaklets) > 0 {
 		return false, nil
 	}
-	if err := t.proc.EraseBreakpoint(bp); err != nil {
+	if err := t.Process.EraseBreakpoint(bp); err != nil {
 		return false, err
 	}
 
