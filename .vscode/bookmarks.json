@@ -44,6 +44,16 @@
 					"label": "breakpoint: how serverside createbreakpoint works"
 				}
 			]
+		},
+		{
+			"path": "pkg/proc/native/proc.go",
+			"bookmarks": [
+				{
+					"line": 273,
+					"column": 0,
+					"label": ""
+				}
+			]
 		}
 	]
 }

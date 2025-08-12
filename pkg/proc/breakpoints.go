@@ -497,13 +497,20 @@ func (nbp NoBreakpointError) Error() string {
 
 // BreakpointMap represents an (address, breakpoint) map.
 type BreakpointMap struct {
+	// M is a map of physical breakpoints.
+	// - key=physical breakpoint address,
+	// - val=physical breakpoint
 	M map[uint64]*Breakpoint
 
 	// Logical is a map of logical breakpoints.
+	// - key=logical breakpoint id,
+	// - val=logical breakpoint
 	Logical map[int]*LogicalBreakpoint
 
 	// WatchOutOfScope is the list of watchpoints that went out of scope during
-	// the last resume operation
+	// the last resume operation.
+	//
+	// ps: the last resume operation could be continue, next, step or others.
 	WatchOutOfScope []*Breakpoint
 }
 

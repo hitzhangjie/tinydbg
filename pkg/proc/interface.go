@@ -71,21 +71,22 @@ type ContinueOnceContext struct {
 	ResumeChan chan<- struct{}
 	StopMu     sync.Mutex
 	// manualStopRequested is set if all the threads in the process were
-	// signalled to stop as a result of a Halt API call. Used to disambiguate
+	// signaled to stop as a result of a Halt API call. Used to disambiguate
 	// why a thread is found to have stopped.
 	manualStopRequested bool
 }
 
-// CheckAndClearManualStopRequest will check for a manual
-// stop and then clear that state.
-func (cctx *ContinueOnceContext) CheckAndClearManualStopRequest() bool {
+// ClearManualStopRequest will clear the manual stop requested state,
+// and return the previous state.
+func (cctx *ContinueOnceContext) ClearManualStopRequest() (requested bool) {
 	cctx.StopMu.Lock()
 	defer cctx.StopMu.Unlock()
-	msr := cctx.manualStopRequested
+	v := cctx.manualStopRequested
 	cctx.manualStopRequested = false
-	return msr
+	return v
 }
 
+// GetManualStopRequested returns the manual stop requested state.
 func (cctx *ContinueOnceContext) GetManualStopRequested() bool {
 	cctx.StopMu.Lock()
 	defer cctx.StopMu.Unlock()

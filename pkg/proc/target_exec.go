@@ -69,11 +69,11 @@ func (grp *TargetGroup) Continue() error {
 		dbp.Breakpoints().WatchOutOfScope = nil
 		dbp.clearHardcodedBreakpoints()
 	}
-	grp.cctx.CheckAndClearManualStopRequest()
+	grp.cctx.ClearManualStopRequest()
 	defer func() {
 		// Make sure we clear internal breakpoints if we simultaneously receive a
 		// manual stop request and hit a breakpoint.
-		if grp.cctx.CheckAndClearManualStopRequest() {
+		if grp.cctx.ClearManualStopRequest() {
 			grp.finishManualStop()
 		}
 	}()
@@ -83,7 +83,7 @@ func (grp *TargetGroup) Continue() error {
 			return err
 		}
 
-		if grp.cctx.CheckAndClearManualStopRequest() {
+		if grp.cctx.ClearManualStopRequest() {
 			grp.finishManualStop()
 			return nil
 		}

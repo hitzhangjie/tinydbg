@@ -77,10 +77,15 @@ type Target struct {
 	partOfGroup bool
 }
 
+// KeepSteppingBreakpoints is a bitmask that indicates which breakpoints should be kept
 type KeepSteppingBreakpoints uint8
 
 const (
+	// HaltKeepsSteppingBreakpoints means that when the target process is stopped
+	// by a Halt API call, the stepping breakpoints will be kept.
 	HaltKeepsSteppingBreakpoints KeepSteppingBreakpoints = 1 << iota
+	// TracepointKeepsSteppingBreakpoints means that when the target process is stopped
+	// by a tracepoint, the stepping breakpoints will be kept.
 	TracepointKeepsSteppingBreakpoints
 )
 
