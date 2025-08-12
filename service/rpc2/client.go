@@ -110,7 +110,9 @@ func (c *RPCClient) Continue() <-chan *api.DebuggerState {
 				return
 			}
 
+			// breakpoint (including normal breakpoint and bp-based tracepoint)
 			isbreakpoint := false
+			// tracepoint (bp-based tracepoints, exclude normal breakpoint)
 			istracepoint := true
 			for i := range state.Threads {
 				if state.Threads[i].Breakpoint != nil {
@@ -119,6 +121,9 @@ func (c *RPCClient) Continue() <-chan *api.DebuggerState {
 				}
 			}
 
+			// return if:
+			// - !isbreakpoint: doesn't encounter any breakpoint, i.e, target exit or other cases
+			// - !isbreakpoint || !istracepoint: encounter one normal breakpoint, not tracepoint
 			if !isbreakpoint || !istracepoint {
 				close(ch)
 				return
