@@ -390,13 +390,6 @@ func (pt *ptraceThread) handlePtraceFuncs() {
 	// all commands after PTRACE_ATTACH to come from the same thread.
 	runtime.LockOSThread()
 
-	// Leaving the OS thread locked currently leads to segfaults in the
-	// Go runtime while running on FreeBSD and OpenBSD:
-	//   https://github.com/golang/go/issues/52394
-	if runtime.GOOS == "freebsd" || runtime.GOOS == "openbsd" {
-		defer runtime.UnlockOSThread()
-	}
-
 	for fn := range pt.ptraceChan {
 		fn()
 		pt.ptraceDoneChan <- nil
