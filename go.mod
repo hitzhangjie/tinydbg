@@ -1,6 +1,6 @@
 module github.com/hitzhangjie/tinydbg
 
-go 1.21
+go 1.24
 
 require (
 	github.com/cosiner/argv v0.1.0
