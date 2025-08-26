@@ -1,0 +1,7 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+在进行代码相关的调整时，必须先列出计划，等待用户显示确认后，再予以执行

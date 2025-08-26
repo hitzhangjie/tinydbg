@@ -1,0 +1,7 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+这不是一个从0到1的工程，除非作者有需要，否则不要生成冗余的安装文、设计、测试、readme等文档
