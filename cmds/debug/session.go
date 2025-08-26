@@ -261,7 +261,7 @@ func (t *Session) Run() (int, error) {
 				fmt.Fprintln(t.stdout, "exit")
 				return t.handleExit()
 			}
-			return 1, errors.New("Prompt for input failed.\n")
+			return 1, errors.New("prompt for input failed")
 		}
 		// note: If `tinydbg> transcript` supported, we should print
 		// the t.prompt+cmdstr+"\n" into the transcript file.

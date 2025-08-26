@@ -30,10 +30,13 @@ func main() {
 	// if cgo used, pass "-O0 -g" to disable optimization and enable debugging symbols
 	const cgoCflagsEnv = "CGO_CFLAGS"
 	if os.Getenv(cgoCflagsEnv) == "" {
-		os.Setenv(cgoCflagsEnv, "-O0 -g")
+		_ = os.Setenv(cgoCflagsEnv, "-O0 -g")
 	} else {
 		logflags.WriteCgoFlagsWarning()
 	}
 
-	cmds.New().Execute()
+	if err := cmds.New().Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "execution failed: %v\n", err)
+		os.Exit(1)
+	}
 }

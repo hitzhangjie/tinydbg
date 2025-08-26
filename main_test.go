@@ -50,7 +50,11 @@ func TestBuild(t *testing.T) {
 	cmd.Dir = buildtestdir
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer stderr.Close()
+	defer func() {
+		if err := stderr.Close(); err != nil {
+			t.Logf("Failed to close stderr: %v", err)
+		}
+	}()
 
 	assertNoError(cmd.Start(), t, "tinydbg debug")
 
@@ -77,8 +81,12 @@ func TestBuild(t *testing.T) {
 		t.Fatal("Program did not exit")
 	}
 
-	client.Detach(true)
-	cmd.Wait()
+	if err := client.Detach(true); err != nil {
+		t.Logf("Failed to detach client: %v", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }
 
 func testOutput(t *testing.T, tinydbgbin, output string, debugCmds []string) (stdout, stderr []byte) {
@@ -99,7 +107,11 @@ func testOutput(t *testing.T, tinydbgbin, output string, debugCmds []string) (st
 	cmd.Dir = buildtestdir
 	stdin, err := cmd.StdinPipe()
 	assertNoError(err, t, "stdin pipe")
-	defer stdin.Close()
+	defer func() {
+		if err := stdin.Close(); err != nil {
+			t.Logf("Failed to close stdin: %v", err)
+		}
+	}()
 
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
@@ -122,12 +134,16 @@ func testOutput(t *testing.T, tinydbgbin, output string, debugCmds []string) (st
 	}
 
 	for _, c := range debugCmds {
-		fmt.Fprintf(stdin, "%s\n", c)
+		if _, err := fmt.Fprintf(stdin, "%s\n", c); err != nil {
+			t.Logf("Failed to write to stdin: %v", err)
+		}
 	}
 
 	// ignore "tinydbg debug" command error, it returns
 	// errors even after successful debug session.
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 	stdout, stderr = stdoutBuf.Bytes(), stderrBuf.Bytes()
 
 	_, err = os.Stat(debugbin)
@@ -176,7 +192,11 @@ func TestUnattendedBreakpoint(t *testing.T) {
 	cmd := exec.Command(protest.GetTinyDbgBinary(t), "debug", "--continue", "--headless", "--accept-multiclient", "--listen", listenAddr, fixturePath)
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stdout pipe")
-	defer stderr.Close()
+	defer func() {
+		if err := stderr.Close(); err != nil {
+			t.Logf("Failed to close stderr: %v", err)
+		}
+	}()
 
 	assertNoError(cmd.Start(), t, "start headless instance")
 
@@ -193,7 +213,9 @@ func TestUnattendedBreakpoint(t *testing.T) {
 	if err := client.Detach(true); err != nil {
 		t.Fatalf("error detaching from headless instance: %v", err)
 	}
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }
 
 // TestContinue verifies that the debugged executable starts immediately with --continue
@@ -207,7 +229,11 @@ func TestContinue(t *testing.T) {
 	cmd.Dir = buildtestdir
 	stdout, err := cmd.StdoutPipe()
 	assertNoError(err, t, "stdout pipe")
-	defer stdout.Close()
+	defer func() {
+		if err := stdout.Close(); err != nil {
+			t.Logf("Failed to close stdout: %v", err)
+		}
+	}()
 
 	assertNoError(cmd.Start(), t, "start headless instance")
 
@@ -225,7 +251,9 @@ func TestContinue(t *testing.T) {
 	if err := client.Detach(true); err != nil {
 		t.Fatalf("error detaching from headless instance: %v", err)
 	}
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }
 
 // TestRedirect verifies that redirecting stdin works
@@ -238,7 +266,11 @@ func TestRedirect(t *testing.T) {
 	cmd := exec.Command(tinydbgbin, "debug", "--headless", "--continue", "--accept-multiclient", "--listen", listenAddr, "-r", catfixture, catfixture)
 	stdout, err := cmd.StdoutPipe()
 	assertNoError(err, t, "stdout pipe")
-	defer stdout.Close()
+	defer func() {
+		if err := stdout.Close(); err != nil {
+			t.Logf("Failed to close stdout: %v", err)
+		}
+	}()
 
 	assertNoError(cmd.Start(), t, "start headless instance")
 
@@ -253,8 +285,12 @@ func TestRedirect(t *testing.T) {
 
 	// and detach from and kill the headless instance
 	client := rpc2.NewClient(listenAddr)
-	client.Detach(true)
-	cmd.Wait()
+	if err := client.Detach(true); err != nil {
+		t.Logf("Failed to detach client: %v", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }
 
 func TestExitWhenDebugSessionInit(t *testing.T) {
@@ -471,7 +507,9 @@ func TestTrace(t *testing.T) {
 	if !bytes.Contains(output, expected) {
 		t.Fatalf("expected:\n%s\ngot:\n%s", string(expected), string(output))
 	}
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }
 
 func TestTrace2(t *testing.T) {
@@ -485,7 +523,11 @@ func TestTrace2(t *testing.T) {
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "traceprog.go"), "callme")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
+	defer func() {
+		if err := rdr.Close(); err != nil {
+			t.Logf("Failed to close rdr: %v", err)
+		}
+	}()
 
 	cmd.Dir = filepath.Join(fixtures, "buildtest")
 
@@ -511,7 +553,11 @@ func TestTraceDirRecursion(t *testing.T) {
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "leafrec.go"), "main.A", "--follow-calls", "4")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
+	defer func() {
+		if err := rdr.Close(); err != nil {
+			t.Logf("Failed to close rdr: %v", err)
+		}
+	}()
 
 	cmd.Dir = filepath.Join(fixtures, "buildtest")
 
@@ -550,7 +596,11 @@ func TestTraceMultipleGoroutines(t *testing.T) {
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "goroutines-trace.go"), "callme")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
+	defer func() {
+		if err := rdr.Close(); err != nil {
+			t.Logf("Failed to close rdr: %v", err)
+		}
+	}()
 
 	cmd.Dir = filepath.Join(fixtures, "buildtest")
 
@@ -565,7 +615,9 @@ func TestTraceMultipleGoroutines(t *testing.T) {
 	if !bytes.Contains(output, expected2) {
 		t.Fatalf("expected:\n%s\ngot:\n%s", string(expected), string(output))
 	}
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }
 
 func TestTracePid(t *testing.T) {
@@ -589,13 +641,21 @@ func TestTracePid(t *testing.T) {
 	if targetCmd.Process == nil || targetCmd.Process.Pid == 0 {
 		t.Fatal("expected target process running")
 	}
-	defer targetCmd.Process.Kill()
+	defer func() {
+		if err := targetCmd.Process.Kill(); err != nil {
+			t.Logf("Failed to kill process: %v", err)
+		}
+	}()
 
 	// tinydbg attach the process by pid
 	cmd := exec.Command(tinydbgbin, "trace", "-p", strconv.Itoa(targetCmd.Process.Pid), "main.A")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
+	defer func() {
+		if err := rdr.Close(); err != nil {
+			t.Logf("Failed to close rdr: %v", err)
+		}
+	}()
 
 	assertNoError(cmd.Start(), t, "running trace")
 
@@ -606,7 +666,9 @@ func TestTracePid(t *testing.T) {
 		t.Fatalf("expected:\n%s\ngot:\n%s", string(expected), string(output))
 	}
 
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }
 
 func TestTraceBreakpointExists(t *testing.T) {
@@ -619,13 +681,21 @@ func TestTraceBreakpointExists(t *testing.T) {
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), filepath.Join(fixtures, "issue573.go"), "runtime.*panic")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
+	defer func() {
+		if err := rdr.Close(); err != nil {
+			t.Logf("Failed to close rdr: %v", err)
+		}
+	}()
 
 	cmd.Dir = filepath.Join(fixtures, "buildtest")
 
 	assertNoError(cmd.Start(), t, "running trace")
 
-	defer cmd.Wait()
+	defer func() {
+		if err := cmd.Wait(); err != nil {
+			t.Logf("Failed to wait for command: %v", err)
+		}
+	}()
 
 	output, err := io.ReadAll(rdr)
 	assertNoError(err, t, "ReadAll")
@@ -642,12 +712,20 @@ func TestTracePrintStack(t *testing.T) {
 	cmd := exec.Command(tinydbgbin, "trace", "--output", filepath.Join(t.TempDir(), "__debug"), "--stack", "2", filepath.Join(fixtures, "issue573.go"), "foo")
 	rdr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer rdr.Close()
+	defer func() {
+		if err := rdr.Close(); err != nil {
+			t.Logf("Failed to close rdr: %v", err)
+		}
+	}()
 
 	cmd.Dir = filepath.Join(fixtures, "buildtest")
 	assertNoError(cmd.Start(), t, "running trace")
 
-	defer cmd.Wait()
+	defer func() {
+		if err := cmd.Wait(); err != nil {
+			t.Logf("Failed to wait for command: %v", err)
+		}
+	}()
 
 	output, err := io.ReadAll(rdr)
 	assertNoError(err, t, "ReadAll")
@@ -675,7 +753,11 @@ func TestUnixDomainSocket(t *testing.T) {
 	cmd.Dir = buildtestdir
 	stderr, err := cmd.StderrPipe()
 	assertNoError(err, t, "stderr pipe")
-	defer stderr.Close()
+	defer func() {
+		if err := stderr.Close(); err != nil {
+			t.Logf("Failed to close stderr: %v", err)
+		}
+	}()
 
 	assertNoError(cmd.Start(), t, "tinydbg debug")
 
@@ -705,6 +787,10 @@ func TestUnixDomainSocket(t *testing.T) {
 		t.Fatal("Program did not exit")
 	}
 
-	client.Detach(true)
-	cmd.Wait()
+	if err := client.Detach(true); err != nil {
+		t.Logf("Failed to detach client: %v", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Logf("Failed to wait for command: %v", err)
+	}
 }

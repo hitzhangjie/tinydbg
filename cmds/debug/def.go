@@ -1,4 +1,4 @@
-// Package terminal implements functions for responding to user
+// Package debug implements functions for responding to user
 // input and dispatching to appropriate backend commands.
 package debug
 
@@ -518,14 +518,14 @@ func (s *DebugCommands) frameCommand(t *Session, ctx callContext, argstr string,
 		return s.CallWithContext(arg, t, ctx)
 	}
 	if frame < 0 {
-		return fmt.Errorf("Invalid frame %d", frame)
+		return fmt.Errorf("invalid frame %d", frame)
 	}
 	stack, err := t.client.Stacktrace(ctx.Scope.GoroutineID, frame, 0, nil)
 	if err != nil {
 		return err
 	}
 	if frame >= len(stack) {
-		return fmt.Errorf("Invalid frame %d", frame)
+		return fmt.Errorf("invalid frame %d", frame)
 	}
 	s.frame = frame
 	state, err := t.client.GetState()
@@ -534,7 +534,7 @@ func (s *DebugCommands) frameCommand(t *Session, ctx callContext, argstr string,
 	}
 	printcontext(t, state)
 	th := stack[frame]
-	fmt.Fprintf(t.stdout, "Frame %d: %s:%d (PC: %x)\n", frame, t.formatPath(th.File), th.Line, th.PC)
+	fmt.Fprintf(t.stdout, "frame %d: %s:%d (PC: %x)\n", frame, t.formatPath(th.File), th.Line, th.PC)
 	printfile(t, th.File, th.Line, true)
 	return nil
 }
@@ -746,7 +746,7 @@ func parseNewArgv(args string) (resetArgs bool, newArgv []string, newRedirects [
 	}
 	v, err := argv.Argv(args,
 		func(s string) (string, error) {
-			return "", fmt.Errorf("Backtick not supported in '%s'", s)
+			return "", fmt.Errorf("backtick not supported in '%s'", s)
 		},
 		nil)
 	if err != nil {
@@ -924,7 +924,7 @@ func scopePrefixSwitch(t *Session, ctx callContext) error {
 
 func exitedToError(state *api.DebuggerState, err error) (*api.DebuggerState, error) {
 	if err == nil && state.Exited {
-		return nil, fmt.Errorf("Process %d has exited with status %d", state.Pid, state.ExitStatus)
+		return nil, fmt.Errorf("process %d has exited with status %d", state.Pid, state.ExitStatus)
 	}
 	return state, err
 }
@@ -1352,7 +1352,7 @@ func getEditorName() (string, []string, error) {
 	var editor string
 	if editor = os.Getenv("DELVE_EDITOR"); editor == "" {
 		if editor = os.Getenv("EDITOR"); editor == "" {
-			return "", nil, errors.New("Neither DELVE_EDITOR or EDITOR is set")
+			return "", nil, errors.New("neither DELVE_EDITOR or EDITOR is set")
 		}
 	}
 

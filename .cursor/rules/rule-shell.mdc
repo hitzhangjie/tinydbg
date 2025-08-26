@@ -1,0 +1,7 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+当你要执行shell命令时，记得先source ~/.bashrc，然后精简下PS1设置，PS1="\u \W $"
