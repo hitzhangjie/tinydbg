@@ -19,7 +19,7 @@
 			"path": "service/debugger/debugger.go",
 			"bookmarks": [
 				{
-					"line": 927,
+					"line": 914,
 					"column": 10,
 					"label": "cmds/debugger: all debug session cmds handled in (*Debugger).Command(...)"
 				}
@@ -39,7 +39,7 @@
 			"path": "service/rpc2/server.go",
 			"bookmarks": [
 				{
-					"line": 237,
+					"line": 232,
 					"column": 4,
 					"label": "breakpoint: how serverside createbreakpoint works"
 				}

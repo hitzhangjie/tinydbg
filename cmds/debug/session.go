@@ -107,13 +107,8 @@ func (t *Session) sigintGuard(ch <-chan os.Signal, multiClient bool) {
 	for range ch {
 		t.longCommandCancel()
 		state, err := t.client.GetStateNonBlocking()
-		if err == nil && state.Recording {
-			fmt.Fprintf(t.stdout, "received SIGINT, stopping recording (will not forward signal)\n")
-			err := t.client.StopRecording()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-			}
-			continue
+		if err != nil {
+			// ignore error
 		}
 		if err == nil && state.CoreDumping {
 			fmt.Fprintf(t.stdout, "received SIGINT, stopping dump\n")
@@ -253,7 +248,7 @@ func (t *Session) Run() (int, error) {
 
 	var lastCmd string
 
-	// Ensure that the target process is neither running nor recording by
+	// Ensure that the target process is not running by
 	// making a blocking call.
 	_, _ = t.client.GetState()
 

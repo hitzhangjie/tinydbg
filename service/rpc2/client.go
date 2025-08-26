@@ -67,13 +67,25 @@ func (c *RPCClient) Detach(kill bool) error {
 
 func (c *RPCClient) Restart(rebuild bool) ([]api.DiscardedBreakpoint, error) {
 	out := new(RestartOut)
-	err := c.call("Restart", RestartIn{"", false, nil, false, rebuild, [3]string{}}, out)
+	in := RestartIn{
+		ResetArgs:    false,
+		NewArgs:      nil,
+		Rebuild:      rebuild,
+		NewRedirects: [3]string{},
+	}
+	err := c.call("Restart", in, out)
 	return out.DiscardedBreakpoints, err
 }
 
-func (c *RPCClient) RestartFrom(rerecord bool, pos string, resetArgs bool, newArgs []string, newRedirects [3]string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
+func (c *RPCClient) RestartFrom(resetArgs bool, newArgs []string, newRedirects [3]string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
 	out := new(RestartOut)
-	err := c.call("Restart", RestartIn{pos, resetArgs, newArgs, rerecord, rebuild, newRedirects}, out)
+	in := RestartIn{
+		ResetArgs:    resetArgs,
+		NewArgs:      newArgs,
+		Rebuild:      rebuild,
+		NewRedirects: newRedirects,
+	}
+	err := c.call("Restart", in, out)
 	return out.DiscardedBreakpoints, err
 }
 
@@ -439,10 +451,6 @@ func (c *RPCClient) ExamineMemory(address uint64, count int) ([]byte, bool, erro
 		return nil, false, err
 	}
 	return out.Mem, out.IsLittleEndian, nil
-}
-
-func (c *RPCClient) StopRecording() error {
-	return c.call("StopRecording", StopRecordingIn{}, &StopRecordingOut{})
 }
 
 func (c *RPCClient) CoreDumpStart(dest string) (api.DumpState, error) {

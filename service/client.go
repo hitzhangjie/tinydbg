@@ -20,8 +20,9 @@ type Client interface {
 
 	// Restart restarts program. Set true if you want to rebuild the process we are debugging.
 	Restart(rebuild bool) ([]api.DiscardedBreakpoint, error)
-	// RestartFrom restarts program from the specified position.
-	RestartFrom(rerecord bool, pos string, resetArgs bool, newArgs []string, newRedirects [3]string, rebuild bool) ([]api.DiscardedBreakpoint, error)
+
+	// RestartFrom restarts program with new arguments and redirects.
+	RestartFrom(resetArgs bool, newArgs []string, newRedirects [3]string, rebuild bool) ([]api.DiscardedBreakpoint, error)
 
 	// GetState returns the current debugger state.
 	GetState() (*api.DebuggerState, error)
@@ -150,9 +151,6 @@ type Client interface {
 	// The amount of data to be read is specified by length which must be less than or equal to 1000.
 	// This function will return an error if it reads less than `length` bytes.
 	ExamineMemory(address uint64, length int) ([]byte, bool, error)
-
-	// StopRecording stops a recording if one is in progress.
-	StopRecording() error
 
 	// CoreDumpStart starts creating a core dump to the specified file
 	CoreDumpStart(dest string) (api.DumpState, error)

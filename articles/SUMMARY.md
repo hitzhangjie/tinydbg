@@ -40,6 +40,7 @@
 
 * [Tracepoint and eBPF](06-tracepoint-ebpf.md)
 * [Mozilla RR](07-mozilla-rr.md)
+* [How Mozilla RR Works](how-mozilla-rr-works.md)
 * [GDB Serial Backend](08-gdbserial-backend.md)
 * [LLDB Backend](09-lldb-backend.md)
 * [DAP Integration](10-dap-integration.md)

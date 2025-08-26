@@ -14,10 +14,6 @@ import (
 )
 
 var (
-	// ErrNotRecorded is returned when an action is requested that is
-	// only possible on recorded (traced) programs.
-	ErrNotRecorded = errors.New("not a recording")
-
 	// ErrNoRuntimeAllG is returned when the runtime.allg list could
 	// not be found.
 	ErrNoRuntimeAllG = errors.New("could not find goroutine array")
@@ -547,7 +543,7 @@ func (t *Target) pluginOpenCallback(Thread, *Target) (bool, error) {
 }
 
 // Recorded returns whether the current process is in recording state. Returns true for core dumps,
-// false for others. Currently we have not enabled rr recording support.
+// false for others.
 func (t *Target) Recorded() bool {
 	return t.IsCoreDump()
 }

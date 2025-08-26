@@ -712,7 +712,7 @@ func restart(t *Session, ctx callContext, args string) error {
 		return err
 	}
 
-	if err := restartIntl(t, false, "", resetArgs, newArgv, newRedirects); err != nil {
+	if err := restartIntl(t, resetArgs, newArgv, newRedirects); err != nil {
 		return err
 	}
 
@@ -729,8 +729,8 @@ func parseOptionalCount(arg string) (int64, error) {
 	return strconv.ParseInt(arg, 0, 64)
 }
 
-func restartIntl(t *Session, rerecord bool, restartPos string, resetArgs bool, newArgv []string, newRedirects [3]string) error {
-	discarded, err := t.client.RestartFrom(rerecord, restartPos, resetArgs, newArgv, newRedirects, false)
+func restartIntl(t *Session, resetArgs bool, newArgv []string, newRedirects [3]string) error {
+	discarded, err := t.client.RestartFrom(resetArgs, newArgv, newRedirects, false)
 	if err != nil {
 		return err
 	}
@@ -2143,10 +2143,6 @@ func printcontext(t *Session, state *api.DebuggerState) {
 	}
 
 	printcontextThread(t, th)
-
-	if state.When != "" {
-		fmt.Fprintln(t.stdout, state.When)
-	}
 
 	for _, watchpoint := range state.WatchOutOfScope {
 		fmt.Fprintf(t.stdout, "%s went out of scope and was cleared\n", formatBreakpointName(watchpoint, true))

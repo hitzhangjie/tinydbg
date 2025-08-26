@@ -2090,53 +2090,6 @@ func TestUnknownMethodCall(t *testing.T) {
 	}
 }
 
-func TestRerecord(t *testing.T) {
-	withTestClient2("testrerecord", t, func(c service.Client) {
-		fp := testProgPath(t, "testrerecord")
-		_, err := c.CreateBreakpoint(&api.Breakpoint{File: fp, Line: 10})
-		assertNoError(err, t, "CreateBreakpoint")
-
-		gett := func() int {
-			state := <-c.Continue()
-			if state.Err != nil {
-				t.Fatalf("Unexpected error: %v, state: %#v", state.Err, state)
-			}
-
-			vart, err := c.EvalVariable(api.EvalScope{GoroutineID: -1}, "t", normalLoadConfig)
-			assertNoError(err, t, "EvalVariable")
-			if vart.Unreadable != "" {
-				t.Fatalf("Could not read variable 't': %s\n", vart.Unreadable)
-			}
-
-			t.Logf("Value of t is %s\n", vart.Value)
-
-			vartval, err := strconv.Atoi(vart.Value)
-			assertNoError(err, t, "Parsing value of variable t")
-			return vartval
-		}
-
-		t0 := gett()
-
-		_, err = c.RestartFrom(false, "", false, nil, [3]string{}, false)
-		assertNoError(err, t, "First restart")
-		t1 := gett()
-
-		if t0 != t1 {
-			t.Fatalf("Expected same value for t after restarting (without rerecording) %d %d", t0, t1)
-		}
-
-		time.Sleep(2 * time.Second) // make sure that we're not running inside the same second
-
-		_, err = c.RestartFrom(true, "", false, nil, [3]string{}, false)
-		assertNoError(err, t, "Second restart")
-		t2 := gett()
-
-		if t0 == t2 {
-			t.Fatalf("Expected new value for t after restarting (with rerecording) %d %d", t0, t2)
-		}
-	})
-}
-
 func TestDoubleCreateBreakpoint(t *testing.T) {
 	withTestClient2("testnextprog", t, func(c service.Client) {
 		_, err := c.CreateBreakpoint(&api.Breakpoint{FunctionName: "main.main", Line: 1, Name: "firstbreakpoint", Tracepoint: true})
@@ -2166,25 +2119,6 @@ func TestDoubleCreateBreakpoint(t *testing.T) {
 		if len(bps) != numBreakpoints {
 			t.Errorf("wrong number of breakpoints, got %d expected %d", len(bps), numBreakpoints)
 		}
-	})
-}
-
-func TestStopRecording(t *testing.T) {
-	withTestClient2("sleep", t, func(c service.Client) {
-		time.Sleep(time.Second)
-		c.StopRecording()
-		_, err := c.GetState()
-		assertNoError(err, t, "GetState()")
-
-		// try rerecording
-		go func() {
-			c.RestartFrom(true, "", false, nil, [3]string{}, false)
-		}()
-
-		time.Sleep(time.Second) // hopefully the re-recording started...
-		c.StopRecording()
-		_, err = c.GetState()
-		assertNoError(err, t, "GetState()")
 	})
 }
 

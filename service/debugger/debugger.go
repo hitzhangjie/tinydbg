@@ -34,10 +34,6 @@ var (
 	// debugging core files.
 	ErrCanNotRestart = errors.New("can not restart this target")
 
-	// ErrNotRecording is returned when StopRecording is called while the
-	// debugger is not recording the target.
-	ErrNotRecording = errors.New("debugger is not recording")
-
 	// ErrCoreDumpInProgress is returned when a core dump is already in progress.
 	ErrCoreDumpInProgress = errors.New("core dump in progress")
 
@@ -68,9 +64,6 @@ type Debugger struct {
 
 	running      bool
 	runningMutex sync.Mutex
-
-	stopRecording func() error
-	recordMutex   sync.Mutex
 
 	dumpState proc.DumpState
 
@@ -139,8 +132,6 @@ type Config struct {
 
 	// DisableASLR disables ASLR
 	DisableASLR bool
-
-	RrOnProcessPid int
 }
 
 // New creates a new Debugger. ProcessArgs specify the commandline arguments for the
@@ -337,16 +328,10 @@ func (d *Debugger) detach(kill bool) error {
 
 // Restart will restart the target process, first killing
 // and then exec'ing it again.
-// If the target process is a recording it will restart it from the given
-// position. If pos starts with 'c' it's a checkpoint ID, otherwise it's an
-// event number. If resetArgs is true, newArgs will replace the process args.
-func (d *Debugger) Restart(rerecord bool, pos string, resetArgs bool, newArgs []string, newRedirects [3]string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
+// Restart restarts the target process. If resetArgs is true, newArgs will replace the process args.
+func (d *Debugger) Restart(resetArgs bool, newArgs []string, newRedirects [3]string, rebuild bool) ([]api.DiscardedBreakpoint, error) {
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
-
-	if pos != "" {
-		return nil, proc.ErrNotRecorded
-	}
 
 	if !d.canRestart() {
 		return nil, ErrCanNotRestart
@@ -881,16 +866,12 @@ func (d *Debugger) Command(command *api.DebuggerCommand, resumeNotify chan struc
 		// access the process directly.
 		d.log.Debug("halting")
 
-		d.recordMutex.Lock()
-		if d.stopRecording == nil {
-			err = d.target.RequestManualStop()
-			// The error returned from d.target.Valid will have more context
-			// about the exited process.
-			if _, valErr := d.target.Valid(); valErr != nil {
-				err = valErr
-			}
+		err = d.target.RequestManualStop()
+		// The error returned from d.target.Valid will have more context
+		// about the exited process.
+		if _, valErr := d.target.Valid(); valErr != nil {
+			err = valErr
 		}
-		d.recordMutex.Unlock()
 	}
 
 	withBreakpointInfo := true
@@ -1821,12 +1802,7 @@ func (d *Debugger) ListPackagesBuildInfo(includeFiles bool) []*proc.PackageBuild
 
 // StopRecording stops a recording (if one is in progress)
 func (d *Debugger) StopRecording() error {
-	d.recordMutex.Lock()
-	defer d.recordMutex.Unlock()
-	if d.stopRecording == nil {
-		return ErrNotRecording
-	}
-	return d.stopRecording()
+	return errors.New("recording not supported")
 }
 
 // StopReason returns the reason why the target process is stopped.

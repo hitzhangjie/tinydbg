@@ -19,17 +19,11 @@ var restartCmd = func(c *DebugCommands) *command {
 		cmdFn:   restart,
 		helpMsg: `Restart process.
 
-For recorded targets the command takes the following forms:
-
-	restart					resets to the start of the recording
-	restart [checkpoint]			resets the recording to the given checkpoint
-	restart -r [newargv...]	[redirects...]	re-records the target process
-	
-For live targets the command takes the following forms:
+The command takes the following forms:
 
 	restart [newargv...] [redirects...]	restarts the process
 
-If newargv is omitted the process is restarted (or re-recorded) with the same argument vector.
+If newargv is omitted the process is restarted with the same argument vector.
 If -noargs is specified instead, the argument vector is cleared.
 
 A list of file redirections can be specified after the new argument list to override the redirections defined using the '--redirect' command line option. A syntax similar to Unix shells is used:

@@ -54,18 +54,12 @@ func (s *RPCServer) Detach(arg DetachIn, out *DetachOut) error {
 }
 
 type RestartIn struct {
-	// Position to restart from, if it starts with 'c' it's a checkpoint ID,
-	// otherwise it's an event number. Only valid for recorded targets.
-	Position string
-
 	// ResetArgs tell whether NewArgs and NewRedirects should take effect.
 	ResetArgs bool
+
 	// NewArgs are arguments to launch a new process.  They replace only the
 	// argv[1] and later. Argv[0] cannot be changed.
 	NewArgs []string
-
-	// When Rerecord is set the target will be rerecorded
-	Rerecord bool
 
 	// When Rebuild is set the process will be build again
 	Rebuild bool
@@ -86,7 +80,7 @@ func (s *RPCServer) Restart(arg RestartIn, cb service.RPCCallback) {
 	}
 	var out RestartOut
 	var err error
-	out.DiscardedBreakpoints, err = s.debugger.Restart(arg.Rerecord, arg.Position, arg.ResetArgs, arg.NewArgs, arg.NewRedirects, arg.Rebuild)
+	out.DiscardedBreakpoints, err = s.debugger.Restart(arg.ResetArgs, arg.NewArgs, arg.NewRedirects, arg.Rebuild)
 	cb.Return(out, err)
 }
 
@@ -899,23 +893,6 @@ func (s *RPCServer) ExamineMemory(arg ExamineMemoryIn, out *ExaminedMemoryOut) e
 	out.IsLittleEndian = true //TODO: get byte order from debugger.target.BinInfo().Arch
 
 	return nil
-}
-
-type StopRecordingIn struct {
-}
-
-type StopRecordingOut struct {
-}
-
-func (s *RPCServer) StopRecording(arg StopRecordingIn, cb service.RPCCallback) {
-	close(cb.SetupDoneChan())
-	var out StopRecordingOut
-	err := s.debugger.StopRecording()
-	if err != nil {
-		cb.Return(nil, err)
-		return
-	}
-	cb.Return(out, nil)
 }
 
 type DumpStartIn struct {

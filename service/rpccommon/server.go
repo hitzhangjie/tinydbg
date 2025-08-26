@@ -400,6 +400,6 @@ func registerMethods(s *rpc2.RPCServer, methods map[string]*methodType) {
 	methods["RPCServer.Set"] = &methodType{method: reflect.ValueOf(s.Set)}
 	methods["RPCServer.Stacktrace"] = &methodType{method: reflect.ValueOf(s.Stacktrace)}
 	methods["RPCServer.State"] = &methodType{method: reflect.ValueOf(s.State)}
-	methods["RPCServer.StopRecording"] = &methodType{method: reflect.ValueOf(s.StopRecording)}
+
 	methods["RPCServer.ToggleBreakpoint"] = &methodType{method: reflect.ValueOf(s.ToggleBreakpoint)}
 }
