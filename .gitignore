@@ -2,6 +2,7 @@
 *
 !*.*
 !*/
+!Makefile
 
 # Ignore all object files, shared libraries
 *.o
