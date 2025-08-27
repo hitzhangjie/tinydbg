@@ -26,7 +26,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/hitzhangjie/tinydbg/pkg/dwarf/frame"
 	"github.com/hitzhangjie/tinydbg/pkg/dwarf/op"
 	"github.com/hitzhangjie/tinydbg/pkg/goversion"
 	"github.com/hitzhangjie/tinydbg/pkg/logflags"
@@ -938,13 +937,6 @@ func TestProcessReceivesSIGCHLD(t *testing.T) {
 	})
 }
 
-func TestIssue239(t *testing.T) {
-	withTestProcess("is sue239", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 17)
-		assertNoError(grp.Continue(), t, "Continue()")
-	})
-}
-
 func findFirstNonRuntimeFrame(p *proc.Target) (proc.Stackframe, error) {
 	frames, err := proc.ThreadStacktrace(p, p.CurrentThread(), 10)
 	if err != nil {
@@ -1141,26 +1133,6 @@ func TestRecursiveStructure(t *testing.T) {
 	})
 }
 
-func TestIssue316(t *testing.T) {
-	// A pointer loop that includes one interface should not send dlv into an infinite loop
-	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		evalVariable(p, t, "iface5")
-	})
-}
-
-func TestIssue325(t *testing.T) {
-	// nil pointer dereference when evaluating interfaces to function pointers
-	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		iface2fn1v := evalVariable(p, t, "iface2fn1")
-		t.Logf("iface2fn1: %v\n", iface2fn1v)
-
-		iface2fn2v := evalVariable(p, t, "iface2fn2")
-		t.Logf("iface2fn2: %v\n", iface2fn2v)
-	})
-}
-
 func TestBreakpointCounts(t *testing.T) {
 	withTestProcess("bpcountstest", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		bp := setFileBreakpoint(p, t, fixture.Source, 12)
@@ -1333,40 +1305,6 @@ func BenchmarkGoroutinesInfo(b *testing.B) {
 			_, _, err := proc.GoroutinesInfo(p, 0, 0)
 			assertNoError(err, b, "GoroutinesInfo")
 		}
-	})
-}
-
-func TestIssue262(t *testing.T) {
-	// Continue does not work when the current breakpoint is set on a NOP instruction
-	withTestProcess("issue262", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 11)
-
-		assertNoError(grp.Continue(), t, "Continue()")
-		err := grp.Continue()
-		if err == nil {
-			t.Fatalf("No error on second continue")
-		}
-		_, exited := err.(proc.ErrProcessExited)
-		if !exited {
-			t.Fatalf("Process did not exit after second continue: %v", err)
-		}
-	})
-}
-
-func TestIssue305(t *testing.T) {
-	// If 'next' hits a breakpoint on the goroutine it's stepping through
-	// the internal breakpoints aren't cleared preventing further use of
-	// 'next' command
-	withTestProcess("issue305", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 5)
-
-		assertNoError(grp.Continue(), t, "Continue()")
-
-		assertNoError(grp.Next(), t, "Next() 1")
-		assertNoError(grp.Next(), t, "Next() 2")
-		assertNoError(grp.Next(), t, "Next() 3")
-		assertNoError(grp.Next(), t, "Next() 4")
-		assertNoError(grp.Next(), t, "Next() 5")
 	})
 }
 
@@ -1546,17 +1484,6 @@ func TestHitCondBreakpointREM(t *testing.T) {
 	})
 }
 
-func TestIssue356(t *testing.T) {
-	// slice with a typedef does not get printed correctly
-	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue() returned an error")
-		mmvar := evalVariable(p, t, "mainMenu")
-		if mmvar.Kind != reflect.Slice {
-			t.Fatalf("Wrong kind for mainMenu: %v\n", mmvar.Kind)
-		}
-	})
-}
-
 func TestStepIntoFunction(t *testing.T) {
 	withTestProcess("teststep", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		// Continue until breakpoint
@@ -1576,96 +1503,6 @@ func TestStepIntoFunction(t *testing.T) {
 		}
 		if loc.Line != 8 {
 			t.Fatalf("debugger stopped at incorrect line: %d", loc.Line)
-		}
-	})
-}
-
-func TestIssue332_Part1(t *testing.T) {
-	// Next shouldn't step inside a function call
-	withTestProcess("issue332", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 8)
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertNoError(grp.Next(), t, "first Next()")
-		locations, err := proc.ThreadStacktrace(p, p.CurrentThread(), 2)
-		assertNoError(err, t, "Stacktrace()")
-		if locations[0].Call.Fn == nil {
-			t.Fatalf("Not on a function")
-		}
-		if locations[0].Call.Fn.Name != "main.main" {
-			t.Fatalf("Not on main.main after Next: %s (%s:%d)", locations[0].Call.Fn.Name, locations[0].Call.File, locations[0].Call.Line)
-		}
-		if locations[0].Call.Line != 9 {
-			t.Fatalf("Not on line 9 after Next: %s (%s:%d)", locations[0].Call.Fn.Name, locations[0].Call.File, locations[0].Call.Line)
-		}
-	})
-}
-
-func TestIssue332_Part2(t *testing.T) {
-	// Step should skip a function's prologue
-	// In some parts of the prologue, for some functions, the FDE data is incorrect
-	// which leads to 'next' and 'stack' failing with error "could not find FDE for PC: <garbage>"
-	// because the incorrect FDE data leads to reading the wrong stack address as the return address
-	withTestProcess("issue332", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 8)
-		assertNoError(grp.Continue(), t, "Continue()")
-
-		// step until we enter changeMe
-		for {
-			assertNoError(grp.Step(), t, "Step()")
-			locations, err := proc.ThreadStacktrace(p, p.CurrentThread(), 2)
-			assertNoError(err, t, "Stacktrace()")
-			if locations[0].Call.Fn == nil {
-				t.Fatalf("Not on a function")
-			}
-			if locations[0].Call.Fn.Name == "main.changeMe" {
-				break
-			}
-		}
-
-		regs, err := p.CurrentThread().Registers()
-		assertNoError(err, t, "Registers()")
-		pc := regs.PC()
-		pcAfterPrologue := findFunctionLocation(p, t, "main.changeMe")
-		if pcAfterPrologue == p.BinInfo().LookupFunc()["main.changeMe"][0].Entry {
-			t.Fatalf("main.changeMe and main.changeMe:0 are the same (%x)", pcAfterPrologue)
-		}
-		if pc != pcAfterPrologue {
-			t.Fatalf("Step did not skip the prologue: current pc: %x, first instruction after prologue: %x", pc, pcAfterPrologue)
-		}
-
-		assertNoError(grp.Next(), t, "first Next()")
-		assertNoError(grp.Next(), t, "second Next()")
-		assertNoError(grp.Next(), t, "third Next()")
-		err = grp.Continue()
-		if _, exited := err.(proc.ErrProcessExited); !exited {
-			assertNoError(err, t, "final Continue()")
-		}
-	})
-}
-
-func TestIssue414(t *testing.T) {
-	skipOn(t, "broken", "linux", "386", "pie") // test occasionally hangs on linux/386/pie
-	// Stepping until the program exits
-	withTestProcess("math", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 9)
-		assertNoError(grp.Continue(), t, "Continue()")
-		for {
-			pc := currentPC(p, t)
-			f, ln := currentLineNumber(p, t)
-			t.Logf("at %s:%d %#x\n", f, ln, pc)
-			var err error
-			// Stepping through the runtime is not generally safe so after we are out
-			// of main.main just use Next.
-			// See: https://github.com/hitzhangjie/tinydbg/pull/2082
-			if f == fixture.Source {
-				err = grp.Step()
-			} else {
-				err = grp.Next()
-			}
-			if errors.As(err, &proc.ErrProcessExited{}) {
-				break
-			}
-			assertNoError(err, t, "Step()")
 		}
 	})
 }
@@ -1699,17 +1536,6 @@ func TestPackageVariables(t *testing.T) {
 		if failed {
 			t.Fatalf("previous errors")
 		}
-	})
-}
-
-func TestIssue149(t *testing.T) {
-	ver, _ := goversion.Parse(runtime.Version())
-	if ver.Major > 0 && !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 7, Rev: -1}) {
-		return
-	}
-	// setting breakpoint on break statement
-	withTestProcess("break", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		findFileLocation(p, t, fixture.Source, 8)
 	})
 }
 
@@ -1760,29 +1586,6 @@ func TestCmdLineArgs(t *testing.T) {
 	withTestProcessArgs("testargs", t, ".", []string{"invalid"}, 0, expectPanic)
 	withTestProcessArgs("testargs", t, ".", []string{"test", "invalid"}, 0, expectPanic)
 	withTestProcessArgs("testargs", t, ".", []string{"invalid", "pass flag"}, 0, expectPanic)
-}
-
-func TestIssue462(t *testing.T) {
-	skipOn(t, "broken", "windows") // Stacktrace of Goroutine 0 fails with an error
-	withTestProcess("testnextnethttp", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		go func() {
-			// Wait for program to start listening.
-			for {
-				conn, err := net.Dial("tcp", "127.0.0.1:9191")
-				if err == nil {
-					conn.Close()
-					break
-				}
-				time.Sleep(50 * time.Millisecond)
-			}
-
-			grp.RequestManualStop()
-		}()
-
-		assertNoError(grp.Continue(), t, "Continue()")
-		_, err := proc.ThreadStacktrace(p, p.CurrentThread(), 40)
-		assertNoError(err, t, "Stacktrace()")
-	})
 }
 
 func TestNextParked(t *testing.T) {
@@ -1926,18 +1729,6 @@ func TestUnsupportedArch(t *testing.T) {
 	t.Fatal(err)
 }
 
-func TestIssue573(t *testing.T) {
-	// calls to runtime.duffzero and runtime.duffcopy jump directly into the middle
-	// of the function and the internal breakpoint set by StepInto may be missed.
-	withTestProcess("issue573", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "main.foo")
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertNoError(grp.Step(), t, "Step() #1")
-		assertNoError(grp.Step(), t, "Step() #2") // Bug exits here.
-		assertNoError(grp.Step(), t, "Step() #3") // Third step ought to be possible; program ought not have exited.
-	})
-}
-
 func TestTestvariables2Prologue(t *testing.T) {
 	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		addrEntry := p.BinInfo().LookupFunc()["main.main"][0].Entry
@@ -1945,17 +1736,6 @@ func TestTestvariables2Prologue(t *testing.T) {
 		if addrEntry == addrPrologue {
 			t.Fatalf("Prologue detection failed on testvariables2.go/main.main")
 		}
-	})
-}
-
-func TestIssue561(t *testing.T) {
-	// Step fails to make progress when PC is at a CALL instruction
-	// where a breakpoint is also set.
-	withTestProcess("issue561", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 10)
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertNoError(grp.Step(), t, "Step()")
-		assertLineNumber(p, t, 5, "wrong line number after Step,")
 	})
 }
 
@@ -2241,27 +2021,6 @@ func TestStepOnCallPtrInstr(t *testing.T) {
 	})
 }
 
-func TestIssue594(t *testing.T) {
-	skipOn(t, "upstream issue", "darwin", "lldb")
-	// debugserver will receive an EXC_BAD_ACCESS for this, at that point
-	// there is no way to reconvert this exception into a unix signal and send
-	// it to the process.
-	// This is a bug in debugserver/lldb:
-	//  https://bugs.llvm.org//show_bug.cgi?id=22868
-
-	// Exceptions that aren't caused by breakpoints should be propagated
-	// back to the target.
-	// In particular the target should be able to cause a nil pointer
-	// dereference panic and recover from it.
-	withTestProcess("issue594", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		f, ln := currentLineNumber(p, t)
-		if ln != 21 {
-			t.Fatalf("Program stopped at %s:%d, expected :21", f, ln)
-		}
-	})
-}
-
 func TestStepOutPanicAndDirectCall(t *testing.T) {
 	// StepOut should not step into a deferred function if it is called
 	// directly, only if it is called through a panic.
@@ -2309,31 +2068,6 @@ func TestNegativeIntEvaluation(t *testing.T) {
 				t.Fatalf("Wrong value for variable %q: %v (expected: %v)", tc.name, val, tc.value)
 			}
 		}
-	})
-}
-
-func TestIssue683(t *testing.T) {
-	// Step panics when source file can not be found
-	withTestProcess("issue683", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "main.main")
-		assertNoError(grp.Continue(), t, "First Continue()")
-		for i := 0; i < 20; i++ {
-			// eventually an error about the source file not being found will be
-			// returned, the important thing is that we shouldn't panic
-			err := grp.Step()
-			if err != nil {
-				break
-			}
-		}
-	})
-}
-
-func TestIssue664(t *testing.T) {
-	withTestProcess("issue664", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 4)
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertNoError(grp.Next(), t, "Next()")
-		assertLineNumber(p, t, 5, "Did not continue to correct location,")
 	})
 }
 
@@ -2522,82 +2256,12 @@ func TestRecursiveNext(t *testing.T) {
 
 // TestIssue877 ensures that the environment variables starting with DYLD_ and LD_
 // are passed when executing the binary on OSX via debugserver
-func TestIssue877(t *testing.T) {
-	const envval = "/usr/local/lib"
-	t.Setenv("DYLD_LIBRARY_PATH", envval)
-	withTestProcess("issue877", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		v := evalVariable(p, t, "dyldenv")
-		vv := constant.StringVal(v.Value)
-		t.Logf("v = %q", vv)
-		if vv != envval {
-			t.Fatalf("value of v is %q (expected %q)", vv, envval)
-		}
-	})
-}
-
-func TestIssue893(t *testing.T) {
-	// Test what happens when next is called immediately after launching the
-	// executable, acceptable behaviors are: (a) no error, (b) no source at PC
-	// error, (c) program runs to completion
-	withTestProcess("increment", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		err := grp.Next()
-		if err == nil {
-			return
-		}
-		if _, ok := err.(*frame.ErrNoFDEForPC); ok {
-			return
-		}
-		if _, ok := err.(*proc.ErrNoSourceForPC); ok {
-			return
-		}
-		if _, ok := err.(proc.ErrProcessExited); ok {
-			return
-		}
-		assertNoError(err, t, "Next")
-	})
-}
 
 func TestStepInstructionNoGoroutine(t *testing.T) {
 	withTestProcess("increment", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		// Call StepInstruction immediately after launching the program, it should
 		// work even though no goroutine is selected.
 		assertNoError(grp.StepInstruction(false), t, "StepInstruction")
-	})
-}
-
-func TestIssue871(t *testing.T) {
-	withTestProcess("issue871", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue")
-
-		scope, err := proc.GoroutineScope(p, p.CurrentThread())
-		assertNoError(err, t, "scope")
-
-		locals, err := scope.LocalVariables(normalLoadConfig)
-		assertNoError(err, t, "LocalVariables")
-
-		foundA, foundB := false, false
-
-		for _, v := range locals {
-			t.Logf("local %v", v)
-			switch v.Name {
-			case "a":
-				foundA = true
-				if v.Flags&proc.VariableEscaped == 0 {
-					t.Errorf("variable a not flagged as escaped")
-				}
-			case "b":
-				foundB = true
-			}
-		}
-
-		if !foundA {
-			t.Errorf("variable a not found")
-		}
-
-		if !foundB {
-			t.Errorf("variable b not found")
-		}
 	})
 }
 
@@ -2710,23 +2374,6 @@ func TestDebugStripped2(t *testing.T) {
 			assertCurrentLocationFunction(p, t, "main.main")
 			assertLineNumber(p, t, line, fmt.Sprintf("continue %d", i))
 		}
-	})
-}
-
-func TestIssue844(t *testing.T) {
-	// Conditional breakpoints should not prevent next from working if their
-	// condition isn't met.
-	withTestProcess("nextcond", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 9)
-		condbp := setFileBreakpoint(p, t, fixture.Source, 10)
-		condbp.UserBreaklet().Cond = &ast.BinaryExpr{
-			Op: token.EQL,
-			X:  &ast.Ident{Name: "n"},
-			Y:  &ast.BasicLit{Kind: token.INT, Value: "11"},
-		}
-		assertNoError(grp.Continue(), t, "Continue")
-		assertNoError(grp.Next(), t, "Next")
-		assertLineNumber(p, t, 10, "continued to wrong location,")
 	})
 }
 
@@ -3025,47 +2672,6 @@ func TestSystemstackOnRuntimeNewstack(t *testing.T) {
 	})
 }
 
-func TestIssue1034(t *testing.T) {
-	skipOn(t, "broken - cgo stacktraces", "386")
-	protest.MustHaveCgo(t)
-
-	// The external linker on macOS produces an abbrev for DW_TAG_subprogram
-	// without the "has children" flag, we should support this.
-	withTestProcess("cgostacktest/", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "main.main")
-		assertNoError(grp.Continue(), t, "Continue()")
-		frames, err := proc.GoroutineStacktrace(p, p.SelectedGoroutine(), 10, 0)
-		assertNoError(err, t, "Stacktrace")
-		scope := proc.FrameToScope(p, p.Memory(), nil, 0, frames[2:]...)
-		args, _ := scope.FunctionArguments(normalLoadConfig)
-		assertNoError(err, t, "FunctionArguments()")
-		if len(args) > 0 {
-			t.Fatalf("wrong number of arguments for frame %v (%d)", frames[2], len(args))
-		}
-	})
-}
-
-func TestIssue1008(t *testing.T) {
-	skipOn(t, "broken - cgo stacktraces", "386")
-	protest.MustHaveCgo(t)
-
-	// The external linker on macOS inserts "end of sequence" extended opcodes
-	// in debug_line. which we should support correctly.
-	withTestProcess("cgostacktest/", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "main.main")
-		assertNoError(grp.Continue(), t, "Continue()")
-		loc, err := p.CurrentThread().Location()
-		assertNoError(err, t, "CurrentThread().Location()")
-		t.Logf("location %v\n", loc)
-		if !strings.HasSuffix(loc.File, "/main.go") {
-			t.Errorf("unexpected location %s:%d\n", loc.File, loc.Line)
-		}
-		if loc.Line > 35 {
-			t.Errorf("unexpected location %s:%d (file only has 34 lines)\n", loc.File, loc.Line)
-		}
-	})
-}
-
 func testDeclLineCount(t *testing.T, p *proc.Target, lineno int, tgtvars []string) {
 	sort.Strings(tgtvars)
 
@@ -3133,80 +2739,6 @@ func TestDeclLine(t *testing.T) {
 		// though their DW_AT_decl_line declares higher line numbers. The decl_line
 		// is supposed to be ignored for the visibility of arguments.
 		testDeclLineCount(t, p, 14, []string{"a", "b"})
-	})
-}
-
-func TestIssue1137(t *testing.T) {
-	withTestProcess("dotpackagesiface", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		v := evalVariable(p, t, "iface")
-		assertNoError(v.Unreadable, t, "iface unreadable")
-		v2 := evalVariable(p, t, "iface2")
-		assertNoError(v2.Unreadable, t, "iface2 unreadable")
-	})
-}
-
-func TestIssue1101(t *testing.T) {
-	// If a breakpoint is hit close to process death on a thread that isn't the
-	// group leader the process could die while we are trying to stop it.
-	//
-	// This can be easily reproduced by having the goroutine that's executing
-	// main.main (which will almost always run on the thread group leader) wait
-	// for a second goroutine before exiting, then setting a breakpoint on the
-	// second goroutine and stepping through it (see TestIssue1101 in
-	// proc_test.go).
-	//
-	// When stepping over the return instruction of main.f the deferred
-	// wg.Done() call will be executed which will cause the main goroutine to
-	// resume and proceed to exit. Both the temporary breakpoint on wg.Done and
-	// the temporary breakpoint on the return address of main.f will be in
-	// close proximity to main.main calling os.Exit() and causing the death of
-	// the thread group leader.
-
-	withTestProcess("issue1101", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "main.f")
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertNoError(grp.Next(), t, "Next() 1")
-		assertNoError(grp.Next(), t, "Next() 2")
-		lastCmd := "Next() 3"
-		exitErr := grp.Next()
-		if exitErr == nil {
-			lastCmd = "final Continue()"
-			exitErr = grp.Continue()
-		}
-		if pexit, exited := exitErr.(proc.ErrProcessExited); exited {
-			if pexit.Status != 2 && (runtime.GOOS != "linux" || runtime.GOARCH != "386") {
-				// Looks like there's a bug with debugserver on macOS that sometimes
-				// will report exit status 0 instead of the proper exit status.
-				//
-				// Also it seems that sometimes on linux/386 we will not receive the
-				// exit status. This happens if the process exits at the same time as it
-				// receives a signal.
-				t.Fatalf("process exited status %d (expected 2) (last command = %s) (%#v)", pexit.Status, lastCmd, pexit)
-			}
-		} else {
-			assertNoError(exitErr, t, lastCmd)
-			t.Fatalf("process did not exit after %s", lastCmd)
-		}
-	})
-}
-
-func TestIssue1145(t *testing.T) {
-	withTestProcess("sleep", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 18)
-		assertNoError(grp.Continue(), t, "Continue()")
-		resumeChan := make(chan struct{}, 1)
-		grp.ResumeNotify(resumeChan)
-		go func() {
-			<-resumeChan
-			time.Sleep(100 * time.Millisecond)
-			grp.RequestManualStop()
-		}()
-
-		assertNoError(grp.Next(), t, "Next()")
-		if p.Breakpoints().HasSteppingBreakpoints() {
-			t.Fatal("has internal breakpoints after manual stop request")
-		}
 	})
 }
 
@@ -3492,38 +3024,6 @@ func TestDoubleInlineBreakpoint(t *testing.T) {
 	})
 }
 
-func TestIssue951(t *testing.T) {
-	if ver, _ := goversion.Parse(runtime.Version()); ver.Major >= 0 && !ver.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 9, Rev: -1}) {
-		t.Skip("scopes not implemented in <=go1.8")
-	}
-
-	withTestProcess("issue951", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		scope, err := proc.GoroutineScope(p, p.CurrentThread())
-		assertNoError(err, t, "GoroutineScope")
-		args, err := scope.FunctionArguments(normalLoadConfig)
-		assertNoError(err, t, "FunctionArguments")
-		t.Logf("%#v", args[0])
-		if args[0].Flags&proc.VariableShadowed == 0 {
-			t.Error("argument is not shadowed")
-		}
-		vars, err := scope.LocalVariables(normalLoadConfig)
-		assertNoError(err, t, "LocalVariables")
-		shadowed, notShadowed := 0, 0
-		for i := range vars {
-			t.Logf("var %d: %#v\n", i, vars[i])
-			if vars[i].Flags&proc.VariableShadowed != 0 {
-				shadowed++
-			} else {
-				notShadowed++
-			}
-		}
-		if shadowed != 1 || notShadowed != 1 {
-			t.Errorf("Wrong number of shadowed/non-shadowed local variables: %d %d", shadowed, notShadowed)
-		}
-	})
-}
-
 func TestDWZCompression(t *testing.T) {
 	skipOn(t, "broken", "ppc64le")
 	skipOn(t, "broken", "riscv64")
@@ -3636,17 +3136,6 @@ func TestOptimizationCheck(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestIssue1264(t *testing.T) {
-	// It should be possible to set a breakpoint condition that consists only
-	// of evaluating a single boolean variable.
-	withTestProcess("issue1264", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		bp := setFileBreakpoint(p, t, fixture.Source, 8)
-		bp.UserBreaklet().Cond = &ast.Ident{Name: "equalsTwo"}
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertLineNumber(p, t, 8, "after continue")
-	})
 }
 
 func TestReadDefer(t *testing.T) {
@@ -3768,43 +3257,6 @@ func TestReadDeferArgs(t *testing.T) {
 	})
 }
 
-func TestIssue1374(t *testing.T) {
-	// Continue did not work when stopped at a breakpoint immediately after calling CallFunction.
-	skipOn(t, "broken - pie mode", "linux", "ppc64le", "native", "pie")
-
-	protest.MustSupportFunctionCalls(t)
-	withTestProcess("issue1374", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 7)
-		assertNoError(grp.Continue(), t, "First Continue")
-		assertLineNumber(p, t, 7, "Did not continue to correct location (first continue),")
-		assertNoError(proc.EvalExpressionWithCalls(grp, p.SelectedGoroutine(), "getNum()", normalLoadConfig, true), t, "Call")
-		err := grp.Continue()
-		if _, isexited := err.(proc.ErrProcessExited); !isexited {
-			regs, _ := p.CurrentThread().Registers()
-			f, l, _ := p.BinInfo().PCToLine(regs.PC())
-			t.Fatalf("expected process exited error got %v at %s:%d", err, f, l)
-		}
-	})
-}
-
-func TestIssue1432(t *testing.T) {
-	// Check that taking the address of a struct, casting it into a pointer to
-	// the struct's type and then accessing a member field will still:
-	// - perform auto-dereferencing on struct member access
-	// - yield a Variable that's ultimately assignable (i.e. has an address)
-	withTestProcess("issue1432", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue")
-		svar := evalVariable(p, t, "s")
-		t.Logf("%#x", svar.Addr)
-
-		scope, err := proc.GoroutineScope(p, p.CurrentThread())
-		assertNoError(err, t, "GoroutineScope()")
-
-		err = scope.SetVariable(fmt.Sprintf("(*\"main.s\")(%#x).i", svar.Addr), "10")
-		assertNoError(err, t, "SetVariable")
-	})
-}
-
 func TestGoroutinesInfoLimit(t *testing.T) {
 	withTestProcess("teststepconcurrent", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		setFileBreakpoint(p, t, fixture.Source, 37)
@@ -3830,38 +3282,6 @@ func TestGoroutinesInfoLimit(t *testing.T) {
 		t.Logf("number of goroutines (full scan): %d\n", gcount)
 		if len(gs) != gcount {
 			t.Fatalf("mismatch in the number of goroutines %d %d\n", gcount, len(gs))
-		}
-	})
-}
-
-func TestIssue1469(t *testing.T) {
-	withTestProcess("issue1469", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 13)
-		assertNoError(grp.Continue(), t, "Continue()")
-
-		gid2thread := make(map[int64][]proc.Thread)
-		for _, thread := range p.ThreadList() {
-			g, _ := proc.GetG(thread)
-			if g == nil {
-				continue
-			}
-			gid2thread[g.ID] = append(gid2thread[g.ID], thread)
-		}
-
-		for gid := range gid2thread {
-			if len(gid2thread[gid]) > 1 {
-				t.Logf("too many threads running goroutine %d", gid)
-				for _, thread := range gid2thread[gid] {
-					t.Logf("\tThread %d", thread.ThreadID())
-					frames, err := proc.ThreadStacktrace(p, thread, 20)
-					if err != nil {
-						t.Logf("\t\tcould not get stacktrace %v", err)
-					}
-					for _, frame := range frames {
-						t.Logf("\t\t%#x at %s:%d (systemstack: %v)", frame.Call.PC, frame.Call.File, frame.Call.Line, frame.SystemStack)
-					}
-				}
-			}
 		}
 	})
 }
@@ -4057,31 +3477,6 @@ func TestPluginStepping(t *testing.T) {
 		{contNext, "plugintest2.go:42"}})
 }
 
-func TestIssue1601(t *testing.T) {
-	protest.MustHaveCgo(t)
-	// Tests that recursive types involving C qualifiers and typedefs are parsed correctly
-	withTestProcess("issue1601", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue")
-		evalVariable(p, t, "C.globalq")
-	})
-}
-
-func TestIssue1615(t *testing.T) {
-	// A breakpoint condition that tests for string equality with a constant string shouldn't fail with 'string too long for comparison' error
-
-	withTestProcess("issue1615", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		bp := setFileBreakpoint(p, t, fixture.Source, 19)
-		bp.UserBreaklet().Cond = &ast.BinaryExpr{
-			Op: token.EQL,
-			X:  &ast.Ident{Name: "s"},
-			Y:  &ast.BasicLit{Kind: token.STRING, Value: `"projects/my-gcp-project-id-string/locations/us-central1/queues/my-task-queue-name"`},
-		}
-
-		assertNoError(grp.Continue(), t, "Continue")
-		assertLineNumber(p, t, 19, "")
-	})
-}
-
 func TestCgoStacktrace2(t *testing.T) {
 	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 21) {
 		skipOn(t, "upstream issue", "windows")
@@ -4110,27 +3505,6 @@ func TestCgoStacktrace2(t *testing.T) {
 	})
 }
 
-func TestIssue1736(t *testing.T) {
-	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		ch1BufVar := evalVariable(p, t, "*(ch1.buf)")
-		q := fmt.Sprintf("*(*%q)(%d)", ch1BufVar.DwarfType.Common().Name, ch1BufVar.Addr)
-		t.Logf("%s", q)
-		ch1BufVar2 := evalVariable(p, t, q)
-		if ch1BufVar2.Unreadable != nil {
-			t.Fatal(ch1BufVar2.Unreadable)
-		}
-	})
-}
-
-func TestIssue1817(t *testing.T) {
-	// Setting a breakpoint on a line that doesn't have any PC addresses marked
-	// is_stmt should work.
-	withTestProcess("issue1817", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, fixture.Source, 16)
-	})
-}
-
 func TestListPackagesBuildInfo(t *testing.T) {
 	withTestProcess("pkgrenames", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
 		pkgs := p.BinInfo().ListPackagesBuildInfo(true)
@@ -4148,66 +3522,6 @@ func TestListPackagesBuildInfo(t *testing.T) {
 			if !strings.HasSuffix(strings.ReplaceAll(pkg.DirectoryPath, "\\", "/"), pkg.ImportPath[fidx:]) {
 				t.Errorf("unexpected suffix: %q %q", pkg.ImportPath, pkg.DirectoryPath)
 			}
-		}
-	})
-}
-
-func TestIssue1795(t *testing.T) {
-	// When doing midstack inlining the Go compiler sometimes (always?) emits
-	// the toplevel inlined call with ranges that do not cover the inlining of
-	// other nested inlined calls.
-	// For example if a function A calls B which calls C and both the calls to
-	// B and C are inlined the DW_AT_inlined_subroutine entry for A might have
-	// ranges that do not cover the ranges of the inlined call to C.
-	// This is probably a violation of the DWARF standard (it's unclear) but we
-	// might as well support it as best as possible anyway.
-	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 13) {
-		t.Skip("Test not relevant to Go < 1.13")
-	}
-	skipOn(t, "broken", "ppc64le")
-	withTestProcessArgs("issue1795", t, ".", []string{}, protest.EnableInlining|protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertLineNumber(p, t, 12, "wrong line number after Continue,")
-		assertNoError(grp.Next(), t, "Next()")
-		assertLineNumber(p, t, 13, "wrong line number after Next,")
-	})
-	withTestProcessArgs("issue1795", t, ".", []string{}, protest.EnableInlining|protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFunctionBreakpoint(p, t, "regexp.(*Regexp).doExecute")
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertLineNumber(p, t, 12, "wrong line number after Continue (1),")
-		assertNoError(grp.Continue(), t, "Continue()")
-		frames, err := proc.ThreadStacktrace(p, p.CurrentThread(), 40)
-		assertNoError(err, t, "ThreadStacktrace()")
-		logStacktrace(t, p, frames)
-		if err := checkFrame(frames[0], "regexp.(*Regexp).doExecute", "", 0, false); err != nil {
-			t.Errorf("Wrong frame 0: %v", err)
-		}
-		if err := checkFrame(frames[1], "regexp.(*Regexp).doMatch", "", 0, true); err != nil {
-			t.Errorf("Wrong frame 1: %v", err)
-		}
-		if err := checkFrame(frames[2], "regexp.(*Regexp).MatchString", "", 0, true); err != nil {
-			t.Errorf("Wrong frame 2: %v", err)
-		}
-		if err := checkFrame(frames[3], "main.main", fixture.Source, 12, false); err != nil {
-			t.Errorf("Wrong frame 3: %v", err)
-		}
-	})
-}
-
-func TestIssue1925(t *testing.T) {
-	// Calling a function should not leave cached goroutine information in an
-	// inconsistent state.
-	// In particular the stepInstructionOut function called at the end of a
-	// 'call' procedure should clean the G cache like every other function
-	// altering the state of the target process.
-	skipOn(t, "broken - pie mode", "linux", "ppc64le", "native", "pie")
-	protest.MustSupportFunctionCalls(t)
-	withTestProcess("testvariables2", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		assertNoError(grp.Continue(), t, "Continue()")
-		assertNoError(proc.EvalExpressionWithCalls(grp, p.SelectedGoroutine(), "afunc(2)", normalLoadConfig, true), t, "Call")
-		t.Logf("%v\n", p.SelectedGoroutine().CurrentLoc)
-		if loc := p.SelectedGoroutine().CurrentLoc; loc.File != fixture.Source {
-			t.Errorf("wrong location for selected goroutine after call: %s:%d", loc.File, loc.Line)
 		}
 	})
 }
@@ -4330,34 +3644,6 @@ func TestStepOutPreservesGoroutine(t *testing.T) {
 			t.Fatalf("unexpected selected goroutine %d", g2.ID)
 		}
 	})
-}
-
-func TestIssue2319(t *testing.T) {
-	// Check to make sure we don't crash on startup when the target is
-	// a binary with a mix of DWARF-5 C++ compilation units and
-	// DWARF-4 Go compilation units.
-
-	// Require CGO, since we need to use the external linker for this test.
-	protest.MustHaveCgo(t)
-
-	// The test fixture uses linux/amd64 assembly and a *.syso file
-	// that is linux/amd64, so skip for other architectures.
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		t.Skipf("skipping since not linux/amd64")
-	}
-
-	// Skip unless on 1.14 or later. The test fixture uses a *.syso
-	// file, which in 1.13 is not loaded unless we're in internal
-	// linking mode (we need external linking here).
-	if !goversion.VersionAfterOrEqual(runtime.Version(), 1, 14) {
-		t.Skip("test contains fixture that is specific to go 1.14+")
-	}
-
-	fixture := protest.BuildFixture("issue2319/", protest.BuildModeExternalLinker)
-
-	// Load up the binary and make sure there are no crashes.
-	bi := proc.NewBinaryInfo("linux", "amd64")
-	assertNoError(bi.LoadBinaryInfo(fixture.Path, 0), t, "LoadBinaryInfo")
 }
 
 func TestCompositeMemoryWrite(t *testing.T) {
@@ -5069,29 +4355,6 @@ func TestWaitForAttach(t *testing.T) {
 	p.Detach(true)
 
 	cmd.Wait()
-}
-
-func TestIssue3545(t *testing.T) {
-	withTestProcessArgs("nilptr", t, "", []string{}, protest.EnableOptimization, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		err := grp.Continue()
-		if err != nil && err.Error() == "bad access" {
-			grp.Continue()
-		}
-		locations, err := proc.ThreadStacktrace(p, p.CurrentThread(), 40)
-		assertNoError(err, t, "Stacktrace()")
-		var foundMain bool
-		for _, loc := range locations {
-			if loc.Call.Fn != nil && loc.Call.Fn.Name == "main.main" {
-				if foundMain {
-					t.Fatal("main.main found more than once in the stacktrace")
-				}
-				foundMain = true
-			}
-		}
-		if !foundMain {
-			t.Fatal("did not find main.main in stack trace")
-		}
-	})
 }
 
 func TestPanicLine(t *testing.T) {

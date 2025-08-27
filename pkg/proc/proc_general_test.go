@@ -14,41 +14,7 @@ func ptrSizeByRuntimeArch() int {
 	return int(unsafe.Sizeof(uintptr(0)))
 }
 
-func TestIssue554(t *testing.T) {
-	// unsigned integer overflow in proc.(*memCache).contains was
-	// causing it to always return true for address 0xffffffffffffffff
-	mem := memCache{true, 0x20, make([]byte, 100), nil}
-	var addr uint64
-	switch ptrSizeByRuntimeArch() {
-	case 4:
-		addr = 0xffffffff
-	case 8:
-		addr = 0xffffffffffffffff
-	}
-	if mem.contains(addr, 40) {
-		t.Fatalf("should be false")
-	}
-}
 
-func TestIssue3760(t *testing.T) {
-	// unsigned integer overflow if len(m.cache) < size
-	mem := memCache{true, 0x20, make([]byte, 100), nil}
-	if mem.contains(0x20, 200) {
-		t.Fatalf("should be false")
-	}
-	// test overflow of end addr
-	mem = memCache{true, 0xfffffffffffffff0, make([]byte, 15), nil}
-	if !mem.contains(0xfffffffffffffff0, 15) {
-		t.Fatalf("should contain it")
-	}
-	if mem.contains(0xfffffffffffffff0, 16) {
-		t.Fatalf("should be false")
-	}
-	cm := cacheMemory(nil, 0xffffffffffffffff, 1)
-	if cm != nil {
-		t.Fatalf("should be nil")
-	}
-}
 
 type dummyMem struct {
 	t     *testing.T

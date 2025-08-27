@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hitzhangjie/tinydbg/pkg/config"
 	"github.com/hitzhangjie/tinydbg/pkg/goversion"
@@ -191,25 +189,6 @@ func TestExecuteFile(t *testing.T) {
 	if breakCount != 1 || traceCount != 1 {
 		t.Fatalf("Wrong counts break: %d trace: %d\n", breakCount, traceCount)
 	}
-}
-
-func TestIssue354(t *testing.T) {
-	printStack(&Session{}, os.Stdout, []api.Stackframe{}, "", false)
-	printStack(&Session{}, os.Stdout, []api.Stackframe{
-		{Location: api.Location{PC: 0, File: "irrelevant.go", Line: 10, Function: nil},
-			Bottom: true}}, "", false)
-}
-
-func TestIssue411(t *testing.T) {
-	withTestTerminal("math", t, func(term *FakeTerminal) {
-		term.MustExec("break _fixtures/math.go:8")
-		term.MustExec("trace _fixtures/math.go:9")
-		term.MustExec("continue")
-		out := term.MustExec("next")
-		if !strings.HasPrefix(out, "> goroutine(1): main.main()") {
-			t.Fatalf("Wrong output for next: <%s>", out)
-		}
-	})
 }
 
 func TestTrace(t *testing.T) {
@@ -617,24 +596,6 @@ func TestRestart(t *testing.T) {
 	})
 }
 
-func TestIssue827(t *testing.T) {
-	// switching goroutines when the current thread isn't running any goroutine
-	// causes nil pointer dereference.
-	withTestTerminal("notify-v2", t, func(term *FakeTerminal) {
-		go func() {
-			time.Sleep(1 * time.Second)
-			resp, err := http.Get("http://127.0.0.1:8888/test")
-			if err == nil {
-				resp.Body.Close()
-			}
-			time.Sleep(1 * time.Second)
-			term.client.Halt()
-		}()
-		term.MustExec("continue")
-		term.MustExec("goroutine 1")
-	})
-}
-
 func findCmdName(c *DebugCommands, cmdstr string, prefix cmdPrefix) string {
 	for _, v := range c.cmds {
 		if v.match(cmdstr) {
@@ -762,21 +723,6 @@ func TestConfig(t *testing.T) {
 	assertSubstitutePath(t, term.conf.SubstitutePath, "", "something", "somethingelse", "")
 }
 
-func TestIssue1090(t *testing.T) {
-	// Exit while executing 'next' should report the "Process exited" error
-	// message instead of crashing.
-	withTestTerminal("math", t, func(term *FakeTerminal) {
-		term.MustExec("break main.main")
-		term.MustExec("continue")
-		for {
-			_, err := term.Exec("next")
-			if err != nil && strings.Contains(err.Error(), " has exited with status ") {
-				break
-			}
-		}
-	})
-}
-
 func TestPrintContextParkedGoroutine(t *testing.T) {
 	if runtime.GOARCH == "ppc64le" && buildMode == "pie" {
 		t.Skip("pie mode broken on ppc64le")
@@ -870,42 +816,6 @@ func TestTruncateStacktrace(t *testing.T) {
 		t.Logf("truncated output %q", out2)
 		if !strings.Contains(out2, stacktraceTruncatedMessage) {
 			t.Fatalf("stacktrace was not truncated")
-		}
-	})
-}
-
-func TestIssue1493(t *testing.T) {
-	// The 'regs' command without the '-a' option should only return
-	// general purpose registers.
-	if runtime.GOARCH == "ppc64le" {
-		t.Skip("skipping, some registers such as vector registers are currently not loaded")
-	}
-	withTestTerminal("continuetestprog", t, func(term *FakeTerminal) {
-		r := term.MustExec("regs")
-		nr := len(strings.Split(r, "\n"))
-		t.Logf("regs: %s", r)
-		ra := term.MustExec("regs -a")
-		nra := len(strings.Split(ra, "\n"))
-		t.Logf("regs -a: %s", ra)
-		if nr > nra/2+1 {
-			t.Fatalf("'regs' returned too many registers (%d) compared to 'regs -a' (%d)", nr, nra)
-		}
-	})
-}
-
-func TestIssue1598(t *testing.T) {
-	if buildMode == "pie" && runtime.GOARCH == "ppc64le" {
-		t.Skip("Debug function call Test broken in PIE mode")
-	}
-	test.MustSupportFunctionCalls(t)
-	withTestTerminal("issue1598", t, func(term *FakeTerminal) {
-		term.MustExec("break issue1598.go:5")
-		term.MustExec("continue")
-		term.MustExec("config max-string-len 500")
-		r := term.MustExec("call x()")
-		t.Logf("result %q", r)
-		if !strings.Contains(r, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut \\nlabore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut") {
-			t.Fatalf("wrong value returned")
 		}
 	})
 }

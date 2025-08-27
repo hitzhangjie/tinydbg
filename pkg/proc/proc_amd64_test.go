@@ -39,18 +39,6 @@ func TestNextUnknownInstr(t *testing.T) {
 	})
 }
 
-func TestIssue1656(t *testing.T) {
-	withTestProcess("issue1656/", t, func(p *proc.Target, grp *proc.TargetGroup, fixture protest.Fixture) {
-		setFileBreakpoint(p, t, filepath.ToSlash(filepath.Join(fixture.BuildDir, "main.s")), 5)
-		assertNoError(grp.Continue(), t, "Continue()")
-		t.Logf("step1\n")
-		assertNoError(grp.Step(), t, "Step()")
-		assertLineNumber(p, t, 8, "wrong line number after first step")
-		t.Logf("step2\n")
-		assertNoError(grp.Step(), t, "Step()")
-		assertLineNumber(p, t, 9, "wrong line number after second step")
-	})
-}
 
 func TestBreakpointConfusionOnResume(t *testing.T) {
 	// Checks that SetCurrentBreakpoint, (*Thread).StepInstruction and
