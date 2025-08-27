@@ -1439,7 +1439,6 @@ func (t *Target) handleHardcodedBreakpoints(grp *TargetGroup, trapthread Thread,
 	mem := t.Memory()
 	arch := t.BinInfo().Arch
 
-	recorded := t.Recorded()
 	isHardcodedBreakpoint := func(thread Thread, pc uint64) uint64 {
 		for _, bpinstr := range [][]byte{arch.BreakpointInstruction(), arch.AltBreakpointInstruction()} {
 			if bpinstr == nil {
@@ -1462,7 +1461,7 @@ func (t *Target) handleHardcodedBreakpoints(grp *TargetGroup, trapthread Thread,
 		if arch.BreakInstrMovesPC() {
 			return
 		}
-		if recorded {
+		if t.IsCoreDump() {
 			return
 		}
 		if bpsize := isHardcodedBreakpoint(thread, pc); bpsize > 0 {
@@ -1505,7 +1504,7 @@ func (t *Target) handleHardcodedBreakpoints(grp *TargetGroup, trapthread Thread,
 
 		switch {
 		case loc.Fn.Name == "runtime.breakpoint":
-			if recorded := t.Recorded(); recorded {
+			if t.IsCoreDump() {
 				setHardcodedBreakpoint(thread, loc)
 				continue
 			}

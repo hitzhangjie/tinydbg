@@ -22,11 +22,13 @@ var (
 	ErrProcessDetached = errors.New("detached from the process")
 )
 
+// LaunchFlags is a bitmask that indicates which launch flags are set.
 type LaunchFlags uint8
 
+// LaunchFlags constants
 const (
-	LaunchForeground LaunchFlags = 1 << iota
-	LaunchDisableASLR
+	LaunchForeground  LaunchFlags = 1 << iota // Launch the process in the foreground
+	LaunchDisableASLR                         // Disable Address Space Layout Randomization
 )
 
 // Target represents the process being debugged.
@@ -542,12 +544,6 @@ func (t *Target) pluginOpenCallback(Thread, *Target) (bool, error) {
 	return false, nil
 }
 
-// Recorded returns whether the current process is in recording state. Returns true for core dumps,
-// false for others.
-func (t *Target) Recorded() bool {
-	return t.IsCoreDump()
-}
-
 func isSuspended(t *Target, lbp *LogicalBreakpoint) bool {
 	for _, bp := range t.Breakpoints().M {
 		if bp.LogicalID() == lbp.LogicalID {
@@ -557,8 +553,7 @@ func isSuspended(t *Target, lbp *LogicalBreakpoint) bool {
 	return true
 }
 
-var ErrWaitForNotImplemented = errors.New("waitfor not implemented")
-
+// Valid returns true if the waitFor specified
 func (waitFor *WaitFor) Valid() bool {
 	return waitFor != nil && waitFor.Name != ""
 }

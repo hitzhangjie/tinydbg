@@ -1800,11 +1800,6 @@ func (d *Debugger) ListPackagesBuildInfo(includeFiles bool) []*proc.PackageBuild
 	return d.target.Selected.BinInfo().ListPackagesBuildInfo(includeFiles)
 }
 
-// StopRecording stops a recording (if one is in progress)
-func (d *Debugger) StopRecording() error {
-	return errors.New("recording not supported")
-}
-
 // StopReason returns the reason why the target process is stopped.
 // A process could be stopped for multiple simultaneous reasons, in which
 // case only one will be reported.
