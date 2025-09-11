@@ -83,11 +83,14 @@ func Launch(cmd []string, wd string, flags proc.LaunchFlags, tty string, stdinPa
 		}
 	}()
 
-	// I don't think this function should executed by dbp.execPtraceFunc,
-	// because it's going to setup the ptrace link, and it won't send
-	// other ptrace requests via the ptrace link.
+	// Here exec.Command(...).Start() works as fork+exec, when child process
+	// calls `ptrace(PTRACE_TRACEME, ...)`, it setup the ptrace link.
+	// Current thread which calls `exec.Command(...).Start()` will be the ptracer.
 	//
-	// so it should be executed directly rather than called by dbp.execPtraceFunc.
+	// To guarantee that the following ptrace requests sent from the same ptracer,
+	// we must run this exec.Command(...).Start() in the same thread.
+	//
+	// So this logic should be run inside dbp.execPtraceFunc(fn).
 	dbp.execPtraceFunc(func() {
 		if flags&proc.LaunchDisableASLR != 0 {
 			oldPersonality, _, err := syscall.Syscall(sys.SYS_PERSONALITY, personalityGetPersonality, 0, 0)
