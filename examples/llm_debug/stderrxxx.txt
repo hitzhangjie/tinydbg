@@ -1,0 +1,8 @@
+Command failed: could not find symbol value for a
+Command failed: could not find symbol value for a
+Command failed: could not find symbol value for i
+Command failed: could not find symbol value for i
+Command failed: could not find symbol value for i
+Command failed: could not find symbol value for i
+Command failed: could not find symbol value for i
+Command failed: could not find symbol value for i

@@ -1,0 +1,152 @@
+Type 'help' for list of commands.
+(tinydbg) Breakpoint 1 set at 0x4b1af3 for main.main() ./main.go:5
+(tinydbg) > [Breakpoint 1] main.main() ./main.go:5 (hits goroutine(1):1 total:1) (PC: 0x4b1af3)
+     1:	package main
+     2:	
+     3:	import "fmt"
+     4:	
+=>   5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+     8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+(tinydbg) (tinydbg) > main.main() ./main.go:6 (PC: 0x4b1afa)
+     1:	package main
+     2:	
+     3:	import "fmt"
+     4:	
+     5:	func main() {
+=>   6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+     8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+(tinydbg) (tinydbg) > main.main() ./main.go:7 (PC: 0x4b1b75)
+     2:	
+     3:	import "fmt"
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+=>   7:		sum := 0
+     8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) []int len: 5, cap: 5, [1,2,3,4,5]
+(tinydbg) > main.main() ./main.go:8 (PC: 0x4b1b7e)
+     3:	import "fmt"
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+=>   8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) (tinydbg) > main.main() ./main.go:9 (PC: 0x4b1b9c)
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+     8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+=>   9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) 0
+(tinydbg) > main.main() ./main.go:8 (PC: 0x4b1bc8)
+     3:	import "fmt"
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+=>   8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) (tinydbg) > main.main() ./main.go:9 (PC: 0x4b1b9c)
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+     8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+=>   9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) 1
+(tinydbg) > main.main() ./main.go:8 (PC: 0x4b1bc8)
+     3:	import "fmt"
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+=>   8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) (tinydbg) > main.main() ./main.go:9 (PC: 0x4b1b9c)
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+     8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+=>   9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) 2
+(tinydbg) > main.main() ./main.go:8 (PC: 0x4b1bc8)
+     3:	import "fmt"
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+=>   8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) (tinydbg) > main.main() ./main.go:9 (PC: 0x4b1b9c)
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+     8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+=>   9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) 3
+(tinydbg) > main.main() ./main.go:8 (PC: 0x4b1bc8)
+     3:	import "fmt"
+     4:	
+     5:	func main() {
+     6:		a := []int{1, 2, 3, 4, 5}
+     7:		sum := 0
+=>   8:		for i := 0; i <= len(a); i++ {  // Bug: loop condition should be i < len(a) to avoid index out of range
+     9:			sum += a[i]
+    10:		}
+    11:		fmt.Println("Sum:", sum)
+    12:	}
+(tinydbg) (tinydbg) > [unrecovered-panic] runtime.fatalpanic() /home/zhangjie/.goenv/sdk/go1.24.6/src/runtime/panic.go:1301 (hits goroutine(1):1 total:1) (PC: 0x43da84)
+Warning: debugging optimized function
+	runtime.curg._panic.arg: interface {}(string) "runtime error: index out of range [5] with length 5"
+  1296:	// fatalpanic implements an unrecoverable panic. It is like fatalthrow, except
+  1297:	// that if msgs != nil, fatalpanic also prints panic messages and decrements
+  1298:	// runningPanicDefers once main is blocked from exiting.
+  1299:	//
+  1300:	//go:nosplit
+=>1301:	func fatalpanic(msgs *_panic) {
+  1302:		pc := sys.GetCallerPC()
+  1303:		sp := sys.GetCallerSP()
+  1304:		gp := getg()
+  1305:		var docrash bool
+  1306:		// Switch to the system stack to avoid any stack growth, which
+(tinydbg) exit
